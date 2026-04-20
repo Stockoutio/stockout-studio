@@ -122,10 +122,11 @@ nav {
     align-items: center;
     gap: 5px;
     cursor: pointer;
-    z-index: 3000; /* Absolute top priority */
-    padding: 15px; /* Large hit area for mobile */
+    z-index: 3000;
+    padding: 10px; /* Comfortable hit area */
     background: transparent;
     border: none;
+    margin-right: 0; /* REMOVED negative margin causing the cutoff */
 }
 
 .mobile-menu-toggle span {
