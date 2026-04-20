@@ -54,8 +54,8 @@ function update() {
 
     // Pipe Logic
     if (frameCount >= nextPipeFrame) {
-        let gap = 160; // Wider gap for easier play
-        let minPipeHeight = 80; // Minimum height for ads to show clearly
+        let gap = 200; // Even wider gap for ultra-forgiving vertical play
+        let minPipeHeight = 60; // Minimum height for ads
         let pipeHeight = Math.floor(Math.random() * (canvas.height - gap - (minPipeHeight * 2))) + minPipeHeight;
         
         pipes.push({ 
@@ -66,8 +66,8 @@ function update() {
             ad: ads[Math.floor(Math.random() * ads.length)] 
         });
         
-        // Randomize distance to next pipe (120 to 200 frames)
-        nextPipeFrame = frameCount + Math.floor(Math.random() * 80) + 120;
+        // Closer horizontal spacing (60 to 90 frames)
+        nextPipeFrame = frameCount + Math.floor(Math.random() * 30) + 60;
     }
 
     for (let i = pipes.length - 1; i >= 0; i--) {
@@ -123,6 +123,7 @@ function update() {
 
 function gameOver() {
     gameRunning = false;
+    pipes = []; // Pipes disappear instantly on hit
     ctx.fillStyle = "rgba(0,0,0,0.85)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#fff";
