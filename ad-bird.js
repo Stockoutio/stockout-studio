@@ -40,6 +40,7 @@ class AdBird {
         this.state = {
             gameRunning: false,
             score: 0,
+            highScore: parseInt(localStorage.getItem('adBirdHighScore')) || 0,
             frameCount: 0,
             nextPipeFrame: 40,
             currentWorld: 0,
@@ -210,7 +211,6 @@ class AdBird {
         this.player.velocity += this.config.gravity;
         this.player.y += this.player.velocity;
 
-        // Flip Update
         if (this.player.isFlipping) {
             this.player.flipAngle += this.player.flipDirection * this.player.flipSpeed;
             if (Math.abs(this.player.flipAngle) >= Math.PI * 2) {
@@ -270,20 +270,16 @@ class AdBird {
 
     _createSplat(p, bx, by) {
         this.state.screenShake = 10;
-        
-        // Trigger Bird Flip
         this.player.isFlipping = true;
         this.player.flipDirection = Math.random() > 0.5 ? 1 : -1;
         this.player.flipAngle = 0;
         this.player.flipSpeed = 0.25;
-
         const dripCount = 2 + Math.floor(Math.random() * 2);
         const drips = Array.from({ length: dripCount }, () => ({
             xOff: (Math.random() - 0.5) * 20, len: 0, maxLen: 40 + Math.random() * 60,
             speed: 1.0 + Math.random() * 1.5, w: 3 + Math.random() * 4
         }));
         p.stains.push({ relY: by, xOff: bx - p.x, size: Math.random() * 8 + 12, drips: drips });
-        
         const msg = this.config.hitMessages[Math.floor(Math.random() * this.config.hitMessages.length)];
         this.floatingTexts.push({ 
             x: bx, y: by, text: msg, alpha: 1, velocity: -1.5, scale: 1, 
@@ -378,11 +374,8 @@ class AdBird {
     _renderPlayer() {
         this.ctx.save();
         this.ctx.translate(this.player.x + this.player.w/2, this.player.y + this.player.h/2);
-        
-        // Tilt + Flip Rotation
         const tilt = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.player.velocity * 0.05));
         this.ctx.rotate(tilt + this.player.flipAngle);
-        
         this.ctx.scale(-1, 1); this.ctx.drawImage(this.assets.player, -this.player.w/2, -this.player.h/2, this.player.w, this.player.h);
         this.ctx.restore();
     }
@@ -406,14 +399,26 @@ class AdBird {
     gameOver() {
         this.state.gameRunning = false; this.playSound('crash');
         if (this.assets.music) this.assets.music.pause();
+        
+        // Update High Score
+        if (this.state.score > this.state.highScore) {
+            this.state.highScore = this.state.score;
+            localStorage.setItem('adBirdHighScore', this.state.highScore);
+        }
+
         setTimeout(() => {
             this.ctx.fillStyle = "rgba(0,0,0,0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 32px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
-            this.ctx.fillText("AD-BIRD LOST AT SEA", this.canvas.width / 2, this.canvas.height / 2 - 20);
-            this.ctx.font = "20px 'Outfit', sans-serif"; this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2, this.canvas.height / 2 + 25);
+            this.ctx.fillText("AD-BIRD LOST AT SEA", this.canvas.width / 2, this.canvas.height / 2 - 40);
+            
+            this.ctx.font = "24px 'Outfit', sans-serif"; 
+            this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2, this.canvas.height / 2 + 5);
+            this.ctx.fillStyle = "#fbbf24"; // Gold for high score
+            this.ctx.fillText(`High Score: ${this.state.highScore}`, this.canvas.width / 2, this.canvas.height / 2 + 40);
+            
             this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif";
-            this.ctx.fillText("SPACE or L-CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 60);
-            this.ctx.fillText("SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 85);
+            this.ctx.fillText("SPACE or L-CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 80);
+            this.ctx.fillText("SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 105);
         }, 10);
     }
 
