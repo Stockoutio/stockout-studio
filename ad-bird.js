@@ -11,7 +11,7 @@ class AdBird {
         
         this.config = {
             gravity: options.gravity || 0.5,
-            lift: options.lift || -5.5,
+            lift: options.lift || -8,
             pipeWidth: options.pipeWidth || 80,
             pipeGap: options.pipeGap || 230,
             pipeSpeed: options.pipeSpeed || 2.2,
@@ -189,7 +189,7 @@ class AdBird {
         }
 
         const sounds = {
-            flap: { type: 'square', freq: [150, 400], vol: 0.4, dur: 0.1 },
+            flap: { type: 'square', freq: [150, 400], vol: 0.5, dur: 0.1 },
             score: { type: 'sine', freq: [800, 1200], vol: 0.4, dur: 0.1 },
             crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 },
             shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 }
