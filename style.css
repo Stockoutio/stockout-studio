@@ -34,8 +34,13 @@ nav {
     top: 0;
     width: 100%;
     z-index: 1000;
-    padding: 2rem 0;
+    padding: 1.5rem 0;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    background: rgba(10, 10, 12, 0.4);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 
 .logo {
     font-size: 1.2rem;
