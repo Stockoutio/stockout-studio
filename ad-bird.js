@@ -42,6 +42,7 @@ class AdBird {
             score: 0,
             directHits: 0,
             highScore: parseInt(localStorage.getItem('adBirdHighScore')) || 0,
+            highDirectHits: parseInt(localStorage.getItem('adBirdHighDirectHits')) || 0,
             frameCount: 0,
             nextPipeFrame: 40,
             currentWorld: 0,
@@ -271,7 +272,7 @@ class AdBird {
 
     _createSplat(p, bx, by) {
         this.state.screenShake = 10;
-        this.state.directHits++; // Increment hit counter
+        this.state.directHits++;
         
         this.player.isFlipping = true;
         this.player.flipDirection = Math.random() > 0.5 ? 1 : -1;
@@ -384,21 +385,13 @@ class AdBird {
     }
 
     _renderHUD() {
-        this.ctx.fillStyle = "#fff";
-        this.ctx.textAlign = "center";
-        
-        // Main Score
+        this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center";
         this.ctx.font = "bold 48px 'Outfit', sans-serif";
         this.ctx.fillText(this.state.score, this.canvas.width / 2, 65);
-        
-        // Direct Hits (Marketing Impact)
         this.ctx.font = "bold 14px 'Outfit', sans-serif";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText(`MARKETING IMPACT: ${this.state.directHits}`, this.canvas.width / 2, 90);
-        
-        // Mute Toggle
-        this.ctx.font = "22px serif";
-        this.ctx.textAlign = "right";
+        this.ctx.font = "22px serif"; this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 45);
     }
 
@@ -415,24 +408,36 @@ class AdBird {
         this.state.gameRunning = false; this.playSound('crash');
         if (this.assets.music) this.assets.music.pause();
         
+        // Update High Scores
         if (this.state.score > this.state.highScore) {
             this.state.highScore = this.state.score;
             localStorage.setItem('adBirdHighScore', this.state.highScore);
+        }
+        if (this.state.directHits > this.state.highDirectHits) {
+            this.state.highDirectHits = this.state.directHits;
+            localStorage.setItem('adBirdHighDirectHits', this.state.highDirectHits);
         }
 
         setTimeout(() => {
             this.ctx.fillStyle = "rgba(0,0,0,0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 32px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
-            this.ctx.fillText("AD-BIRD LOST AT SEA", this.canvas.width / 2, this.canvas.height / 2 - 40);
+            this.ctx.fillText("AD-BIRD LOST AT SEA", this.canvas.width / 2, this.canvas.height / 2 - 60);
             
-            this.ctx.font = "24px 'Outfit', sans-serif"; 
-            this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2, this.canvas.height / 2 + 5);
+            // Score Display
+            this.ctx.font = "bold 20px 'Outfit', sans-serif"; 
+            this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2);
             this.ctx.fillStyle = "#fbbf24";
-            this.ctx.fillText(`High Score: ${this.state.highScore}`, this.canvas.width / 2, this.canvas.height / 2 + 40);
+            this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2);
+            
+            // Impact Display
+            this.ctx.fillStyle = "#fff";
+            this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35);
+            this.ctx.fillStyle = "#06b6d4"; // Cyan for impact best
+            this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35);
             
             this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif";
-            this.ctx.fillText("SPACE or L-CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 80);
-            this.ctx.fillText("SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 105);
+            this.ctx.fillText("SPACE or L-CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 85);
+            this.ctx.fillText("SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 110);
         }, 10);
     }
 
