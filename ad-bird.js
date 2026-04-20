@@ -136,10 +136,8 @@ class AdBird {
         const inputTarget = this.canvas.parentElement || this.canvas;
         inputTarget.addEventListener('pointerdown', (e) => {
             if (this.isMobile && this.overlay && this.overlay.classList.contains('active')) return;
-            e.preventDefault();
             this._handleInput(e);
         }, { passive: false });
-        
         inputTarget.addEventListener('contextmenu', (e) => e.preventDefault());
         
         if (this.overlay) {
@@ -176,7 +174,8 @@ class AdBird {
      * Projects screen pixels to canvas pixels, accounting for object-fit:contain letterboxing
      */
     _getCanvasCoords(e) {
-        const rect = this.canvas.getBoundingClientRect();
+        // Use cached rect if available (updated in _draw loop for high-frequency accuracy)
+        const rect = this.state.lastRect || this.canvas.getBoundingClientRect();
         const canvasRatio = this.canvas.width / this.canvas.height;
         const screenRatio = rect.width / rect.height;
         let dw, dh, dx, dy;
@@ -218,6 +217,7 @@ class AdBird {
 
     _handleInput(e) {
         const { x, y } = this._getCanvasCoords(e);
+        let actionTriggered = false;
 
         // 1. HUD Interactions (High Priority)
         const fs = this.ui.fullscreenBtn;
@@ -239,25 +239,24 @@ class AdBird {
             return;
         }
 
-        // 2. Gameplay Routing
+        // 2. Gameplay Routing (Rapid-Fire Parallel Execution)
         if (!this.state.gameRunning) {
             this.start();
         } else {
-            let actDone = false;
-
             // Check for Bomb Action (Right Click / Ctrl+Click / Chorded)
             if ((e.buttons & 2) || e.button === 2 || (e.button === 0 && e.ctrlKey)) {
                 this.dropBomb();
-                actDone = true;
+                actionTriggered = true;
             }
 
             // Check for Flap Action (Left Click / Chorded)
-            // We flap if it's a primary click OR if we're chording buttons
             if (e.button === 0 || (e.buttons & 1)) {
                 this.flap();
-                actDone = true;
+                actionTriggered = true;
             }
         }
+        
+        if (actionTriggered) e.preventDefault();
     }
 
     toggleFullscreen() {
@@ -667,6 +666,7 @@ class AdBird {
     }
 
     _loop() {
+        this.state.lastRect = this.canvas.getBoundingClientRect(); // Cache layout for this frame
         this._update();
         this._draw();
         if (this.state.gameRunning) requestAnimationFrame(() => this._loop());
