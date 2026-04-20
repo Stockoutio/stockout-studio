@@ -7,6 +7,7 @@
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --glass-border: rgba(255, 255, 255, 0.1);
+    --bg-card: rgba(255, 255, 255, 0.03);
     --gradient-glow: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
 }
 
@@ -30,6 +31,7 @@ body {
     padding: 0 2rem;
 }
 
+/* --- Navigation --- */
 nav {
     position: fixed;
     top: 0;
@@ -52,12 +54,13 @@ nav {
     opacity: 0.8;
 }
 
+/* --- Hero Section --- */
 .hero {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 180px; /* Large space for the logo/nav */
+    padding-top: 180px;
     padding-bottom: 100px;
     position: relative;
     background: linear-gradient(rgba(10, 10, 12, 0.9), rgba(10, 10, 12, 0.9)), url('hero-bg.png');
@@ -80,13 +83,20 @@ nav {
     letter-spacing: -3px;
 }
 
-.hero p {
+.accent-text {
+    background: var(--gradient-glow);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-subline {
     font-size: 1.1rem;
     color: var(--text-muted);
     max-width: 500px;
-    margin: 0 auto 3rem;
+    margin: 0 auto 2rem;
 }
 
+/* --- Components --- */
 .cta-button {
     padding: 1.2rem 3rem;
     font-size: 1rem;
@@ -100,11 +110,70 @@ nav {
     box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
 }
 
+.cta-small {
+    padding: 0.8rem 2rem;
+    font-size: 0.9rem;
+}
+
 .cta-button:hover {
     transform: translateY(-3px);
     box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
 }
 
+.main-cta {
+    margin-bottom: 5rem;
+}
+
+/* --- Labs Section --- */
+.labs-section {
+    margin-top: 4rem;
+}
+
+.labs-title {
+    font-size: 1.4rem;
+    letter-spacing: 3px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.labs-subline {
+    opacity: 0.5;
+    font-size: 0.9rem;
+    margin-bottom: 3rem;
+}
+
+.ad-card {
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    padding: 2.5rem;
+    border-radius: 32px;
+    max-width: 480px;
+    margin: 0 auto;
+    backdrop-filter: blur(10px);
+}
+
+#adBirdCanvas {
+    background: #000;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    cursor: pointer;
+    width: 100%;
+    max-width: 400px;
+    height: 400px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.ad-card-info {
+    margin-top: 2rem;
+}
+
+.ad-card-desc {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 1rem 0 2rem;
+}
+
+/* --- Background Effects --- */
 .glow-orb {
     position: absolute;
     width: 60vh;
@@ -118,6 +187,7 @@ nav {
 .orb-1 { top: 0; right: -10%; }
 .orb-2 { bottom: 20%; left: -10%; }
 
+/* --- Footer --- */
 footer {
     padding: 4rem 0;
     width: 100%;
