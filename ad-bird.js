@@ -25,7 +25,8 @@ class AdBird {
                 { text: "YOUR AD HERE", color: "#4ade80" },
                 { text: "BUY BITCOIN", color: "#f59e0b" },
                 { text: "FOLLOW ME", color: "#06b6d4" }
-            ]
+            ],
+            hitMessages: ["WASTED", "REKT", "STAINED", "SPLAT", "OOPS"]
         };
 
         this.state = {
@@ -43,6 +44,7 @@ class AdBird {
         this.pipes = [];
         this.bombs = [];
         this.bubbles = [];
+        this.floatingTexts = [];
         
         this.assets = {
             player: new Image(),
@@ -118,6 +120,7 @@ class AdBird {
         this.player.velocity = 0;
         this.pipes = [];
         this.bombs = [];
+        this.floatingTexts = [];
 
         if (this.assets.music && !this.state.isMuted) {
             this.assets.music.currentTime = 0;
@@ -163,7 +166,7 @@ class AdBird {
             score: { type: 'sine', freq: [800, 1200], vol: 0.4, dur: 0.1 },
             crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 },
             shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 },
-            splat: { type: 'triangle', freq: [150, 50], vol: 0.2, dur: 0.2 }
+            splat: { type: 'triangle', freq: [180, 40], vol: 0.3, dur: 0.2 } // Punchier splat
         };
 
         const s = sounds[type];
@@ -188,6 +191,7 @@ class AdBird {
         this._updatePipes();
         this._updateBombs();
         this._updateBubbles();
+        this._updateFloatingTexts();
 
         if (this.player.y + this.player.h > this.canvas.height || this.player.y < 0) {
             this.gameOver();
@@ -274,7 +278,29 @@ class AdBird {
             size: Math.random() * 8 + 12,
             drips: drips
         });
+
+        // Add Floating Text
+        const msg = this.config.hitMessages[Math.floor(Math.random() * this.config.hitMessages.length)];
+        this.floatingTexts.push({
+            x: bx,
+            y: by,
+            text: msg,
+            alpha: 1,
+            velocity: -1.5,
+            scale: 1
+        });
+
         this.playSound('splat');
+    }
+
+    _updateFloatingTexts() {
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            const t = this.floatingTexts[i];
+            t.y += t.velocity;
+            t.alpha -= 0.02;
+            t.scale += 0.01;
+            if (t.alpha <= 0) this.floatingTexts.splice(i, 1);
+        }
     }
 
     _updateBubbles() {
@@ -298,6 +324,7 @@ class AdBird {
         this._renderBubbles();
         this._renderBombs();
         this._renderPipes();
+        this._renderFloatingTexts();
         this._renderPlayer();
         this._renderHUD();
         this._renderFlash();
@@ -383,6 +410,22 @@ class AdBird {
             });
         });
         this.ctx.restore();
+    }
+
+    _renderFloatingTexts() {
+        this.ctx.textAlign = "center";
+        this.floatingTexts.forEach(t => {
+            this.ctx.save();
+            this.ctx.globalAlpha = t.alpha;
+            this.ctx.translate(t.x, t.y);
+            this.ctx.scale(t.scale, t.scale);
+            this.ctx.fillStyle = "#fff";
+            this.ctx.font = "bold 20px 'Outfit', sans-serif";
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+            this.ctx.fillText(t.text, 0, 0);
+            this.ctx.restore();
+        });
     }
 
     _renderPlayer() {
