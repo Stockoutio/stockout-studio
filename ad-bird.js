@@ -40,6 +40,7 @@ class AdBird {
         this.state = {
             gameRunning: false,
             score: 0,
+            directHits: 0,
             highScore: parseInt(localStorage.getItem('adBirdHighScore')) || 0,
             frameCount: 0,
             nextPipeFrame: 40,
@@ -132,7 +133,7 @@ class AdBird {
     start() {
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
         Object.assign(this.state, {
-            gameRunning: true, score: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0
+            gameRunning: true, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0
         });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = [];
@@ -270,6 +271,8 @@ class AdBird {
 
     _createSplat(p, bx, by) {
         this.state.screenShake = 10;
+        this.state.directHits++; // Increment hit counter
+        
         this.player.isFlipping = true;
         this.player.flipDirection = Math.random() > 0.5 ? 1 : -1;
         this.player.flipAngle = 0;
@@ -381,9 +384,21 @@ class AdBird {
     }
 
     _renderHUD() {
-        this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 48px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
+        this.ctx.fillStyle = "#fff";
+        this.ctx.textAlign = "center";
+        
+        // Main Score
+        this.ctx.font = "bold 48px 'Outfit', sans-serif";
         this.ctx.fillText(this.state.score, this.canvas.width / 2, 65);
-        this.ctx.font = "22px serif"; this.ctx.textAlign = "right";
+        
+        // Direct Hits (Marketing Impact)
+        this.ctx.font = "bold 14px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        this.ctx.fillText(`MARKETING IMPACT: ${this.state.directHits}`, this.canvas.width / 2, 90);
+        
+        // Mute Toggle
+        this.ctx.font = "22px serif";
+        this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 45);
     }
 
@@ -400,7 +415,6 @@ class AdBird {
         this.state.gameRunning = false; this.playSound('crash');
         if (this.assets.music) this.assets.music.pause();
         
-        // Update High Score
         if (this.state.score > this.state.highScore) {
             this.state.highScore = this.state.score;
             localStorage.setItem('adBirdHighScore', this.state.highScore);
@@ -413,7 +427,7 @@ class AdBird {
             
             this.ctx.font = "24px 'Outfit', sans-serif"; 
             this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2, this.canvas.height / 2 + 5);
-            this.ctx.fillStyle = "#fbbf24"; // Gold for high score
+            this.ctx.fillStyle = "#fbbf24";
             this.ctx.fillText(`High Score: ${this.state.highScore}`, this.canvas.width / 2, this.canvas.height / 2 + 40);
             
             this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif";
