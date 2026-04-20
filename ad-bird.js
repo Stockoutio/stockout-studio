@@ -174,7 +174,8 @@ function update() {
             scored: false
         });
         
-        nextPipeFrame = frameCount + Math.floor(Math.random() * 30) + 70;
+        // Wider horizontal spacing (100 to 150 frames)
+        nextPipeFrame = frameCount + Math.floor(Math.random() * 50) + 100;
     }
 
     for (let i = pipes.length - 1; i >= 0; i--) {
