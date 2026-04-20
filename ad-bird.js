@@ -134,6 +134,7 @@ class AdBird {
     }
 
     _handleMousedown(e) {
+        if (e.type === 'mousedown' && 'ontouchstart' in window) return;
         const rect = this.canvas.getBoundingClientRect();
         const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
         const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
@@ -141,23 +142,23 @@ class AdBird {
     }
 
     _processInput(x, y, button) {
-        // Mute Button (Top Right)
-        if (x > this.canvas.width - 70 && y < 70) {
+        // 1. Mute Button (Top Right)
+        if (x > this.canvas.width - 100 && y < 100) {
             this.toggleMute();
             return;
         }
 
-        // Fullscreen Button (Bottom Right)
-        if (x > this.canvas.width - 70 && y > this.canvas.height - 70) {
+        // 2. Fullscreen Button (Bottom Right)
+        if (x > this.canvas.width - 100 && y > this.canvas.height - 100) {
             this.toggleFullscreen();
             return;
         }
 
-        // Expanded Bomb Button Hitbox (Bottom Left)
-        if (x < 130 && y > this.canvas.height - 130) {
+        // 3. Bomb Button (Bottom Left)
+        if (x < 140 && y > this.canvas.height - 140) {
             if (this.state.gameRunning) {
                 if (this.state.bombTimer === 0) {
-                    this.state.bombBtnFlash = 5; // Flash effect
+                    this.state.bombBtnFlash = 5;
                     this.dropBomb();
                 }
             } else {
@@ -166,6 +167,7 @@ class AdBird {
             return;
         }
 
+        // 4. Default Interaction (Flap or Start)
         if (!this.state.gameRunning) {
             this.start();
         } else {
@@ -453,25 +455,16 @@ class AdBird {
         // BOMB BUTTON (Bottom Left)
         this.ctx.textAlign = "left";
         this.ctx.font = "bold 18px 'Outfit', sans-serif";
-        
-        // Flash or Glow
-        if (this.state.bombBtnFlash > 0) {
-            this.ctx.fillStyle = "#fff";
-        } else {
-            this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.2)" : "rgba(6, 182, 212, 0.6)";
-        }
-        
+        if (this.state.bombBtnFlash > 0) this.ctx.fillStyle = "#fff";
+        else this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.2)" : "rgba(6, 182, 212, 0.6)";
         this.ctx.beginPath();
         this.ctx.roundRect(15, this.canvas.height - 85, 90, 70, 12);
         this.ctx.fill();
-        
         this.ctx.fillStyle = "#fff";
         this.ctx.shadowBlur = this.state.bombTimer === 0 ? 15 : 0;
         this.ctx.shadowColor = "#06b6d4";
         this.ctx.fillText("BOMB", 32, this.canvas.height - 45);
         this.ctx.shadowBlur = 0;
-        
-        // Cooldown bar
         if (this.state.bombTimer > 0) {
             const pct = this.state.bombTimer / this.config.bombCooldown;
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
