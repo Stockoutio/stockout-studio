@@ -95,18 +95,6 @@ class AdBird {
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
         this._init();
-        this._initNav();
-    }
-
-    _initNav() {
-        const toggle = document.getElementById('mobileMenuToggle');
-        const nav = document.getElementById('navLinks');
-        if (toggle && nav) {
-            toggle.onclick = () => nav.classList.toggle('active');
-            nav.querySelectorAll('.nav-item').forEach(link => {
-                link.onclick = () => nav.classList.remove('active');
-            });
-        }
     }
 
     _init() {
@@ -617,6 +605,18 @@ class AdBird {
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
     }
 }
+function initGlobalUI() {
+    const toggle = document.getElementById('mobileMenuToggle');
+    const nav = document.getElementById('navLinks');
+    if (toggle && nav) {
+        toggle.onclick = () => nav.classList.toggle('active');
+        nav.querySelectorAll('.nav-item').forEach(link => {
+            link.onclick = () => nav.classList.remove('active');
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    initGlobalUI();
     window.adBirdGame = new AdBird('adBirdCanvas');
 });
