@@ -105,7 +105,6 @@ class AdBird {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        // Mute Button Hitbox (Top Right)
         if (x > this.canvas.width - 60 && y < 60) {
             this.toggleMute();
             return;
@@ -118,7 +117,6 @@ class AdBird {
     start() {
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
         
-        // Reset State
         Object.assign(this.state, {
             gameRunning: true,
             score: 0,
@@ -230,6 +228,13 @@ class AdBird {
             const p = this.pipes[i];
             p.x -= this.config.pipeSpeed;
 
+            // Update stain drips
+            p.stains.forEach(s => {
+                s.drips.forEach(d => {
+                    if (d.len < d.maxLen) d.len += d.speed;
+                });
+            });
+
             if (this.player.x + 15 < p.x + p.w && this.player.x + this.player.w - 15 > p.x &&
                 (this.player.y + 15 < p.y || this.player.y + this.player.h - 15 > p.y + p.gap)) {
                 this.gameOver();
@@ -254,8 +259,23 @@ class AdBird {
             this.pipes.forEach(p => {
                 const hitTop = b.x > p.x && b.x < p.x + p.w && b.y < p.y;
                 const hitBottom = b.x > p.x && b.x < p.x + p.w && b.y > p.y + p.gap;
+                
                 if (hitTop || hitBottom) {
-                    p.stains.push({ relY: b.y, xOff: b.x - p.x, size: Math.random() * 10 + 10 });
+                    const dripCount = 2 + Math.floor(Math.random() * 2);
+                    const drips = Array.from({ length: dripCount }, () => ({
+                        xOff: (Math.random() - 0.5) * 20,
+                        len: 0,
+                        maxLen: 20 + Math.random() * 40,
+                        speed: 0.5 + Math.random() * 0.5,
+                        w: 3 + Math.random() * 4
+                    }));
+
+                    p.stains.push({ 
+                        relY: b.y, 
+                        xOff: b.x - p.x, 
+                        size: Math.random() * 8 + 12,
+                        drips: drips
+                    });
                     this.playSound('splat');
                     hit = true;
                 }
@@ -275,6 +295,34 @@ class AdBird {
         this.state.currentWorld = (this.state.currentWorld + 1) % this.assets.worlds.length;
         this.state.flashOpacity = 1;
         this.playSound('shift');
+    }
+
+    _drawStains(p, isTop) {
+        const { ctx } = this;
+        ctx.save();
+        ctx.beginPath();
+        if (isTop) {
+            ctx.rect(p.x, 0, p.w, p.y);
+        } else {
+            ctx.rect(p.x, p.y + p.gap, p.w, this.canvas.height - (p.y + p.gap));
+        }
+        ctx.clip();
+
+        p.stains.forEach(s => {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            // Main glob
+            ctx.beginPath();
+            ctx.arc(p.x + s.xOff, s.relY, s.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Drips
+            s.drips.forEach(d => {
+                ctx.beginPath();
+                ctx.roundRect(p.x + s.xOff + d.xOff, s.relY, d.w, d.len, d.w/2);
+                ctx.fill();
+            });
+        });
+        ctx.restore();
     }
 
     _draw() {
@@ -310,19 +358,18 @@ class AdBird {
             ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
             ctx.strokeStyle = p.ad.color;
             ctx.lineWidth = 4;
+            
+            // Draw Pipe Body
             ctx.fillRect(p.x, 0, p.w, p.y);
             ctx.strokeRect(p.x, -1, p.w, p.y + 1);
             ctx.fillRect(p.x, p.y + p.gap, p.w, canvas.height);
             ctx.strokeRect(p.x, p.y + p.gap, p.w, canvas.height + 1);
 
-            p.stains.forEach(s => {
-                ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-                ctx.beginPath();
-                ctx.arc(p.x + s.xOff, s.relY, s.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillRect(p.x + s.xOff - 2, s.relY, 4, 15);
-            });
+            // Draw Clipped Stains
+            this._drawStains(p, true);  // Top
+            this._drawStains(p, false); // Bottom
 
+            // Ad Text
             const adY = p.y < 100 ? (p.y + p.gap + (canvas.height - (p.y + p.gap)) / 2) : p.y / 2;
             ctx.save();
             ctx.translate(p.x + p.w/2, adY);
@@ -410,5 +457,5 @@ class AdBird {
     }
 }
 
-// Global initialization - keeping it simple for the user
+// Global initialization
 window.adBirdGame = new AdBird('adBirdCanvas');
