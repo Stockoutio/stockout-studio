@@ -176,9 +176,18 @@ nav {
 
 .price-tag {
     font-size: 1.5rem;
-    font-weight: 800;
+    font-weight: bold;
     color: var(--accent-secondary);
-    margin-bottom: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.fine-print {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+    opacity: 0.8;
 }
 
 /* --- Components --- */
