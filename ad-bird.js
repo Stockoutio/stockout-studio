@@ -619,11 +619,11 @@ function initGlobalUI() {
     }
 }
 
-// 1. Initialize UI instantly
-initGlobalUI();
-
-// 2. Delay Game Engine slightly to allow First Paint
+// Initialize with DOM safety
 document.addEventListener('DOMContentLoaded', () => {
+    initGlobalUI();
+    
+    // Delay Game Engine slightly to allow First Paint
     setTimeout(() => {
         window.adBirdGame = new AdBird('adBirdCanvas');
     }, 100);
