@@ -196,8 +196,26 @@ class AdBird {
 
     _handleInput(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
-        const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+        
+        // Account for 'object-fit: contain' letterboxing
+        const canvasRatio = this.canvas.width / this.canvas.height;
+        const screenRatio = rect.width / rect.height;
+        let dw, dh, dx, dy;
+
+        if (screenRatio > canvasRatio) {
+            dh = rect.height;
+            dw = dh * canvasRatio;
+            dx = (rect.width - dw) / 2;
+            dy = 0;
+        } else {
+            dw = rect.width;
+            dh = dw / canvasRatio;
+            dx = 0;
+            dy = (rect.height - dh) / 2;
+        }
+
+        const x = (e.clientX - (rect.left + dx)) * (this.canvas.width / dw);
+        const y = (e.clientY - (rect.top + dy)) * (this.canvas.height / dh);
 
         // Mute Detection
         if (x > this.ui.muteBtn.x - 50 && y < 100) {
@@ -207,7 +225,7 @@ class AdBird {
 
         // Fullscreen Detection
         const distToFS = Math.hypot(x - this.ui.fullscreenBtn.x, y - this.ui.fullscreenBtn.y);
-        if (distToFS < this.ui.fullscreenBtn.radius + 10) {
+        if (distToFS < this.ui.fullscreenBtn.radius + 15) {
             this.toggleFullscreen();
             return;
         }
