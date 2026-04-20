@@ -83,8 +83,12 @@ function update() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Background
-    ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    // Draw Background (with fallback)
+    ctx.fillStyle = "#050510";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (bgImg.complete && bgImg.naturalWidth !== 0) {
+        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    }
 
     // Bird Logic & Rendering
     bird.velocity += bird.gravity;
@@ -224,11 +228,29 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 bgImg.onload = () => {
-    ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    renderStartScreen();
+};
+
+bgImg.onerror = () => {
+    console.log("Background image not found, using fallback.");
+    renderStartScreen();
+};
+
+function renderStartScreen() {
+    ctx.fillStyle = "#050510"; // Fallback dark blue
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (bgImg.complete && bgImg.naturalWidth !== 0) {
+        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    }
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.font = "bold 18px 'Outfit', sans-serif";
     ctx.shadowColor = "rgba(0,0,0,0.5)";
     ctx.shadowBlur = 10;
     ctx.fillText("CLICK TO START FLAPPING", canvas.width / 2, canvas.height / 2);
-};
+    
+    // Initial Mute Toggle Icon
+    ctx.font = "22px serif";
+    ctx.textAlign = "right";
+    ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 45);
+}
