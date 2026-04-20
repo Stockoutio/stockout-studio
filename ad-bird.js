@@ -29,7 +29,10 @@ class AdBird {
             hitMessages: [
                 "WASTED", "REKT", "STAINED", "SPLAT", "OOPS", 
                 "GET REKT", "BILLBOARDED", "SIGN SMASHED", "MESSY", "BULLSEYE",
-                "AD-BLASTED", "INKED", "VANDALIZED", "SCORE!"
+                "AD-BLASTED", "INKED", "VANDALIZED", "SCORE!",
+                "BIRDPOCALYPSE", "BEAK-TACULAR", "EGG-STERMINATION", "UN-BEAK-ABLE",
+                "FLAPPING SPREE", "WING-SLAUGHTER", "FEATHER-KILL", "DOUBLE BILL",
+                "TRIPLE TWEET", "OVER-FLAP", "BILL-IONAIRE"
             ]
         };
 
