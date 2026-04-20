@@ -250,9 +250,7 @@ nav {
     display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(0, 0, 0, 0.1); /* Subtle dim, no blur */
     cursor: pointer;
     transition: all 0.4s ease;
 }

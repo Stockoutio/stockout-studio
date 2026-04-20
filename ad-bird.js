@@ -762,4 +762,6 @@ class AdBird {
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
     }
 }
-window.adBirdGame = new AdBird('adBirdCanvas');
+document.addEventListener('DOMContentLoaded', () => {
+    window.adBirdGame = new AdBird('adBirdCanvas');
+});
