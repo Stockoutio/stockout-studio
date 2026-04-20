@@ -277,7 +277,7 @@ class AdBird {
 
     _updateFloatingTexts() {
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
-            const t = this.floatingTexts[i]; t.y += t.velocity; t.alpha -= 0.02; t.scale += 0.01;
+            const t = this.floatingTexts[i]; t.y += t.velocity; t.alpha -= 0.01; t.scale += 0.01;
             if (t.alpha <= 0) this.floatingTexts.splice(i, 1);
         }
     }
