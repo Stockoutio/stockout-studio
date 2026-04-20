@@ -1,33 +1,38 @@
 /**
  * Ad-Bird: Stockout Studio Edition
- * A high-performance, billboard-smashing arcade experience.
+ * A modular, self-contained game engine.
  */
 
 class AdBird {
-    constructor(canvasId) {
+    constructor(canvasId, options = {}) {
         this.canvas = document.getElementById(canvasId);
+        if (!this.canvas) {
+            console.error(`Canvas with id "${canvasId}" not found.`);
+            return;
+        }
         this.ctx = this.canvas.getContext('2d');
         
-        // Game Settings
+        // Configurable Settings
         this.config = {
-            gravity: 0.5,
-            lift: -8,
-            pipeWidth: 80,
-            pipeGap: 200,
-            pipeSpeed: 2.2,
-            bgSpeed: 0.5,
-            bubbleCount: 20,
-            worldShiftInterval: 10
+            gravity: options.gravity || 0.5,
+            lift: options.lift || -8,
+            pipeWidth: options.pipeWidth || 80,
+            pipeGap: options.pipeGap || 200,
+            pipeSpeed: options.pipeSpeed || 2.2,
+            bgSpeed: options.bgSpeed || 0.5,
+            bubbleCount: options.bubbleCount || 20,
+            worldShiftInterval: options.worldShiftInterval || 10,
+            playerImg: options.playerImg || 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png',
+            musicSrc: options.musicSrc || 'bg-music.mp3',
+            worlds: options.worlds || ['world1.jpg', 'world2.jpg', 'world3.jpg'],
+            ads: options.ads || [
+                { text: "YOUR AD HERE", color: "#4ade80" },
+                { text: "BUY BITCOIN", color: "#f59e0b" },
+                { text: "FOLLOW ME", color: "#06b6d4" }
+            ]
         };
 
-        // Assets
-        this.assets = {
-            player: new Image(),
-            worlds: [new Image(), new Image(), new Image()],
-            music: document.getElementById('bgMusic')
-        };
-        
-        // State
+        // Internal State
         this.state = {
             gameRunning: false,
             score: 0,
@@ -36,59 +41,49 @@ class AdBird {
             currentWorld: 0,
             lastMilestone: 0,
             flashOpacity: 0,
-            isMuted: false
+            isMuted: false,
+            bgX: 0
         };
 
+        // Game Objects
         this.player = { x: 50, y: 150, w: 60, h: 60, velocity: 0 };
         this.pipes = [];
         this.bombs = [];
         this.bubbles = [];
-        this.ads = [
-            { text: "YOUR AD HERE", color: "#4ade80" },
-            { text: "BUY BITCOIN", color: "#f59e0b" },
-            { text: "FOLLOW ME", color: "#06b6d4" }
-        ];
+        
+        // Asset Loading
+        this.assets = {
+            player: new Image(),
+            worlds: [],
+            music: new Audio(this.config.musicSrc)
+        };
+        this.assets.music.loop = true;
 
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        this.init();
+        this._init();
     }
 
-    init() {
-        // Load Assets
-        this.assets.player.src = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png'; // Bird
-        const worldPaths = ['world1.jpg', 'world2.jpg', 'world3.jpg'];
-        worldPaths.forEach((path, i) => this.assets.worlds[i].src = path);
-
-        // Bind Events
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                if (!this.state.gameRunning) this.start();
-                else this.dropBomb();
-            }
+    _init() {
+        // Load Images
+        this.assets.player.src = this.config.playerImg;
+        this.config.worlds.forEach((path, i) => {
+            const img = new Image();
+            img.src = path;
+            img.onload = () => { if (!this.state.gameRunning) this.drawStartScreen(); };
+            this.assets.worlds.push(img);
         });
 
-        this.canvas.addEventListener('mousedown', (e) => {
-            const rect = this.canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+        // Event Listeners
+        window.addEventListener('keydown', (e) => this._handleKeydown(e));
+        this.canvas.addEventListener('mousedown', (e) => this._handleMousedown(e));
 
-            // Mute Button Hitbox
-            if (x > this.canvas.width - 60 && y < 60) {
-                this.toggleMute();
-                return;
-            }
-
-            if (!this.state.gameRunning) this.start();
-            else this.flap();
-        });
-
-        // Initial Render
-        this.initBubbles();
-        setTimeout(() => this.drawStartScreen(), 100);
+        this._initBubbles();
+        
+        // Initial Draw
+        requestAnimationFrame(() => this.drawStartScreen());
     }
 
-    initBubbles() {
+    _initBubbles() {
         this.bubbles = Array.from({ length: this.config.bubbleCount }, () => ({
             x: Math.random() * this.canvas.width,
             y: Math.random() * this.canvas.height,
@@ -97,27 +92,55 @@ class AdBird {
         }));
     }
 
+    _handleKeydown(e) {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (!this.state.gameRunning) this.start();
+            else this.dropBomb();
+        }
+    }
+
+    _handleMousedown(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Mute Button Hitbox (Top Right)
+        if (x > this.canvas.width - 60 && y < 60) {
+            this.toggleMute();
+            return;
+        }
+
+        if (!this.state.gameRunning) this.start();
+        else this.flap();
+    }
+
     start() {
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        this.state.gameRunning = true;
-        this.state.score = 0;
-        this.state.frameCount = 0;
-        this.state.nextPipeFrame = 40;
-        this.state.currentWorld = 0;
-        this.state.lastMilestone = 0;
+        
+        // Reset State
+        Object.assign(this.state, {
+            gameRunning: true,
+            score: 0,
+            frameCount: 0,
+            nextPipeFrame: 40,
+            currentWorld: 0,
+            lastMilestone: 0,
+            bgX: 0
+        });
+
         this.player.y = 150;
         this.player.velocity = 0;
         this.pipes = [];
         this.bombs = [];
-        this.bgX = 0;
 
         if (this.assets.music && !this.state.isMuted) {
             this.assets.music.currentTime = 0;
             this.assets.music.volume = 1.0;
-            this.assets.music.play();
+            this.assets.music.play().catch(() => {});
         }
 
-        this.loop();
+        this._loop();
     }
 
     toggleMute() {
@@ -168,24 +191,18 @@ class AdBird {
         osc.stop(now + s.dur);
     }
 
-    update() {
+    _update() {
         if (!this.state.gameRunning) return;
 
-        // Background
-        this.bgX = (this.bgX - this.config.bgSpeed) % this.canvas.width;
-
-        // Player
+        this.state.bgX = (this.state.bgX - this.config.bgSpeed) % this.canvas.width;
         this.player.velocity += this.config.gravity;
         this.player.y += this.player.velocity;
 
-        // Pipes
-        if (this.state.frameCount >= this.state.nextPipeFrame) {
-            this.spawnPipe();
-        }
-
-        this.updatePipes();
-        this.updateBombs();
-        this.updateBubbles();
+        if (this.state.frameCount >= this.state.nextPipeFrame) this.spawnPipe();
+        
+        this._updatePipes();
+        this._updateBombs();
+        this._updateBubbles();
 
         if (this.player.y + this.player.h > this.canvas.height || this.player.y < 0) {
             this.gameOver();
@@ -201,43 +218,38 @@ class AdBird {
             y: h,
             w: this.config.pipeWidth,
             gap: this.config.pipeGap,
-            ad: this.ads[Math.floor(Math.random() * this.ads.length)],
+            ad: this.config.ads[Math.floor(Math.random() * this.config.ads.length)],
             scored: false,
             stains: []
         });
         this.state.nextPipeFrame = this.state.frameCount + Math.floor(Math.random() * 50) + 100;
     }
 
-    updatePipes() {
+    _updatePipes() {
         for (let i = this.pipes.length - 1; i >= 0; i--) {
             const p = this.pipes[i];
             p.x -= this.config.pipeSpeed;
 
-            // Collision
             if (this.player.x + 15 < p.x + p.w && this.player.x + this.player.w - 15 > p.x &&
                 (this.player.y + 15 < p.y || this.player.y + this.player.h - 15 > p.y + p.gap)) {
                 this.gameOver();
             }
 
-            // Score
             if (!p.scored && p.x + p.w < this.player.x) {
                 p.scored = true;
                 this.state.score++;
                 this.playSound('score');
-                if (this.state.score % this.config.worldShiftInterval === 0) {
-                    this.shiftWorld();
-                }
+                if (this.state.score % this.config.worldShiftInterval === 0) this.shiftWorld();
             }
 
             if (p.x + p.w < 0) this.pipes.splice(i, 1);
         }
     }
 
-    updateBombs() {
+    _updateBombs() {
         for (let i = this.bombs.length - 1; i >= 0; i--) {
             const b = this.bombs[i];
             b.y += b.speed;
-            
             let hit = false;
             this.pipes.forEach(p => {
                 const hitTop = b.x > p.x && b.x < p.x + p.w && b.y < p.y;
@@ -248,12 +260,11 @@ class AdBird {
                     hit = true;
                 }
             });
-
             if (hit || b.y > this.canvas.height) this.bombs.splice(i, 1);
         }
     }
 
-    updateBubbles() {
+    _updateBubbles() {
         this.bubbles.forEach(b => {
             b.x -= b.speed;
             if (b.x < -10) b.x = this.canvas.width + 10;
@@ -266,14 +277,14 @@ class AdBird {
         this.playSound('shift');
     }
 
-    draw() {
+    _draw() {
         const { ctx, canvas, state, player, pipes, bombs, bubbles, assets } = this;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // BG
         const bg = assets.worlds[state.currentWorld];
-        if (bg.complete) {
-            const rx = Math.floor(this.bgX);
+        if (bg && bg.complete) {
+            const rx = Math.floor(state.bgX);
             ctx.drawImage(bg, rx, 0, canvas.width + 2, canvas.height);
             ctx.drawImage(bg, rx + canvas.width, 0, canvas.width + 2, canvas.height);
         }
@@ -300,9 +311,9 @@ class AdBird {
             ctx.strokeStyle = p.ad.color;
             ctx.lineWidth = 4;
             ctx.fillRect(p.x, 0, p.w, p.y);
-            ctx.strokeRect(p.x, -10, p.w, p.y + 10);
+            ctx.strokeRect(p.x, -1, p.w, p.y + 1);
             ctx.fillRect(p.x, p.y + p.gap, p.w, canvas.height);
-            ctx.strokeRect(p.x, p.y + p.gap, p.w, canvas.height + 10);
+            ctx.strokeRect(p.x, p.y + p.gap, p.w, canvas.height + 1);
 
             p.stains.forEach(s => {
                 ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
@@ -312,7 +323,6 @@ class AdBird {
                 ctx.fillRect(p.x + s.xOff - 2, s.relY, 4, 15);
             });
 
-            // Ad Text
             const adY = p.y < 100 ? (p.y + p.gap + (canvas.height - (p.y + p.gap)) / 2) : p.y / 2;
             ctx.save();
             ctx.translate(p.x + p.w/2, adY);
@@ -330,7 +340,7 @@ class AdBird {
         ctx.save();
         ctx.translate(player.x + player.w/2, player.y + player.h/2);
         ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, player.velocity * 0.1)));
-        ctx.scale(-1, 1); // Flip bird to face right
+        ctx.scale(-1, 1);
         ctx.drawImage(assets.player, -player.w/2, -player.h/2, player.w, player.h);
         ctx.restore();
 
@@ -348,10 +358,10 @@ class AdBird {
         }
     }
 
-    loop() {
-        this.update();
-        this.draw();
-        if (this.state.gameRunning) requestAnimationFrame(() => this.loop());
+    _loop() {
+        this._update();
+        this._draw();
+        if (this.state.gameRunning) requestAnimationFrame(() => this._loop());
     }
 
     gameOver() {
@@ -378,9 +388,8 @@ class AdBird {
         this.ctx.fillStyle = "#050510";
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         const bg = this.assets.worlds[0];
-        if (bg.complete) this.ctx.drawImage(bg, 0, 0, this.canvas.width, this.canvas.height);
+        if (bg && bg.complete) this.ctx.drawImage(bg, 0, 0, this.canvas.width, this.canvas.height);
         
-        // Elegant Overlay Box
         this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
         this.ctx.fillRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 120);
         this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
@@ -401,5 +410,5 @@ class AdBird {
     }
 }
 
-// Start Game
-const game = new AdBird('adBirdCanvas');
+// Global initialization - keeping it simple for the user
+window.adBirdGame = new AdBird('adBirdCanvas');
