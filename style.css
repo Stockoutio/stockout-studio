@@ -46,10 +46,10 @@ nav {
     top: 0;
     left: 0;
     right: 0;
-    z-index: 5000; /* Highest priority */
+    z-index: 9999; /* Highest priority */
     padding: 1.2rem 0;
-    background: rgba(10, 10, 12, 0.98);
-    border-bottom: 1px solid var(--glass-border);
+    background: #0a0a0c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .nav-content {
@@ -59,7 +59,6 @@ nav {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 2rem;
-    position: relative;
 }
 
 .logo {
@@ -70,11 +69,10 @@ nav {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     cursor: pointer;
-    min-width: 120px;
 }
 
 .nav-links {
-    display: flex;
+    display: flex !important; /* Force visible on desktop */
     gap: 2rem;
 }
 
@@ -89,28 +87,23 @@ nav {
 
 .nav-item:hover {
     color: var(--text-main);
-    text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
 }
 
 .mobile-menu-toggle {
     display: none;
 }
 
-/* --- Mobile Specifics --- */
 @media (max-width: 768px) {
-    .nav-content { padding: 0 5%; }
-    
+    .nav-content { padding: 0 1.5rem; }
+
     .mobile-menu-toggle {
         display: flex !important;
         flex-direction: column;
-        gap: 6px;
+        gap: 5px;
         cursor: pointer;
-        z-index: 6000;
-        padding: 5px;
     }
 
     .mobile-menu-toggle span {
-        display: block;
         width: 25px;
         height: 3px;
         background: #fff;
@@ -118,29 +111,21 @@ nav {
     }
 
     .nav-links {
+        display: none !important; /* Hide standard links on mobile */
         position: fixed;
-        top: 0;
+        top: 70px;
+        left: 0;
         right: 0;
-        width: 280px;
-        height: 100vh;
         background: #0a0a0c;
         flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 2rem;
-        transform: translateX(101%); /* Force fully off-screen */
-        transition: transform 0.3s ease;
-        border-left: 1px solid var(--glass-border);
-        z-index: 5500;
+        padding: 2rem;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        text-align: center;
+        gap: 1.5rem;
     }
 
     .nav-links.active {
-        transform: translateX(0);
-    }
-
-    .nav-item {
-        font-size: 1.1rem;
-        color: var(--text-main);
+        display: flex !important; /* Show dropdown when active */
     }
 }
 

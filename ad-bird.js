@@ -608,16 +608,23 @@ class AdBird {
 function initGlobalUI() {
     const toggle = document.getElementById('mobileMenuToggle');
     const navLinks = document.getElementById('navLinks');
-    
     if (toggle && navLinks) {
-        toggle.onclick = () => navLinks.classList.toggle('active');
-        navLinks.querySelectorAll('.nav-item').forEach(link => {
-            link.onclick = () => navLinks.classList.remove('active');
-        });
+        toggle.onclick = (e) => {
+            e.stopPropagation();
+            navLinks.classList.toggle('active');
+        };
+        // Close menu when clicking outside
+        document.addEventListener('click', () => navLinks.classList.remove('active'));
+        navLinks.onclick = (e) => e.stopPropagation();
     }
 }
 
+// 1. Initialize UI instantly
+initGlobalUI();
+
+// 2. Delay Game Engine slightly to allow First Paint
 document.addEventListener('DOMContentLoaded', () => {
-    initGlobalUI();
-    window.adBirdGame = new AdBird('adBirdCanvas');
+    setTimeout(() => {
+        window.adBirdGame = new AdBird('adBirdCanvas');
+    }, 100);
 });
