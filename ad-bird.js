@@ -18,6 +18,7 @@ class AdBird {
             bgSpeed: options.bgSpeed || 0.5,
             bubbleCount: options.bubbleCount || 20,
             worldShiftInterval: options.worldShiftInterval || 10,
+            bombCooldown: options.bombCooldown || 20, // ~333ms at 60fps
             playerImg: options.playerImg || 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png',
             musicSrc: options.musicSrc || 'bg-music.mp3',
             worlds: options.worlds || ['world1.jpg', 'world2.jpg', 'world3.jpg'],
@@ -49,7 +50,8 @@ class AdBird {
             flashOpacity: 0,
             isMuted: false,
             bgX: 0,
-            screenShake: 0
+            screenShake: 0,
+            bombTimer: 0
         };
 
         this.player = { 
@@ -134,7 +136,8 @@ class AdBird {
     start() {
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
         Object.assign(this.state, {
-            gameRunning: true, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0
+            gameRunning: true, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, 
+            currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0
         });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = [];
@@ -163,11 +166,15 @@ class AdBird {
     }
 
     dropBomb() {
+        if (this.state.bombTimer > 0) return;
+        
         this.bombs.push({
             x: this.player.x + this.player.w / 2,
             y: this.player.y + this.player.h - 10,
             w: 15, h: 20, speed: 8
         });
+        
+        this.state.bombTimer = this.config.bombCooldown;
     }
 
     playSound(type) {
@@ -212,6 +219,9 @@ class AdBird {
         this.state.bgX = (this.state.bgX - this.config.bgSpeed) % this.canvas.width;
         this.player.velocity += this.config.gravity;
         this.player.y += this.player.velocity;
+
+        // Bomb Cooldown
+        if (this.state.bombTimer > 0) this.state.bombTimer--;
 
         if (this.player.isFlipping) {
             this.player.flipAngle += this.player.flipDirection * this.player.flipSpeed;
@@ -385,7 +395,8 @@ class AdBird {
     }
 
     _renderHUD() {
-        this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center";
+        this.ctx.fillStyle = "#fff";
+        this.ctx.textAlign = "center";
         this.ctx.font = "bold 48px 'Outfit', sans-serif";
         this.ctx.fillText(this.state.score, this.canvas.width / 2, 65);
         this.ctx.font = "bold 14px 'Outfit', sans-serif";
@@ -408,7 +419,6 @@ class AdBird {
         this.state.gameRunning = false; this.playSound('crash');
         if (this.assets.music) this.assets.music.pause();
         
-        // Update High Scores
         if (this.state.score > this.state.highScore) {
             this.state.highScore = this.state.score;
             localStorage.setItem('adBirdHighScore', this.state.highScore);
@@ -422,19 +432,14 @@ class AdBird {
             this.ctx.fillStyle = "rgba(0,0,0,0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 32px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
             this.ctx.fillText("AD-BIRD LOST AT SEA", this.canvas.width / 2, this.canvas.height / 2 - 60);
-            
-            // Score Display
             this.ctx.font = "bold 20px 'Outfit', sans-serif"; 
             this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2);
             this.ctx.fillStyle = "#fbbf24";
             this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2);
-            
-            // Impact Display
             this.ctx.fillStyle = "#fff";
             this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35);
-            this.ctx.fillStyle = "#06b6d4"; // Cyan for impact best
+            this.ctx.fillStyle = "#06b6d4";
             this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35);
-            
             this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif";
             this.ctx.fillText("SPACE or L-CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 85);
             this.ctx.fillText("SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 110);
