@@ -27,6 +27,8 @@ function initGame() {
     requestAnimationFrame(update);
 }
 
+let nextPipeFrame = 100;
+
 function update() {
     if (!gameRunning) return;
 
@@ -51,16 +53,21 @@ function update() {
     ctx.restore();
 
     // Pipe Logic
-    if (frameCount % 100 === 0) {
-        let gap = 120;
-        let pipeHeight = Math.floor(Math.random() * (canvas.height - gap - 100)) + 50;
+    if (frameCount >= nextPipeFrame) {
+        let gap = 160; // Wider gap for easier play
+        let minPipeHeight = 80; // Minimum height for ads to show clearly
+        let pipeHeight = Math.floor(Math.random() * (canvas.height - gap - (minPipeHeight * 2))) + minPipeHeight;
+        
         pipes.push({ 
             x: canvas.width, 
             y: pipeHeight, 
-            width: 70, 
+            width: 80, 
             gap: gap, 
             ad: ads[Math.floor(Math.random() * ads.length)] 
         });
+        
+        // Randomize distance to next pipe (120 to 200 frames)
+        nextPipeFrame = frameCount + Math.floor(Math.random() * 80) + 120;
     }
 
     for (let i = pipes.length - 1; i >= 0; i--) {
