@@ -1,4 +1,4 @@
-/* V1.2 - Global Architectural Cleanup */
+/* V1.3 - Final Aesthetic & Interaction Polish */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
 
 :root {
@@ -19,7 +19,12 @@
     padding: 0;
     box-sizing: border-box;
     font-family: 'Outfit', sans-serif;
-    -webkit-tap-highlight-color: transparent; /* Global mobile flash protection */
+    -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 body {
@@ -62,6 +67,13 @@ nav {
     background: var(--gradient-glow);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.logo:hover {
+    letter-spacing: 5px;
+    filter: brightness(1.2) drop-shadow(0 0 10px rgba(139, 92, 246, 0.5));
 }
 
 .nav-links {
@@ -76,11 +88,27 @@ nav {
     text-decoration: none;
     letter-spacing: 2px;
     margin-left: 2.5rem;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.nav-item::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent-secondary);
+    transition: width 0.3s ease;
 }
 
 .nav-item:hover {
     color: var(--text-main);
+}
+
+.nav-item:hover::after {
+    width: 100%;
 }
 
 .mobile-menu-toggle {
@@ -99,10 +127,7 @@ nav {
 }
 
 @media (max-width: 768px) {
-    .mobile-menu-toggle {
-        display: flex;
-    }
-
+    .mobile-menu-toggle { display: flex; }
     .nav-links {
         position: fixed;
         top: 0;
@@ -116,18 +141,11 @@ nav {
         transition: 0.4s cubic-bezier(0.77, 0.2, 0.05, 1.0);
         border-left: 1px solid var(--glass-border);
     }
-
-    .nav-links.active {
-        right: 0;
-    }
-
-    .nav-item {
-        margin: 2rem 0;
-        font-size: 1.2rem;
-    }
+    .nav-links.active { right: 0; }
+    .nav-item { margin: 2rem 0; font-size: 1.2rem; }
 }
 
-/* --- Hero & Split Stage --- */
+/* --- Hero Section --- */
 .hero {
     min-height: 100vh;
     display: flex;
@@ -145,6 +163,7 @@ nav {
     align-items: center;
     gap: 4rem;
     width: 100%;
+    animation: fadeIn 0.8s ease-out forwards;
 }
 
 /* --- Unified Game Viewport System --- */
@@ -168,8 +187,7 @@ nav {
 
 /* Fullscreen Master Logic */
 .game-viewport:fullscreen,
-.game-viewport:-webkit-full-screen,
-.game-viewport:-ms-fullscreen {
+.game-viewport:-webkit-full-screen {
     width: 100vw !important;
     height: 100vh !important;
     background: #000;
@@ -185,7 +203,6 @@ nav {
     object-fit: contain !important;
 }
 
-/* Hide header in fullscreen for maximum immersion */
 .game-viewport:fullscreen .game-header,
 .game-viewport:-webkit-full-screen .game-header {
     display: none;
@@ -245,10 +262,7 @@ nav {
 }
 
 /* --- Layout Sections --- */
-.labs-side {
-    flex: 1;
-}
-
+.labs-side { flex: 1; }
 .labs-title {
     font-size: 3rem;
     font-weight: 800;
@@ -272,18 +286,13 @@ nav {
     padding: 2.5rem;
     border-radius: 32px;
     backdrop-filter: blur(10px);
+    transition: transform 0.3s ease;
 }
 
-.pipe-card h3 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-}
+.pipe-card:hover { transform: translateY(-5px); }
 
-.pipe-card p {
-    font-size: 0.95rem;
-    color: var(--text-muted);
-    margin-bottom: 2rem;
-}
+.pipe-card h3 { font-size: 1.5rem; margin-bottom: 1rem; }
+.pipe-card p { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 2rem; }
 
 .price-tag {
     font-size: 1.5rem;
@@ -352,27 +361,25 @@ nav {
     background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
     filter: blur(100px);
     z-index: 0;
+    transition: transform 0.5s ease-out; /* Smooth parallax in script.js */
 }
 
 .orb-1 { top: 0; right: -10%; }
 .orb-2 { bottom: 0; left: -10%; }
 
-footer {
-    padding: 4rem 0;
-    text-align: center;
-}
-
+footer { padding: 4rem 0; text-align: center; }
 .footer-contact {
     font-size: 0.85rem;
     color: var(--text-muted);
     text-decoration: none;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
     border-bottom: 1px solid transparent;
 }
 
 .footer-contact:hover {
     color: var(--accent-secondary);
     border-bottom-color: var(--accent-secondary);
+    filter: brightness(1.2);
 }
 
 @media (max-width: 1000px) {
