@@ -23,6 +23,7 @@ function initGame() {
     pipes = [];
     score = 0;
     frameCount = 0;
+    nextPipeFrame = 40; // First pipe appears much faster
     gameRunning = true;
     
     // Safety check for music element
