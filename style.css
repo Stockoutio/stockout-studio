@@ -134,6 +134,29 @@ nav {
     cursor: pointer;
 }
 
+/* Fullscreen Scaling Fix */
+.game-main:fullscreen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: #000;
+}
+
+.game-main:fullscreen canvas {
+    width: auto !important;
+    height: calc(100vh - 45px) !important; /* Account for header height */
+    max-width: 100vw;
+    object-fit: contain;
+    border-radius: 0;
+}
+
+.game-main:fullscreen .game-header {
+    width: 100%;
+    max-width: calc(100vh - 45px); /* Match canvas width */
+    border-radius: 0;
+}
+
 .labs-side {
     flex: 1;
     text-align: left;
