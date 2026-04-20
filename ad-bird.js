@@ -539,32 +539,36 @@ class AdBird {
             this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height); this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
 
             [0, p.y + p.gap].forEach(startY => {
-                this.ctx.save(); this.ctx.beginPath();
+                // 1. Draw Stains
+                this.ctx.save(); 
+                this.ctx.beginPath();
                 this.ctx.rect(p.x, startY, p.w, startY === 0 ? p.y : this.canvas.height);
-                this.ctx.clip(); this._drawStains(p); this.ctx.restore();
-            });
+                this.ctx.clip(); 
+                this._drawStains(p); 
+                this.ctx.restore();
 
-            this.ctx.save();
-            const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
-            this.ctx.translate(p.x + p.w/2, startY === 0 ? p.y / 2 : p.y + p.gap + pipeHeight / 2);
-            this.ctx.rotate(-Math.PI / 2);
-            
-            // Auto-scale font to fit pipe height
-            let fontSize = 18;
-            this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
-            const textWidth = this.ctx.measureText(p.ad.text).width;
-            const maxTextWidth = pipeHeight - 30; // 15px padding each side
-            
-            if (textWidth > maxTextWidth) {
-                fontSize = Math.max(10, Math.floor(fontSize * (maxTextWidth / textWidth)));
+                // 2. Draw Ad Text
+                this.ctx.save();
+                const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
+                this.ctx.translate(p.x + p.w/2, startY === 0 ? p.y / 2 : p.y + p.gap + pipeHeight / 2);
+                this.ctx.rotate(-Math.PI / 2);
+                
+                let fontSize = 18;
                 this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
-            }
+                const textWidth = this.ctx.measureText(p.ad.text).width;
+                const maxTextWidth = pipeHeight - 30;
+                
+                if (textWidth > maxTextWidth) {
+                    fontSize = Math.max(10, Math.floor(fontSize * (maxTextWidth / textWidth)));
+                    this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
+                }
 
-            this.ctx.fillStyle = "#fff";
-            this.ctx.textAlign = "center";
-            this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
-            this.ctx.fillText(p.ad.text, 0, 0); 
-            this.ctx.restore();
+                this.ctx.fillStyle = "#fff";
+                this.ctx.textAlign = "center";
+                this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
+                this.ctx.fillText(p.ad.text, 0, 0); 
+                this.ctx.restore();
+            });
         });
     }
 
