@@ -534,9 +534,14 @@ class AdBird {
     _renderPipes() {
         if (!this.pipes || this.pipes.length === 0) return;
         
+        // Reset global shadow state to prevent GPU memory leaks
+        this.ctx.shadowBlur = 0;
+        this.ctx.shadowColor = "transparent";
+
         this.pipes.forEach(p => {
             if (!p || !p.ad) return;
             
+            this.ctx.save();
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
             this.ctx.strokeStyle = p.ad.color || "#fff"; 
             this.ctx.lineWidth = 4;
@@ -546,6 +551,7 @@ class AdBird {
             this.ctx.strokeRect(p.x, -1, p.w, p.y + 1);
             this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height); 
             this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
+            this.ctx.restore();
 
             [0, p.y + p.gap].forEach(startY => {
                 const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
@@ -604,7 +610,9 @@ class AdBird {
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
             this.ctx.beginPath(); this.ctx.arc(p.x + s.xOff, s.relY, s.size, 0, Math.PI * 2); this.ctx.fill();
             s.drips.forEach(d => {
-                this.ctx.beginPath(); this.ctx.roundRect(p.x + s.xOff + d.xOff, s.relY, d.w, d.len, d.w/2); this.ctx.fill();
+                this.ctx.beginPath(); 
+                this.ctx.rect(p.x + s.xOff + d.xOff, s.relY, d.w, d.len); 
+                this.ctx.fill();
             });
         });
     }
