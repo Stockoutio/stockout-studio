@@ -27,13 +27,14 @@ class AdBird {
                 { text: "FOLLOW ME", color: "#06b6d4" }
             ],
             hitMessages: [
-                "WASTED", "REKT", "STAINED", "SPLAT", "OOPS", 
-                "GET REKT", "BILLBOARDED", "SIGN SMASHED", "MESSY", "BULLSEYE",
+                "WASTED", "REKT", "STAINED", "SPLAT", "GET REKT", 
+                "BILLBOARDED", "SIGN SMASHED", "MESSY", "BULLSEYE",
                 "AD-BLASTED", "INKED", "VANDALIZED", "SCORE!",
                 "BIRDPOCALYPSE", "BEAK-TACULAR", "EGG-STERMINATION", "UN-BEAK-ABLE",
                 "FLAPPING SPREE", "WING-SLAUGHTER", "FEATHER-KILL", "DOUBLE BILL",
                 "TRIPLE TWEET", "OVER-FLAP", "BILL-IONAIRE"
-            ]
+            ],
+            msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899"]
         };
 
         this.state = {
@@ -44,7 +45,8 @@ class AdBird {
             currentWorld: 0,
             flashOpacity: 0,
             isMuted: false,
-            bgX: 0
+            bgX: 0,
+            screenShake: 0
         };
 
         this.player = { x: 250, y: 150, w: 70, h: 70, velocity: 0 };
@@ -126,7 +128,7 @@ class AdBird {
     start() {
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
         Object.assign(this.state, {
-            gameRunning: true, score: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0
+            gameRunning: true, score: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0
         });
         this.player.y = 150;
         this.player.velocity = 0;
@@ -170,12 +172,26 @@ class AdBird {
         osc.connect(gain);
         gain.connect(this.audioCtx.destination);
         const now = this.audioCtx.currentTime;
+        
+        if (type === 'splat') {
+            // Victorious Synth Sequence
+            const freqs = [300, 450, 600];
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freqs[0], now);
+            osc.frequency.exponentialRampToValueAtTime(freqs[1], now + 0.1);
+            osc.frequency.exponentialRampToValueAtTime(freqs[2], now + 0.2);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+            return;
+        }
+
         const sounds = {
             flap: { type: 'square', freq: [150, 400], vol: 0.4, dur: 0.1 },
             score: { type: 'sine', freq: [800, 1200], vol: 0.4, dur: 0.1 },
             crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 },
-            shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 },
-            splat: { type: 'triangle', freq: [180, 40], vol: 0.3, dur: 0.2 }
+            shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 }
         };
         const s = sounds[type];
         osc.type = s.type;
@@ -192,6 +208,9 @@ class AdBird {
         this.state.bgX = (this.state.bgX - this.config.bgSpeed) % this.canvas.width;
         this.player.velocity += this.config.gravity;
         this.player.y += this.player.velocity;
+
+        if (this.state.screenShake > 0) this.state.screenShake *= 0.9;
+
         if (this.state.frameCount >= this.state.nextPipeFrame) this._spawnPipe();
         this._updatePipes();
         this._updateBombs();
@@ -240,14 +259,19 @@ class AdBird {
     }
 
     _createSplat(p, bx, by) {
+        this.state.screenShake = 10;
         const dripCount = 2 + Math.floor(Math.random() * 2);
         const drips = Array.from({ length: dripCount }, () => ({
             xOff: (Math.random() - 0.5) * 20, len: 0, maxLen: 40 + Math.random() * 60,
             speed: 1.0 + Math.random() * 1.5, w: 3 + Math.random() * 4
         }));
         p.stains.push({ relY: by, xOff: bx - p.x, size: Math.random() * 8 + 12, drips: drips });
+        
         const msg = this.config.hitMessages[Math.floor(Math.random() * this.config.hitMessages.length)];
-        this.floatingTexts.push({ x: bx, y: by, text: msg, alpha: 1, velocity: -1.5, scale: 1 });
+        this.floatingTexts.push({ 
+            x: bx, y: by, text: msg, alpha: 1, velocity: -1.5, scale: 1, 
+            color: this.config.msgColors[Math.floor(Math.random() * this.config.msgColors.length)]
+        });
         this.playSound('splat');
     }
 
@@ -268,9 +292,17 @@ class AdBird {
     }
 
     _draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+        if (this.state.screenShake > 0.5) {
+            const sx = (Math.random() - 0.5) * this.state.screenShake;
+            const sy = (Math.random() - 0.5) * this.state.screenShake;
+            this.ctx.translate(sx, sy);
+        }
+
+        this.ctx.clearRect(-10, -10, this.canvas.width + 20, this.canvas.height + 20);
         this._renderBackground(); this._renderBubbles(); this._renderBombs(); this._renderPipes();
         this._renderFloatingTexts(); this._renderPlayer(); this._renderHUD(); this._renderFlash();
+        this.ctx.restore();
     }
 
     _renderBackground() {
@@ -319,14 +351,23 @@ class AdBird {
     _renderFloatingTexts() {
         this.ctx.textAlign = "center";
         this.floatingTexts.forEach(t => {
-            this.ctx.save(); this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale);
-            this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.shadowBlur = 10;
-            this.ctx.shadowColor = "rgba(255, 255, 255, 0.5)"; this.ctx.fillText(t.text, 0, 0); this.ctx.restore();
+            this.ctx.save();
+            this.ctx.globalAlpha = t.alpha;
+            const shake = (Math.random() - 0.5) * 4;
+            this.ctx.translate(t.x + shake, t.y + shake);
+            this.ctx.scale(t.scale, t.scale);
+            this.ctx.fillStyle = t.color;
+            this.ctx.font = "bold 22px 'Outfit', sans-serif";
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = t.color;
+            this.ctx.fillText(t.text, 0, 0);
+            this.ctx.restore();
         });
     }
 
     _renderPlayer() {
-        this.ctx.save(); this.ctx.translate(this.player.x + this.player.w/2, this.player.y + this.player.h/2);
+        this.ctx.save();
+        this.ctx.translate(this.player.x + this.player.w/2, this.player.y + this.player.h/2);
         this.ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.player.velocity * 0.05)));
         this.ctx.scale(-1, 1); this.ctx.drawImage(this.assets.player, -this.player.w/2, -this.player.h/2, this.player.w, this.player.h);
         this.ctx.restore();
