@@ -7,7 +7,7 @@
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --glass-border: rgba(255, 255, 255, 0.1);
-    --bg-card: rgba(255, 255, 255, 0.03);
+    --bg-card: rgba(255, 255, 255, 0.05);
     --gradient-glow: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
 }
 
@@ -21,7 +21,7 @@
 body {
     background-color: var(--bg-dark);
     color: var(--text-main);
-    overflow-x: hidden;
+    overflow: hidden; /* Back to single-screen focus */
     line-height: 1.5;
 }
 
@@ -57,7 +57,6 @@ nav {
     background: var(--gradient-glow);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    opacity: 0.8;
 }
 
 .nav-item {
@@ -66,6 +65,7 @@ nav {
     color: var(--text-muted);
     text-decoration: none;
     letter-spacing: 1px;
+    margin-left: 2rem;
     transition: color 0.3s ease;
 }
 
@@ -73,14 +73,12 @@ nav {
     color: var(--text-main);
 }
 
-/* --- Hero Section --- */
+/* --- Hero & Arcade Stage --- */
 .hero {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    padding-top: 140px; /* Adjusted for no headline */
-    padding-bottom: 100px;
+    justify-content: center;
     position: relative;
     background: linear-gradient(rgba(10, 10, 12, 0.9), rgba(10, 10, 12, 0.9)), url('hero-bg.png');
     background-size: cover;
@@ -89,82 +87,91 @@ nav {
 }
 
 .hero-content {
-    text-align: center;
     z-index: 1;
-    width: 100%;
+    display: flex;
+    justify-content: center;
 }
 
-/* --- Components --- */
-.cta-button {
-    padding: 1.2rem 3rem;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: 50px;
-    background: var(--gradient-glow);
-    color: white;
-    text-decoration: none;
-    display: inline-block;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
+.arcade-cabinet {
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 40px;
+    padding: 2.5rem;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+    text-align: center;
+    max-width: 500px;
 }
 
-.cta-small {
-    padding: 0.8rem 2rem;
-    font-size: 0.9rem;
-}
-
-.cta-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
-}
-
-/* --- Labs Section --- */
-.labs-section {
-    margin-top: 2rem;
+.labs-header {
+    margin-bottom: 2rem;
 }
 
 .labs-title {
-    font-size: 1.5rem;
-    letter-spacing: 3px;
-    font-weight: 600;
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: 4px;
+    background: var(--gradient-glow);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     margin-bottom: 0.5rem;
 }
 
 .labs-subline {
-    opacity: 0.5;
-    font-size: 0.9rem;
-    margin-bottom: 4rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+    letter-spacing: 1px;
 }
 
-.ad-card {
-    background: var(--bg-card);
-    border: 1px solid var(--glass-border);
-    padding: 2.5rem;
-    border-radius: 32px;
-    max-width: 480px;
-    margin: 0 auto;
-    backdrop-filter: blur(10px);
+.game-frame {
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid #1a1a1e;
+    box-shadow: inset 0 0 40px rgba(139, 92, 246, 0.1);
 }
 
 #adBirdCanvas {
-    background: #000;
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    cursor: pointer;
     width: 100%;
     max-width: 400px;
-    height: 400px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    height: auto;
+    cursor: pointer;
 }
 
-.ad-card-info {
+.arcade-footer {
     margin-top: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
 }
 
-.ad-card-desc {
-    font-size: 0.9rem;
+.pipe-info h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.pipe-info p {
+    font-size: 0.8rem;
     color: var(--text-muted);
-    margin: 1rem 0 2rem;
+}
+
+/* --- Components --- */
+.cta-button {
+    padding: 0.8rem 2rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 50px;
+    background: var(--gradient-glow);
+    color: white;
+    text-decoration: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cta-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
 }
 
 /* --- Background Effects --- */
@@ -178,16 +185,20 @@ nav {
     z-index: 0;
 }
 
-.orb-1 { top: 0; right: -10%; }
-.orb-2 { bottom: 20%; left: -10%; }
+.orb-1 { top: -10%; right: -10%; }
+.orb-2 { bottom: -10%; left: -10%; }
 
-/* --- Footer --- */
 footer {
-    padding: 4rem 0;
+    position: absolute;
+    bottom: 2rem;
     width: 100%;
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.2);
     letter-spacing: 1px;
-    border-top: 1px solid var(--glass-border);
+}
+
+@media (max-width: 600px) {
+    .arcade-cabinet { padding: 1.5rem; }
+    .arcade-footer { flex-direction: column; gap: 1.5rem; text-align: center; }
 }
