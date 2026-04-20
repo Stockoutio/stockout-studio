@@ -20,7 +20,7 @@
 body {
     background-color: var(--bg-dark);
     color: var(--text-main);
-    overflow: hidden; /* Clean single-page look */
+    overflow-x: hidden; /* Only lock horizontal scroll */
 }
 
 .container {
@@ -113,11 +113,11 @@ nav {
 .orb-2 { bottom: -10%; left: -10%; }
 
 footer {
-    position: absolute;
-    bottom: 2rem;
+    padding: 4rem 0;
     width: 100%;
     text-align: center;
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.3);
     letter-spacing: 1px;
+    border-top: 1px solid var(--glass-border);
 }
