@@ -25,10 +25,13 @@ function initGame() {
     frameCount = 0;
     gameRunning = true;
     
+    // Safety check for music element
+    if (!window.music) window.music = document.getElementById('bgMusic');
+    
     // Start Music if not muted
-    if (music && isPlaying) {
-        music.currentTime = 0;
-        music.play();
+    if (window.music && window.isPlaying) {
+        window.music.currentTime = 0;
+        window.music.play().catch(e => console.log("Audio waiting for interaction"));
     }
     
     requestAnimationFrame(update);

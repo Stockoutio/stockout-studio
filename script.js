@@ -1,21 +1,26 @@
-// Music Control Logic
-window.music = document.getElementById('bgMusic');
-window.isPlaying = false; // Muted by default
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.music = document.getElementById('bgMusic');
+    window.isPlaying = true; // Enabled by default, will play on first interaction
 
-const musicToggle = document.getElementById('musicToggle');
-
-if (musicToggle) {
-    musicToggle.addEventListener('click', () => {
-        if (!window.isPlaying) {
-            window.isPlaying = true;
-            musicToggle.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-        } else {
-            window.isPlaying = false;
-            window.music.pause();
-            musicToggle.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
-        }
-    });
-}
+    const musicToggle = document.getElementById('musicToggle');
+    if (musicToggle) {
+        // Start with the volume icon "On"
+        musicToggle.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+        
+        musicToggle.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent game from starting when clicking mute
+            if (!window.isPlaying) {
+                window.isPlaying = true;
+                musicToggle.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+            } else {
+                window.isPlaying = false;
+                if (window.music) window.music.pause();
+                musicToggle.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+            }
+        });
+    }
+});
 
 // Mouse Move Parallax for Glow Orbs
 document.addEventListener('mousemove', (e) => {
