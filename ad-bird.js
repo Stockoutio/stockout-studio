@@ -16,7 +16,6 @@ worldPaths.forEach((path, index) => {
     const img = new Image();
     img.src = path;
     img.onload = () => {
-        // Redraw start screen whenever an image loads
         if (!gameRunning) renderStartScreen();
     };
     img.onerror = () => {
@@ -110,6 +109,18 @@ const ads = [
     { text: "FOLLOW ME", color: "#06b6d4" }
 ];
 
+function dropBomb() {
+    if (!gameRunning) return;
+    console.log("Bomb dropped!"); // Debug log
+    bombs.push({
+        x: bird.x + bird.width / 2,
+        y: bird.y + bird.height - 10,
+        width: 10,
+        height: 15,
+        speed: 8
+    });
+}
+
 function initGame() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     bird.y = 150;
@@ -141,7 +152,7 @@ function update() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Draw Background (Far Layer - Slow)
+    // 1. Draw Background
     bgX -= 0.5;
     if (bgX <= -canvas.width) bgX = 0;
     
@@ -165,32 +176,36 @@ function update() {
         ctx.fill();
     });
 
-    // 3. Update Bombs
+    // 3. Update & Draw Bombs
     for (let i = bombs.length - 1; i >= 0; i--) {
-        bombs[i].y += bombs[i].speed;
+        let b = bombs[i];
+        b.y += b.speed;
         
         ctx.fillStyle = "#fff";
         ctx.beginPath();
-        ctx.ellipse(bombs[i].x, bombs[i].y, bombs[i].width/2, bombs[i].height/2, 0, 0, Math.PI * 2);
+        ctx.ellipse(b.x, b.y, b.width/2, b.height/2, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        pipes.forEach(pipe => {
-            const hitTop = bombs[i].x > pipe.x && bombs[i].x < pipe.x + pipe.width && bombs[i].y > 0 && bombs[i].y < pipe.y;
-            const hitBottom = bombs[i].x > pipe.x && bombs[i].x < pipe.x + pipe.width && bombs[i].y > pipe.y + pipe.gap && bombs[i].y < canvas.height;
+        let hit = false;
+        for (let j = 0; j < pipes.length; j++) {
+            let p = pipes[j];
+            const hitTop = b.x > p.x && b.x < p.x + p.width && b.y > 0 && b.y < p.y;
+            const hitBottom = b.x > p.x && b.x < p.x + p.width && b.y > p.y + p.gap && b.y < canvas.height;
 
             if (hitTop || hitBottom) {
-                if (!pipe.stains) pipe.stains = [];
-                pipe.stains.push({
-                    relY: bombs[i].y,
-                    xOffset: bombs[i].x - pipe.x,
+                if (!p.stains) p.stains = [];
+                p.stains.push({
+                    relY: b.y,
+                    xOffset: b.x - p.x,
                     size: Math.random() * 10 + 10
                 });
-                bombs.splice(i, 1);
                 playSound('splat');
+                hit = true;
+                break;
             }
-        });
+        }
 
-        if (bombs[i] && bombs[i].y > canvas.height) {
+        if (hit || b.y > canvas.height) {
             bombs.splice(i, 1);
         }
     }
@@ -227,46 +242,47 @@ function update() {
     }
 
     for (let i = pipes.length - 1; i >= 0; i--) {
-        pipes[i].x -= 2.2; 
+        let p = pipes[i];
+        p.x -= 2.2; 
 
         ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
-        ctx.strokeStyle = pipes[i].ad.color;
+        ctx.strokeStyle = p.ad.color;
         ctx.lineWidth = 4;
-        ctx.fillRect(pipes[i].x, 0, pipes[i].width, pipes[i].y);
-        ctx.strokeRect(pipes[i].x, -10, pipes[i].width, pipes[i].y + 10);
-        ctx.fillRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height);
-        ctx.strokeRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height + 10);
+        ctx.fillRect(p.x, 0, p.width, p.y);
+        ctx.strokeRect(p.x, -10, p.width, p.y + 10);
+        ctx.fillRect(p.x, p.y + p.gap, p.width, canvas.height);
+        ctx.strokeRect(p.x, p.y + p.gap, p.width, canvas.height + 10);
 
-        if (pipes[i].stains) {
-            pipes[i].stains.forEach(stain => {
+        if (p.stains) {
+            p.stains.forEach(stain => {
                 ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
                 ctx.beginPath();
-                ctx.arc(pipes[i].x + stain.xOffset, stain.relY, stain.size, 0, Math.PI * 2);
+                ctx.arc(p.x + stain.xOffset, stain.relY, stain.size, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillRect(pipes[i].x + stain.xOffset - 2, stain.relY, 4, 15);
+                ctx.fillRect(p.x + stain.xOffset - 2, stain.relY, 4, 15);
             });
         }
 
-        let adY = pipes[i].y < 100 ? (pipes[i].y + pipes[i].gap + (canvas.height - (pipes[i].y + pipes[i].gap)) / 2) : pipes[i].y / 2;
+        let adY = p.y < 100 ? (p.y + p.gap + (canvas.height - (p.y + p.gap)) / 2) : p.y / 2;
         ctx.save();
-        ctx.translate(pipes[i].x + pipes[i].width/2, adY);
+        ctx.translate(p.x + p.width/2, adY);
         ctx.rotate(-Math.PI / 2);
         ctx.fillStyle = "#fff";
         ctx.font = "bold 13px 'Outfit', sans-serif";
         ctx.textAlign = "center";
-        ctx.shadowColor = pipes[i].ad.color;
+        ctx.shadowColor = p.ad.color;
         ctx.shadowBlur = 10;
-        ctx.fillText(pipes[i].ad.text, 0, 0);
+        ctx.fillText(p.ad.text, 0, 0);
         ctx.restore();
 
-        if (bird.x + 10 < pipes[i].x + pipes[i].width &&
-            bird.x + bird.width - 10 > pipes[i].x &&
-            (bird.y + 10 < pipes[i].y || bird.y + bird.height - 10 > pipes[i].y + pipes[i].gap)) {
+        if (bird.x + 15 < p.x + p.width &&
+            bird.x + bird.width - 15 > p.x &&
+            (bird.y + 15 < p.y || bird.y + bird.height - 15 > p.y + p.gap)) {
             gameOver();
         }
 
-        if (!pipes[i].scored && pipes[i].x + pipes[i].width < bird.x) {
-            pipes[i].scored = true;
+        if (!p.scored && p.x + p.width < bird.x) {
+            p.scored = true;
             score++;
             playSound('score');
             
@@ -278,7 +294,7 @@ function update() {
             }
         }
 
-        if (pipes[i].x + pipes[i].width < 0) {
+        if (p.x + p.width < 0) {
             pipes.splice(i, 1);
         }
     }
@@ -333,7 +349,7 @@ function gameOver() {
 
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
-        e.preventDefault(); // Prevent page scroll
+        e.preventDefault();
         if (!gameRunning) {
             initGame();
         } else {
@@ -368,12 +384,10 @@ canvas.addEventListener('mousedown', (e) => {
 function renderStartScreen() {
     ctx.fillStyle = "#050510";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
     let activeBG = worldImages[currentWorldIndex];
     if (activeBG && activeBG.complete && activeBG.naturalWidth !== 0) {
         ctx.drawImage(activeBG, 0, 0, canvas.width, canvas.height);
     }
-    
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.font = "bold 18px 'Outfit', sans-serif";
@@ -381,11 +395,9 @@ function renderStartScreen() {
     ctx.fillText("CLICK TO START", canvas.width / 2, canvas.height / 2);
     ctx.font = "14px 'Outfit', sans-serif";
     ctx.fillText("SPACE to bomb, CLICK to flap", canvas.width / 2, canvas.height / 2 + 30);
-    
     ctx.font = "20px serif";
     ctx.textAlign = "right";
     ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 45);
 }
 
-// Kickstart the start screen immediately
 renderStartScreen();
