@@ -45,12 +45,15 @@ nav {
     position: fixed;
     top: 0;
     width: 100%;
-    z-index: 2000; /* Sovereignty over game layers */
+    z-index: 2000;
     padding: 1.2rem 0;
+    background: rgba(10, 10, 12, 0.9); /* Solid fallback */
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    background: var(--glass-bg);
     border-bottom: 1px solid var(--glass-border);
+    /* Force GPU Layer Promotion */
+    transform: translateZ(0);
+    will-change: transform;
 }
 
 .nav-content {
