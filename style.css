@@ -61,10 +61,12 @@ nav {
     justify-content: space-between;
     align-items: center;
     padding: 0 2rem;
+    max-width: 100%;
+    margin: 0 auto;
 }
 
 .logo {
-    width: 140px; /* Fixed width to prevent layout shifting on hover */
+    width: 140px; 
     font-size: 1.2rem;
     font-weight: 800;
     letter-spacing: 3px;
@@ -73,6 +75,16 @@ nav {
     -webkit-text-fill-color: transparent;
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@media (max-width: 768px) {
+    .nav-content {
+        padding: 0 5%; /* Responsive gutter */
+    }
+    .logo {
+        width: auto; /* Allow shrink on mobile */
+        min-width: fit-content;
+    }
 }
 
 .logo:hover {
