@@ -46,9 +46,58 @@ class AdBird {
             musicSrc: options.musicSrc || 'bg-music.mp3',
             worlds: options.worlds || ['world1.jpg', 'world2.jpg', 'world3.jpg'],
             ads: options.ads || [
-                { text: "YOUR AD HERE", color: "#4ade80" },
-                { text: "BUY BITCOIN", color: "#f59e0b" },
-                { text: "FOLLOW ME", color: "#06b6d4" }
+                // Placeholder / Meta
+                { text: "YOUR AD HERE", color: "#4ade80" }, { text: "BUY THIS PIPE", color: "#f59e0b" },
+                { text: "RENT ME $5", color: "#06b6d4" }, { text: "SPONSORED", color: "#a855f7" },
+                { text: "AD SLOT OPEN", color: "#4ade80" }, { text: "SEO LIVES HERE", color: "#94a3b8" },
+                { text: "CPC: $0.04", color: "#22c55e" }, { text: "IMPRESSIONS++", color: "#ec4899" },
+                { text: "SPOT VACANT", color: "#f8fafc" },
+                // Fake Brands
+                { text: "BIG PIPE CO", color: "#4ade80" }, { text: "PIPES.IO", color: "#06b6d4" },
+                { text: "FLAP & CO", color: "#f59e0b" }, { text: "PIPE DEPOT", color: "#a855f7" },
+                { text: "DUCTMART", color: "#4ade80" }, { text: "TUBE & SON", color: "#06b6d4" },
+                // Startup Parody
+                { text: "WE'RE HIRING", color: "#22c55e" }, { text: "PIPES AS A SERVICE", color: "#06b6d4" },
+                { text: "SERIES A PIPE", color: "#f59e0b" }, { text: "DISRUPT PIPES", color: "#a855f7" },
+                { text: "GO PUBLIC SOON", color: "#ec4899" }, { text: "PIPE TO THE MOON", color: "#4ade80" },
+                { text: "WEB3 PIPE", color: "#06b6d4" },
+                // Self-aware
+                { text: "DON'T BOMB ME", color: "#f43f5e" }, { text: "PLEASE NO", color: "#f43f5e" },
+                { text: "AVOID THIS PIPE", color: "#f59e0b" }, { text: "NOT A BILLBOARD", color: "#94a3b8" },
+                { text: "DUCK!", color: "#f59e0b" }, { text: "INCOMING", color: "#f43f5e" },
+                { text: "OUCH", color: "#f43f5e" }, { text: "RIP THIS PIPE", color: "#94a3b8" },
+                { text: "I HAVE A FAMILY", color: "#ec4899" },
+                // Crypto / Finance
+                { text: "BUY BITCOIN", color: "#f59e0b" }, { text: "HODL", color: "#f59e0b" },
+                { text: "DIAMOND PIPES", color: "#06b6d4" }, { text: "PIPE ETF", color: "#4ade80" },
+                { text: "SHORT THE BIRD", color: "#f43f5e" }, { text: "LONG ON GUANO", color: "#22c55e" },
+                { text: "ROTH IRAPIPE", color: "#a855f7" },
+                // Wordplay
+                { text: "PIPE DREAMS", color: "#06b6d4" }, { text: "PIPELINE FULL", color: "#a855f7" },
+                { text: "PIPE ME UP", color: "#4ade80" }, { text: "DOWN THE PIPE", color: "#f59e0b" },
+                { text: "PIPE IT UP", color: "#ec4899" }, { text: "HOT PIPE", color: "#f43f5e" },
+                { text: "DRAIN PIPE 9", color: "#06b6d4" }, { text: "CLOG FREE", color: "#22c55e" },
+                // Bird Burns
+                { text: "FLY AWAY BIRD", color: "#94a3b8" }, { text: "NEST ELSEWHERE", color: "#94a3b8" },
+                { text: "BIRD-PROOF", color: "#f43f5e" }, { text: "ANTI-BIRD", color: "#f43f5e" },
+                { text: "NO BIRDS ALLOWED", color: "#f43f5e" }, { text: "BEAK OFF", color: "#a855f7" },
+                { text: "BIRD REPELLENT", color: "#22c55e" }, { text: "TALON-TESTED", color: "#06b6d4" },
+                // Random Absurd
+                { text: "EGGS ON SALE", color: "#f59e0b" }, { text: "FREE WI-FI", color: "#4ade80" },
+                { text: "CALL YOUR MOM", color: "#ec4899" }, { text: "MISS YOU MOM", color: "#ec4899" },
+                { text: "HI MOM", color: "#ec4899" }, { text: "THIS IS FINE", color: "#f59e0b" },
+                { text: "LIVE LAUGH LOVE", color: "#ec4899" }, { text: "NAMASTE", color: "#06b6d4" },
+                { text: "TOUCH GRASS", color: "#22c55e" },
+                // Fake URLs
+                { text: "VISIT MY SITE", color: "#06b6d4" }, { text: "DM FOR RATES", color: "#a855f7" },
+                { text: "LINK IN BEAK", color: "#4ade80" }, { text: "1-800-PIPE", color: "#f59e0b" },
+                { text: "PIPE.LY/BUY", color: "#06b6d4" }, { text: "CLICK HERE", color: "#22c55e" },
+                { text: "SCAN QR CODE", color: "#a855f7" }, { text: "TAP TO CALL", color: "#4ade80" },
+                // Existential
+                { text: "WHY AM I HERE", color: "#94a3b8" }, { text: "WHAT IS PIPE", color: "#94a3b8" },
+                { text: "AM I REAL", color: "#94a3b8" }, { text: "HELP", color: "#f43f5e" },
+                { text: "I SEE YOU", color: "#ec4899" }, { text: "GOODBYE WORLD", color: "#94a3b8" },
+                { text: "SEND HELP", color: "#f43f5e" }, { text: "THE END IS PIPE", color: "#a855f7" }
             ],
             hitMessages: [
                 "WASTED", "REKT", "STAINED", "SPLAT", "GET REKT", "BILLBOARDED", 
