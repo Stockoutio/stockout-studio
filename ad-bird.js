@@ -546,7 +546,7 @@ class AdBird {
             this.ctx.save();
             this.ctx.translate(p.x + p.w/2, p.y + p.gap + (this.canvas.height - (p.y + p.gap)) / 2);
             this.ctx.rotate(-Math.PI / 2); this.ctx.fillStyle = "#fff";
-            this.ctx.font = "bold 13px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
+            this.ctx.font = "bold 18px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
             this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
             this.ctx.fillText(p.ad.text, 0, 0); this.ctx.restore();
         });
@@ -566,7 +566,7 @@ class AdBird {
         this.ctx.textAlign = "center";
         this.floatingTexts.forEach(t => {
             this.ctx.save(); this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale);
-            this.ctx.fillStyle = t.color; this.ctx.font = "bold 22px 'Outfit', sans-serif";
+            this.ctx.fillStyle = t.color; this.ctx.font = "bold 26px 'Outfit', sans-serif";
             this.ctx.shadowBlur = 15; this.ctx.shadowColor = t.color;
             this.ctx.fillText(t.text, 0, 0); this.ctx.restore();
         });
@@ -584,7 +584,7 @@ class AdBird {
     _renderHUD() {
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center";
         this.ctx.font = "bold 48px 'Outfit', sans-serif"; this.ctx.fillText(this.state.score, this.ui.scoreCenter, 65);
-        this.ctx.font = "bold 14px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        this.ctx.font = "bold 16px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText(`MARKETING IMPACT: ${this.state.directHits}`, this.ui.scoreCenter, 90);
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
@@ -600,7 +600,7 @@ class AdBird {
         this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4";
         this.ctx.roundRect(this.ui.bombBtn.x, this.ui.bombBtn.y, this.ui.bombBtn.w, this.ui.bombBtn.h, this.ui.bombBtn.radius); this.ctx.fill();
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center";
-        this.ctx.font = "bold 18px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0;
+        this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0;
         this.ctx.fillText("BOMB", this.ui.bombBtn.x + this.ui.bombBtn.w/2, this.ui.bombBtn.y + (this.isMobile ? 42 : 36)); 
         if (!this.isMobile) {
             this.ctx.font = "bold 9px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
