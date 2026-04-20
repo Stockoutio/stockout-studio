@@ -608,20 +608,12 @@ class AdBird {
 function initGlobalUI() {
     const toggle = document.getElementById('mobileMenuToggle');
     const navLinks = document.getElementById('navLinks');
-    const navBar = document.querySelector('nav');
     
     if (toggle && navLinks) {
         toggle.onclick = () => navLinks.classList.toggle('active');
         navLinks.querySelectorAll('.nav-item').forEach(link => {
             link.onclick = () => navLinks.classList.remove('active');
         });
-    }
-
-    // Force Layout Reflow Pulse (Fixes Chrome Mobile "Deferred Rendering" bug)
-    if (navBar) {
-        navBar.style.display = 'none';
-        navBar.offsetHeight; // Trigger reflow
-        navBar.style.display = 'block';
     }
 }
 
