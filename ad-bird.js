@@ -6,7 +6,7 @@ const birdImg = new Image();
 birdImg.src = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png';
 
 const bgImg = new Image();
-bgImg.src = 'game-bg.png'; // We'll save the monster ruins here
+bgImg.src = 'game-bg.jpg'; 
 
 // --- Audio Synth Engine ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
