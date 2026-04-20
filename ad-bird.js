@@ -49,7 +49,7 @@ function playSound(type) {
         osc.type = 'square';
         osc.frequency.setValueAtTime(150, now);
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-        gain.gain.setValueAtTime(0.2, now); // Louder
+        gain.gain.setValueAtTime(0.6, now); // Max punch
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
@@ -57,7 +57,7 @@ function playSound(type) {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(800, now);
         osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
-        gain.gain.setValueAtTime(0.2, now); // Louder
+        gain.gain.setValueAtTime(0.6, now); // Clear bell
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
@@ -65,7 +65,7 @@ function playSound(type) {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(100, now);
         osc.frequency.linearRampToValueAtTime(20, now + 0.5);
-        gain.gain.setValueAtTime(0.3, now); // Louder
+        gain.gain.setValueAtTime(0.8, now); // Deep crunch
         gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
         osc.start(now);
         osc.stop(now + 0.5);
@@ -73,7 +73,7 @@ function playSound(type) {
         osc.type = 'square';
         osc.frequency.setValueAtTime(200, now);
         osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
-        gain.gain.setValueAtTime(0.3, now); // Louder
+        gain.gain.setValueAtTime(0.7, now); // Strong shift
         gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
         osc.start(now);
         osc.stop(now + 0.3);
