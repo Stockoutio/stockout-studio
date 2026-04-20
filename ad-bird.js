@@ -55,7 +55,7 @@ class AdBird {
 
     init() {
         // Load Assets
-        this.assets.player.src = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f421.png'; // Pufferfish
+        this.assets.player.src = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png'; // Bird
         const worldPaths = ['world1.jpg', 'world2.jpg', 'world3.jpg'];
         worldPaths.forEach((path, i) => this.assets.worlds[i].src = path);
 
@@ -151,11 +151,11 @@ class AdBird {
         const now = this.audioCtx.currentTime;
 
         const sounds = {
-            flap: { type: 'square', freq: [150, 400], vol: 0.5, dur: 0.1 },
-            score: { type: 'sine', freq: [800, 1200], vol: 0.5, dur: 0.1 },
-            crash: { type: 'sawtooth', freq: [100, 20], vol: 0.7, dur: 0.5 },
-            shift: { type: 'square', freq: [200, 800], vol: 0.6, dur: 0.3 },
-            splat: { type: 'triangle', freq: [150, 50], vol: 0.3, dur: 0.2 }
+            flap: { type: 'square', freq: [150, 400], vol: 0.4, dur: 0.1 },
+            score: { type: 'sine', freq: [800, 1200], vol: 0.4, dur: 0.1 },
+            crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 },
+            shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 },
+            splat: { type: 'triangle', freq: [150, 50], vol: 0.2, dur: 0.2 }
         };
 
         const s = sounds[type];
