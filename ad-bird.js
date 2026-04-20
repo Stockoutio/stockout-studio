@@ -214,25 +214,26 @@ class AdBird {
             dy = (rect.height - dh) / 2;
         }
 
-        const x = (e.clientX - (rect.left + dx)) * (this.canvas.width / dw);
-        const y = (e.clientY - (rect.top + dy)) * (this.canvas.height / dh);
+        const x = Math.max(0, Math.min(this.canvas.width, (e.clientX - (rect.left + dx)) * (this.canvas.width / dw)));
+        const y = Math.max(0, Math.min(this.canvas.height, (e.clientY - (rect.top + dy)) * (this.canvas.height / dh)));
 
-        // Mute Detection
-        if (x > this.ui.muteBtn.x - 50 && y < 100) {
-            this.toggleMute();
-            return;
-        }
-
-        // Fullscreen Detection
+        // 1. Fullscreen Detection (High Priority + Larger Radius)
         const distToFS = Math.hypot(x - this.ui.fullscreenBtn.x, y - this.ui.fullscreenBtn.y);
-        if (distToFS < this.ui.fullscreenBtn.radius + 15) {
+        if (distToFS < this.ui.fullscreenBtn.radius + 25) {
             this.toggleFullscreen();
             return;
         }
 
-        // Bomb Zone Detection
-        if (x >= this.ui.bombBtn.x && x <= this.ui.bombBtn.x + this.ui.bombBtn.w &&
-            y >= this.ui.bombBtn.y && y <= this.ui.bombBtn.y + this.ui.bombBtn.h) {
+        // 2. Mute Detection
+        if (x > this.ui.muteBtn.x - 60 && y < 120) {
+            this.toggleMute();
+            return;
+        }
+
+        // 3. Bomb Zone Detection (Expanded Hitbox)
+        const b = this.ui.bombBtn;
+        if (x >= b.x - 20 && x <= b.x + b.w + 20 &&
+            y >= b.y - 20 && y <= b.y + b.h + 20) {
             if (this.state.gameRunning) {
                 this.dropBomb();
             } else {
