@@ -245,24 +245,24 @@ class AdBird {
             return;
         }
 
-        // 2. Gameplay Routing (Atomic Processing)
+        // 2. Gameplay Routing (Parallel Execution - No Shadowing)
         if (!this.state.gameRunning) {
-            // Filter for clicks actually landing on the game viewport to start
             const rect = this.canvas.parentElement.getBoundingClientRect();
             if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
                 this.start();
             }
         } else {
-            // Check for secondary action first (Bomb)
+            // Check for Bomb (Secondary)
             if (e.button === 2 || (e.buttons & 2) || (e.button === 0 && e.ctrlKey)) {
                 this.dropBomb();
-                e.preventDefault();
             } 
-            // Then check for primary action (Flap)
-            else if (e.button === 0 || (e.buttons & 1)) {
+            
+            // Check for Flap (Primary)
+            if (e.button === 0 || (e.buttons & 1)) {
                 this.flap();
-                e.preventDefault();
             }
+            
+            e.preventDefault();
         }
     }
 
