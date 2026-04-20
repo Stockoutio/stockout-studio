@@ -380,14 +380,22 @@ class AdBird {
         const bg = this.assets.worlds[0];
         if (bg.complete) this.ctx.drawImage(bg, 0, 0, this.canvas.width, this.canvas.height);
         
+        // Elegant Overlay Box
+        this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
+        this.ctx.fillRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 120);
+        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 120);
+
         this.ctx.fillStyle = "#fff";
         this.ctx.textAlign = "center";
         this.ctx.font = "bold 24px 'Outfit', sans-serif";
-        this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 20);
+        this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 10);
         this.ctx.font = "16px 'Outfit', sans-serif";
-        this.ctx.fillStyle = "rgba(255,255,255,0.7)";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText("CLICK to flap • SPACE to bomb", this.canvas.width / 2, this.canvas.height / 2 + 30);
-        this.ctx.font = "22px serif";
+        
+        this.ctx.font = "20px serif";
         this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 45);
     }
