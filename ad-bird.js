@@ -1,11 +1,18 @@
 /**
- * Ad-Bird-tising Game Engine
- * High-performance marketing, one flap at a time.
+ * Ad-Bird: Stockout Studio Arcade Engine
+ * --------------------------------------
+ * V1.6 - Hardened "Gallop-Proof" Edition
+ * 
+ * Performance: High (Layout Caching)
+ * Latency: Zero (Low-Level Raw Inputs)
+ * Platforms: Desktop (Mousedown) / Mobile (Touchstart)
  */
 
 class AdBird {
-    constructor(canvasId) {
+    constructor(canvasId, options = {}) {
         this.canvas = document.getElementById(canvasId);
+        this.overlay = document.getElementById('gameOverlay');
+        
         if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
 
@@ -21,180 +28,272 @@ class AdBird {
             Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true });
         }
 
+        // Platform profile
+        this.canvas.style.touchAction = 'none';
+        this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
         this.config = {
-            gravity: 0.25, lift: -5.5, pipeSpeed: 3.5, pipeWidth: 80, pipeGap: 230,
-            bgSpeed: 1, worldShiftInterval: 5, bombCooldown: 60,
-            hitMessages: ["SPLAT!", "AD INJECTED!", "MARKETED!", "IMPACT!", "BRANDED!", "CONVERTED!"],
-            msgColors: ["#f87171", "#fbbf24", "#34d399", "#60a5fa", "#a78bfa", "#f472b6"],
-            ads: [
-                // Placeholder / meta
-                { text: "YOUR AD HERE", color: "#60a5fa" },
-                { text: "BUY THIS PIPE", color: "#fbbf24" },
-                { text: "RENT ME $5", color: "#34d399" },
-                { text: "SPONSORED", color: "#f87171" },
-                { text: "AD SLOT OPEN", color: "#a78bfa" },
-                { text: "SEO LIVES HERE", color: "#f472b6" },
-                { text: "CPC: $0.04", color: "#60a5fa" },
-                { text: "IMPRESSIONS++", color: "#34d399" },
-                { text: "SPOT VACANT", color: "#fbbf24" },
-
-                // Fake brands
-                { text: "BIG PIPE CO", color: "#60a5fa" },
-                { text: "PIPES.IO", color: "#34d399" },
-                { text: "FLAP & CO", color: "#fbbf24" },
-                { text: "PIPE DEPOT", color: "#f87171" },
-                { text: "DUCTMART", color: "#a78bfa" },
-                { text: "TUBE & SON", color: "#f472b6" },
-
-                // Startup parody
-                { text: "WE'RE HIRING", color: "#34d399" },
-                { text: "PIPES AS A SERVICE", color: "#60a5fa" },
-                { text: "SERIES A PIPE", color: "#fbbf24" },
-                { text: "DISRUPT PIPES", color: "#f87171" },
-                { text: "GO PUBLIC SOON", color: "#a78bfa" },
-                { text: "PIPE TO THE MOON", color: "#f472b6" },
-                { text: "WEB3 PIPE", color: "#60a5fa" },
-
-                // Self-aware / fourth wall
-                { text: "DON'T BOMB ME", color: "#f87171" },
-                { text: "PLEASE NO", color: "#fbbf24" },
-                { text: "AVOID THIS PIPE", color: "#34d399" },
-                { text: "NOT A BILLBOARD", color: "#60a5fa" },
-                { text: "DUCK!", color: "#f87171" },
-                { text: "INCOMING", color: "#fbbf24" },
-                { text: "OUCH", color: "#f472b6" },
-                { text: "RIP THIS PIPE", color: "#a78bfa" },
-                { text: "I HAVE A FAMILY", color: "#34d399" },
-
-                // Crypto / finance
-                { text: "BUY BITCOIN", color: "#fbbf24" },
-                { text: "HODL", color: "#34d399" },
-                { text: "DIAMOND PIPES", color: "#60a5fa" },
-                { text: "PIPE ETF", color: "#a78bfa" },
-                { text: "SHORT THE BIRD", color: "#f87171" },
-                { text: "LONG ON GUANO", color: "#34d399" },
-                { text: "ROTH IRAPIPE", color: "#f472b6" },
-
-                // Wordplay on "pipe"
-                { text: "PIPE DREAMS", color: "#60a5fa" },
-                { text: "PIPELINE FULL", color: "#34d399" },
-                { text: "PIPE ME UP", color: "#fbbf24" },
-                { text: "DOWN THE PIPE", color: "#f87171" },
-                { text: "PIPE IT UP", color: "#a78bfa" },
-                { text: "HOT PIPE", color: "#f472b6" },
-                { text: "DRAIN PIPE 9", color: "#60a5fa" },
-                { text: "CLOG FREE", color: "#34d399" },
-
-                // Bird-related burns
-                { text: "FLY AWAY BIRD", color: "#f87171" },
-                { text: "NEST ELSEWHERE", color: "#fbbf24" },
-                { text: "BIRD-PROOF", color: "#60a5fa" },
-                { text: "ANTI-BIRD", color: "#a78bfa" },
-                { text: "NO BIRDS ALLOWED", color: "#f87171" },
-                { text: "BEAK OFF", color: "#f472b6" },
-                { text: "BIRD REPELLENT", color: "#34d399" },
-                { text: "TALON-TESTED", color: "#60a5fa" },
-
-                // Random absurd
-                { text: "EGGS ON SALE", color: "#fbbf24" },
-                { text: "FREE WI-FI", color: "#34d399" },
-                { text: "CALL YOUR MOM", color: "#f472b6" },
-                { text: "MISS YOU MOM", color: "#a78bfa" },
-                { text: "HI MOM", color: "#f87171" },
-                { text: "THIS IS FINE", color: "#fbbf24" },
-                { text: "LIVE LAUGH LOVE", color: "#f472b6" },
-                { text: "NAMASTE", color: "#34d399" },
-                { text: "TOUCH GRASS", color: "#60a5fa" },
-
-                // Fake URLs / CTAs
-                { text: "VISIT MY SITE", color: "#60a5fa" },
-                { text: "DM FOR RATES", color: "#34d399" },
-                { text: "LOOK AT ME", color: "#fbbf24" },
-                { text: "STOCKOUT.IO", color: "#f472b6" },
-                { text: "AD-BIRD.EXE", color: "#a78bfa" },
-                { text: "FLAPPY ADS?", color: "#f87171" },
-
-                // Philosophy / Abstract
-                { text: "WHAT IS PIPE", color: "#a78bfa" },
-                { text: "THE END IS PIPE", color: "#f87171" },
-                { text: "EXISTENTIAL PIPE", color: "#60a5fa" },
-                { text: "DEEP PIPE", color: "#34d399" }
+            gravity: options.gravity || 0.5,
+            lift: options.lift || -8,
+            pipeWidth: options.pipeWidth || 80,
+            pipeGap: options.pipeGap || 230,
+            pipeSpeed: options.pipeSpeed || 2.2,
+            bgSpeed: options.bgSpeed || 0.5,
+            bubbleCount: options.bubbleCount || 20,
+            worldShiftInterval: options.worldShiftInterval || 10,
+            bombCooldown: options.bombCooldown || 20,
+            playerImg: options.playerImg || 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png',
+            musicSrc: options.musicSrc || 'bg-music.mp3',
+            worlds: options.worlds || ['world1.jpg', 'world2.jpg', 'world3.jpg'],
+            ads: options.ads || [
+                // Placeholder / Meta
+                { text: "YOUR AD HERE", color: "#4ade80" }, { text: "BUY THIS PIPE", color: "#f59e0b" },
+                { text: "RENT ME $5", color: "#06b6d4" }, { text: "SPONSORED", color: "#a855f7" },
+                { text: "AD SLOT OPEN", color: "#4ade80" }, { text: "SEO LIVES HERE", color: "#94a3b8" },
+                { text: "CPC: $0.04", color: "#22c55e" }, { text: "IMPRESSIONS++", color: "#ec4899" },
+                { text: "SPOT VACANT", color: "#f8fafc" },
+                // Fake Brands
+                { text: "BIG PIPE CO", color: "#4ade80" }, { text: "PIPES.IO", color: "#06b6d4" },
+                { text: "FLAP & CO", color: "#f59e0b" }, { text: "PIPE DEPOT", color: "#a855f7" },
+                { text: "DUCTMART", color: "#4ade80" }, { text: "TUBE & SON", color: "#06b6d4" },
+                // Startup Parody
+                { text: "WE'RE HIRING", color: "#22c55e" }, { text: "PIPES AS A SERVICE", color: "#06b6d4" },
+                { text: "SERIES A PIPE", color: "#f59e0b" }, { text: "DISRUPT PIPES", color: "#a855f7" },
+                { text: "GO PUBLIC SOON", color: "#ec4899" }, { text: "PIPE TO THE MOON", color: "#4ade80" },
+                { text: "WEB3 PIPE", color: "#06b6d4" },
+                // Self-aware
+                { text: "DON'T BOMB ME", color: "#f43f5e" }, { text: "PLEASE NO", color: "#f43f5e" },
+                { text: "AVOID THIS PIPE", color: "#f59e0b" }, { text: "NOT A BILLBOARD", color: "#94a3b8" },
+                { text: "DUCK!", color: "#f59e0b" }, { text: "INCOMING", color: "#f43f5e" },
+                { text: "OUCH", color: "#f43f5e" }, { text: "RIP THIS PIPE", color: "#94a3b8" },
+                { text: "I HAVE A FAMILY", color: "#ec4899" },
+                // Crypto / Finance
+                { text: "BUY BITCOIN", color: "#f59e0b" }, { text: "HODL", color: "#f59e0b" },
+                { text: "DIAMOND PIPES", color: "#06b6d4" }, { text: "PIPE ETF", color: "#4ade80" },
+                { text: "SHORT THE BIRD", color: "#f43f5e" }, { text: "LONG ON GUANO", color: "#22c55e" },
+                { text: "ROTH IRAPIPE", color: "#a855f7" },
+                // Wordplay
+                { text: "PIPE DREAMS", color: "#06b6d4" }, { text: "PIPELINE FULL", color: "#a855f7" },
+                { text: "PIPE ME UP", color: "#4ade80" }, { text: "DOWN THE PIPE", color: "#f59e0b" },
+                { text: "PIPE IT UP", color: "#ec4899" }, { text: "HOT PIPE", color: "#f43f5e" },
+                { text: "DRAIN PIPE 9", color: "#06b6d4" }, { text: "CLOG FREE", color: "#22c55e" },
+                // Bird Burns
+                { text: "FLY AWAY BIRD", color: "#94a3b8" }, { text: "NEST ELSEWHERE", color: "#94a3b8" },
+                { text: "BIRD-PROOF", color: "#f43f5e" }, { text: "ANTI-BIRD", color: "#f43f5e" },
+                { text: "NO BIRDS ALLOWED", color: "#f43f5e" }, { text: "BEAK OFF", color: "#a855f7" },
+                { text: "BIRD REPELLENT", color: "#22c55e" }, { text: "TALON-TESTED", color: "#06b6d4" },
+                // Random Absurd
+                { text: "EGGS ON SALE", color: "#f59e0b" }, { text: "FREE WI-FI", color: "#4ade80" },
+                { text: "CALL YOUR MOM", color: "#ec4899" }, { text: "MISS YOU MOM", color: "#ec4899" },
+                { text: "HI MOM", color: "#ec4899" }, { text: "THIS IS FINE", color: "#f59e0b" },
+                { text: "LIVE LAUGH LOVE", color: "#ec4899" }, { text: "NAMASTE", color: "#06b6d4" },
+                { text: "TOUCH GRASS", color: "#22c55e" },
+                // Fake URLs
+                { text: "VISIT MY SITE", color: "#06b6d4" }, { text: "DM FOR RATES", color: "#a855f7" },
+                { text: "LINK IN BEAK", color: "#4ade80" }, { text: "1-800-PIPE", color: "#f59e0b" },
+                { text: "PIPE.LY/BUY", color: "#06b6d4" }, { text: "CLICK HERE", color: "#22c55e" },
+                { text: "SCAN QR CODE", color: "#a855f7" }, { text: "TAP TO CALL", color: "#4ade80" },
+                // Existential
+                { text: "WHY AM I HERE", color: "#94a3b8" }, { text: "WHAT IS PIPE", color: "#94a3b8" },
+                { text: "AM I REAL", color: "#94a3b8" }, { text: "HELP", color: "#f43f5e" },
+                { text: "I SEE YOU", color: "#ec4899" }, { text: "GOODBYE WORLD", color: "#94a3b8" },
+                { text: "SEND HELP", color: "#f43f5e" }, { text: "THE END IS PIPE", color: "#a855f7" }
             ],
-            worlds: ["hero-bg.jpg", "cave-bg.jpg", "space-bg.jpg"]
+            hitMessages: [
+                "WASTED", "REKT", "STAINED", "SPLAT", "GET REKT", "BILLBOARDED", 
+                "SIGN SMASHED", "MESSY", "BULLSEYE", "AD-BLASTED", "INKED", 
+                "VANDALIZED", "SCORE!", "BIRDPOCALYPSE", "BEAK-TACULAR", 
+                "EGG-STERMINATION", "UN-BEAK-ABLE", "FLAPPING SPREE", 
+                "WING-SLAUGHTER", "FEATHER-KILL", "DOUBLE BILL", 
+                "TRIPLE TWEET", "OVER-FLAP", "BILL-IONAIRE"
+            ],
+            msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899"]
+        };
+
+        // HUD Geometry (Modular UI)
+        this.ui = {
+            fullscreenBtn: { x: this.canvas.width - 35, y: this.canvas.height - 35, radius: 30, buffer: 25 },
+            bombBtn: { x: 15, y: this.canvas.height - 85, w: 110, h: 70, radius: 12, buffer: 20 },
+            muteBtn: { x: this.canvas.width - 20, y: 50, buffer: 60 },
+            scoreCenter: this.canvas.width / 2
         };
 
         this.state = {
             gameRunning: false,
             score: 0,
             directHits: 0,
+            highScore: parseInt(localStorage.getItem('adBirdHighScore')) || 0,
+            highDirectHits: parseInt(localStorage.getItem('adBirdHighDirectHits')) || 0,
             frameCount: 0,
-            nextPipeFrame: 0,
+            nextPipeFrame: 40,
             currentWorld: 0,
+            flashOpacity: 0,
+            isMuted: false,
             bgX: 0,
             screenShake: 0,
             bombTimer: 0,
-            highScore: parseInt(localStorage.getItem('adBirdHighScore')) || 0,
-            highDirectHits: parseInt(localStorage.getItem('adBirdHighDirectHits')) || 0,
+            isFullscreen: false,
             assetsLoaded: 0,
-            isMuted: false,
-            flashOpacity: 0
+            lastRect: null
         };
 
-        this.player = { x: 50, y: 150, w: 40, h: 30, velocity: 0, flipAngle: 0, isFlipping: false, flipDirection: 1, flipSpeed: 0.2 };
+        this.player = {
+            x: 250, y: 150, w: 70, h: 70,
+            velocity: 0, flipAngle: 0, isFlipping: false,
+            flipSpeed: 0.25, flipDirection: 1
+        };
+
         this.pipes = [];
         this.bombs = [];
+        this.bubbles = [];
         this.floatingTexts = [];
-        this.bubbles = Array.from({ length: 15 }, () => ({ x: Math.random() * 600, y: Math.random() * 600, size: Math.random() * 3 + 1, speed: Math.random() * 0.5 + 0.2 }));
-        
-        this.isMobile = 'ontouchstart' in window;
-        this.ui = {
-            scoreCenter: this.canvas.width / 2,
-            muteBtn: { x: this.canvas.width - 25, y: 25 },
-            fullscreenBtn: { x: 30, y: 30, radius: 20 },
-            bombBtn: { x: this.canvas.width / 2 - 50, y: this.canvas.height - 80, w: 100, h: 60, radius: 10 }
+        this.assets = {
+            player: new Image(),
+            worlds: [],
+            music: new Audio(this.config.musicSrc)
         };
-
-        this.overlay = document.getElementById('gameOverlay');
-        this.assets = { player: new Image(), worlds: [], music: null };
-        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        this._loadAssets();
-        this._bindInput();
-    }
-
-    _loadAssets() {
-        this.assets.player.src = 'puffer.png';
-        this.assets.player.onload = () => this.state.assetsLoaded++;
-        this.config.worlds.forEach(src => {
-            const img = new Image(); img.src = src;
-            img.onload = () => { this.state.assetsLoaded++; this.assets.worlds.push(img); if (!this.state.gameRunning) this.drawStartScreen(); };
-        });
-        this.assets.music = new Audio('bg-music.mp3');
         this.assets.music.loop = true;
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        this._init();
     }
 
-    _bindInput() {
-        const handler = (e) => {
-            if (e.type === 'mousedown' && e.button === 2) { this.dropBomb(); e.preventDefault(); return; }
-            if (e.type === 'keydown' && e.code === 'ShiftLeft') { this.dropBomb(); return; }
-            if (!this.state.gameRunning) { this.start(); return; }
-            this.flap();
-        };
+    _init() {
+        // Asset Loading
+        this.assets.player.src = this.config.playerImg;
+        this.assets.player.onload = () => this.state.assetsLoaded++;
 
-        window.addEventListener('keydown', (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') handler(e); });
-        this.canvas.addEventListener('mousedown', handler);
-        this.canvas.addEventListener('contextmenu', e => e.preventDefault());
+        this.config.worlds.forEach((path) => {
+            const img = new Image();
+            img.src = path;
+            img.onload = () => {
+                this.state.assetsLoaded++;
+                if (!this.state.gameRunning) this.drawStartScreen();
+            };
+            this.assets.worlds.push(img);
+        });
+
+        // Event Registration (Arcade-Perfect Raw Layers)
+        window.addEventListener('keydown', (e) => this._handleKeydown(e));
         
-        if (this.isMobile) {
-            this.canvas.addEventListener('touchstart', (e) => {
-                const touch = e.touches[0];
-                const rect = this.canvas.getBoundingClientRect();
-                const tx = (touch.clientX - rect.left) * (this.canvas.width / rect.width);
-                const ty = (touch.clientY - rect.top) * (this.canvas.height / rect.height);
-                
-                if (Math.hypot(tx - this.ui.fullscreenBtn.x, ty - this.ui.fullscreenBtn.y) < this.ui.fullscreenBtn.radius) { this.toggleFullscreen(); return; }
-                if (tx > this.ui.bombBtn.x && tx < this.ui.bombBtn.x + this.ui.bombBtn.w && ty > this.ui.bombBtn.y && ty < this.ui.bombBtn.y + this.ui.bombBtn.h) { this.dropBomb(); return; }
-                handler(e);
-            }, { passive: false });
+        const inputTarget = this.canvas.parentElement || this.canvas;
+        
+        // Desktop Raw Input
+        inputTarget.addEventListener('mousedown', (e) => {
+            if (this.isMobile) return; 
+            this._handleInput(e);
+        });
+
+        // Mobile Raw Input
+        inputTarget.addEventListener('touchstart', (e) => {
+            if (!this.isMobile) return;
+            const touch = e.touches[0];
+            this._handleInput({ 
+                clientX: touch.clientX, 
+                clientY: touch.clientY, 
+                button: 0,
+                preventDefault: () => e.preventDefault()
+            });
+        }, { passive: false });
+
+        inputTarget.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        if (this.overlay) {
+            this.overlay.addEventListener('mousedown', () => this.start());
+            this.overlay.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.start();
+            });
+        }
+
+        const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+        fsEvents.forEach(evt => {
+            document.addEventListener(evt, () => {
+                this.state.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            });
+        });
+
+        this._initBubbles();
+        requestAnimationFrame(() => this.drawStartScreen());
+    }
+
+    _initBubbles() {
+        this.bubbles = Array.from({ length: this.config.bubbleCount }, () => ({
+            x: Math.random() * this.canvas.width,
+            y: Math.random() * this.canvas.height,
+            size: Math.random() * 3 + 1,
+            speed: Math.random() * 1 + 1
+        }));
+    }
+
+    _getCanvasCoords(e) {
+        const rect = this.state.lastRect || this.canvas.getBoundingClientRect();
+        const canvasRatio = this.canvas.width / this.canvas.height;
+        const screenRatio = rect.width / rect.height;
+        let dw, dh, dx, dy;
+
+        if (screenRatio > canvasRatio) {
+            dh = rect.height;
+            dw = dh * canvasRatio;
+            dx = (rect.width - dw) / 2;
+            dy = 0;
+        } else {
+            dw = rect.width;
+            dh = dw / canvasRatio;
+            dx = 0;
+            dy = (rect.height - dh) / 2;
+        }
+
+        return {
+            x: Math.max(0, Math.min(this.canvas.width, (e.clientX - (rect.left + dx)) * (this.canvas.width / dw))),
+            y: Math.max(0, Math.min(this.canvas.height, (e.clientY - (rect.top + dy)) * (this.canvas.height / dh)))
+        };
+    }
+
+    _handleKeydown(e) {
+        const flapKeys = ['Space', 'ArrowUp', 'KeyW', 'KeyK'];
+        const bombKeys = ['ShiftLeft', 'ShiftRight', 'ArrowDown', 'KeyS', 'KeyJ'];
+        if (flapKeys.includes(e.code)) {
+            e.preventDefault();
+            if (!this.state.gameRunning) this.start();
+            else this.flap();
+        } else if (bombKeys.includes(e.code)) {
+            e.preventDefault();
+            if (!this.state.gameRunning) this.start();
+            else this.dropBomb();
+        } else if (e.code === 'KeyF') {
+            this.toggleFullscreen();
+        }
+    }
+
+    _handleInput(e) {
+        const { x, y } = this._getCanvasCoords(e);
+        
+        // 1. HUD Checks
+        const fs = this.ui.fullscreenBtn;
+        if (Math.hypot(x - fs.x, y - fs.y) < fs.radius + fs.buffer) {
+            this.toggleFullscreen();
+            return;
+        }
+        if (x > this.ui.muteBtn.x - this.ui.muteBtn.buffer && y < 120) {
+            this.toggleMute();
+            return;
+        }
+        const b = this.ui.bombBtn;
+        if (x >= b.x - b.buffer && x <= b.x + b.w + b.buffer &&
+            y >= b.y - b.buffer && y <= b.y + b.h + b.buffer) {
+            if (this.state.gameRunning) this.dropBomb();
+            else this.start();
+            return;
+        }
+
+        // 2. Gameplay Actions (Atomic)
+        if (!this.state.gameRunning) {
+            this.start();
+        } else {
+            if (e.button === 2) this.dropBomb();
+            if (e.button === 0) this.flap();
+            if (e.preventDefault) e.preventDefault();
         }
     }
 
@@ -315,7 +414,8 @@ class AdBird {
     }
 
     _spawnPipe() {
-        const h = Math.floor(Math.random() * (this.canvas.height - this.config.pipeGap - 150 - 60)) + 60;
+        const minPipeHeight = 140;
+        const h = Math.floor(Math.random() * (this.canvas.height - this.config.pipeGap - (minPipeHeight * 2))) + minPipeHeight;
         this.pipes.push({
             x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: this.config.pipeGap,
             ad: this.config.ads[Math.floor(Math.random() * this.config.ads.length)],
@@ -367,7 +467,7 @@ class AdBird {
         });
         this.floatingTexts.push({
             x: bx, y: by, text: this.config.hitMessages[Math.floor(Math.random() * this.config.hitMessages.length)],
-            alpha: 1, velocity: -1.5, scale: 1, color: this.config.msgColors[Math.floor(Math.random() * this.config.hitMessages.length)]
+            alpha: 1, velocity: -1.5, scale: 1, color: this.config.msgColors[Math.floor(Math.random() * this.config.msgColors.length)]
         });
         this.playSound('splat');
     }
@@ -445,11 +545,26 @@ class AdBird {
             });
 
             this.ctx.save();
-            this.ctx.translate(p.x + p.w/2, p.y + p.gap + (this.canvas.height - (p.y + p.gap)) / 2);
-            this.ctx.rotate(-Math.PI / 2); this.ctx.fillStyle = "#fff";
-            this.ctx.font = "bold 13px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
+            const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
+            this.ctx.translate(p.x + p.w/2, startY === 0 ? p.y / 2 : p.y + p.gap + pipeHeight / 2);
+            this.ctx.rotate(-Math.PI / 2);
+            
+            // Auto-scale font to fit pipe height
+            let fontSize = 18;
+            this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
+            const textWidth = this.ctx.measureText(p.ad.text).width;
+            const maxTextWidth = pipeHeight - 30; // 15px padding each side
+            
+            if (textWidth > maxTextWidth) {
+                fontSize = Math.max(10, Math.floor(fontSize * (maxTextWidth / textWidth)));
+                this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
+            }
+
+            this.ctx.fillStyle = "#fff";
+            this.ctx.textAlign = "center";
             this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
-            this.ctx.fillText(p.ad.text, 0, 0); this.ctx.restore();
+            this.ctx.fillText(p.ad.text, 0, 0); 
+            this.ctx.restore();
         });
     }
 
@@ -467,7 +582,7 @@ class AdBird {
         this.ctx.textAlign = "center";
         this.floatingTexts.forEach(t => {
             this.ctx.save(); this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale);
-            this.ctx.fillStyle = t.color; this.ctx.font = "bold 22px 'Outfit', sans-serif";
+            this.ctx.fillStyle = t.color; this.ctx.font = "bold 26px 'Outfit', sans-serif";
             this.ctx.shadowBlur = 15; this.ctx.shadowColor = t.color;
             this.ctx.fillText(t.text, 0, 0); this.ctx.restore();
         });
@@ -485,7 +600,7 @@ class AdBird {
     _renderHUD() {
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center";
         this.ctx.font = "bold 48px 'Outfit', sans-serif"; this.ctx.fillText(this.state.score, this.ui.scoreCenter, 65);
-        this.ctx.font = "bold 14px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        this.ctx.font = "bold 16px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText(`MARKETING IMPACT: ${this.state.directHits}`, this.ui.scoreCenter, 90);
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
@@ -501,7 +616,7 @@ class AdBird {
         this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4";
         this.ctx.roundRect(this.ui.bombBtn.x, this.ui.bombBtn.y, this.ui.bombBtn.w, this.ui.bombBtn.h, this.ui.bombBtn.radius); this.ctx.fill();
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center";
-        this.ctx.font = "bold 18px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0;
+        this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0;
         this.ctx.fillText("BOMB", this.ui.bombBtn.x + this.ui.bombBtn.w/2, this.ui.bombBtn.y + (this.isMobile ? 42 : 36)); 
         if (!this.isMobile) {
             this.ctx.font = "bold 9px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
