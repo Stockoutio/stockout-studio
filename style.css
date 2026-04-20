@@ -41,17 +41,14 @@ body {
 }
 
 /* --- Navigation --- */
-/* --- Navigation --- */
 nav {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    z-index: 2000;
+    z-index: 5000; /* Highest priority */
     padding: 1.2rem 0;
-    background: rgba(10, 10, 12, 0.95);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
+    background: rgba(10, 10, 12, 0.98);
     border-bottom: 1px solid var(--glass-border);
 }
 
@@ -62,6 +59,7 @@ nav {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 2rem;
+    position: relative;
 }
 
 .logo {
@@ -72,11 +70,12 @@ nav {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     cursor: pointer;
+    min-width: 120px;
 }
 
 .nav-links {
     display: flex;
-    gap: 2.5rem;
+    gap: 2rem;
 }
 
 .nav-item {
@@ -97,7 +96,7 @@ nav {
     display: none;
 }
 
-/* --- Mobile Nav (Isolated) --- */
+/* --- Mobile Specifics --- */
 @media (max-width: 768px) {
     .nav-content { padding: 0 5%; }
     
@@ -106,17 +105,16 @@ nav {
         flex-direction: column;
         gap: 6px;
         cursor: pointer;
-        z-index: 3000;
+        z-index: 6000;
         padding: 5px;
     }
 
     .mobile-menu-toggle span {
         display: block;
-        width: 28px;
+        width: 25px;
         height: 3px;
         background: #fff;
         border-radius: 2px;
-        transition: 0.3s;
     }
 
     .nav-links {
@@ -130,15 +128,14 @@ nav {
         justify-content: center;
         align-items: center;
         gap: 2rem;
-        transform: translateX(100%); /* Guaranteed off-screen */
-        transition: transform 0.4s cubic-bezier(0.77, 0.2, 0.05, 1.0);
+        transform: translateX(101%); /* Force fully off-screen */
+        transition: transform 0.3s ease;
         border-left: 1px solid var(--glass-border);
-        box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-        z-index: 2500;
+        z-index: 5500;
     }
 
     .nav-links.active {
-        transform: translateX(0); /* Slide in */
+        transform: translateX(0);
     }
 
     .nav-item {
