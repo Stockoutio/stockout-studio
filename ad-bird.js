@@ -10,6 +10,7 @@ let pipes = [];
 let frameCount = 0;
 let score = 0;
 let gameRunning = false;
+let nextPipeFrame = 40;
 
 const ads = [
     { text: "YOUR AD HERE", color: "#8b5cf6" },
@@ -23,7 +24,7 @@ function initGame() {
     pipes = [];
     score = 0;
     frameCount = 0;
-    nextPipeFrame = 40; // First pipe appears much faster
+    nextPipeFrame = 40;
     gameRunning = true;
     
     // Safety check for music element
@@ -37,8 +38,6 @@ function initGame() {
     
     requestAnimationFrame(update);
 }
-
-let nextPipeFrame = 100;
 
 function update() {
     if (!gameRunning) return;
@@ -65,8 +64,8 @@ function update() {
 
     // Pipe Logic
     if (frameCount >= nextPipeFrame) {
-        let gap = 200; // Even wider gap for ultra-forgiving vertical play
-        let minPipeHeight = 60; // Minimum height for ads
+        let gap = 200; 
+        let minPipeHeight = 60;
         let pipeHeight = Math.floor(Math.random() * (canvas.height - gap - (minPipeHeight * 2))) + minPipeHeight;
         
         pipes.push({ 
@@ -77,7 +76,6 @@ function update() {
             ad: ads[Math.floor(Math.random() * ads.length)] 
         });
         
-        // Closer horizontal spacing (60 to 90 frames)
         nextPipeFrame = frameCount + Math.floor(Math.random() * 30) + 60;
     }
 
@@ -97,15 +95,11 @@ function update() {
 
         // Smart Ad Placement
         let adY;
-        let adTextPipeHeight;
-        
         if (pipes[i].y < 100) {
-            // Top pipe too small, use bottom pipe
             let bottomPipeTop = pipes[i].y + pipes[i].gap;
             let bottomPipeHeight = canvas.height - bottomPipeTop;
             adY = bottomPipeTop + (bottomPipeHeight / 2);
         } else {
-            // Use top pipe
             adY = pipes[i].y / 2;
         }
 
@@ -137,6 +131,11 @@ function update() {
     ctx.textAlign = "left";
     ctx.fillText(score, 20, 40);
 
+    // Mute Toggle Icon (Canvas)
+    ctx.font = "20px serif";
+    ctx.textAlign = "right";
+    ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 40);
+
     if (bird.y + bird.height > canvas.height || bird.y < 0) {
         gameOver();
     }
@@ -147,12 +146,8 @@ function update() {
 
 function gameOver() {
     gameRunning = false;
-    pipes = []; // Pipes disappear instantly on hit
-    
-    // Stop Music
-    if (music) {
-        music.pause();
-    }
+    pipes = [];
+    if (window.music) window.music.pause();
 
     ctx.fillStyle = "rgba(0,0,0,0.85)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -165,9 +160,26 @@ function gameOver() {
     ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.font = "14px 'Outfit', sans-serif";
     ctx.fillText("Click to try again", canvas.width / 2, canvas.height / 2 + 50);
+    
+    // Mute Toggle Icon on Game Over Screen
+    ctx.font = "20px serif";
+    ctx.textAlign = "right";
+    ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 40);
 }
 
-canvas.addEventListener('mousedown', () => {
+canvas.addEventListener('mousedown', (e) => {
+    // Check if clicked the mute icon (Top right area)
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    if (x > canvas.width - 60 && y < 60) {
+        window.isPlaying = !window.isPlaying;
+        if (!window.isPlaying && window.music) window.music.pause();
+        if (window.isPlaying && gameRunning && window.music) window.music.play();
+        return; // Don't flap if muting
+    }
+
     if (!gameRunning) {
         initGame();
     } else {
@@ -181,4 +193,9 @@ birdImg.onload = () => {
     ctx.textAlign = "center";
     ctx.font = "bold 16px 'Outfit', sans-serif";
     ctx.fillText("CLICK TO START FLAPPING", canvas.width / 2, canvas.height / 2);
+    
+    // Mute Toggle Icon on Start Screen
+    ctx.font = "20px serif";
+    ctx.textAlign = "right";
+    ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 40);
 };
