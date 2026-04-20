@@ -190,7 +190,7 @@ class AdBird {
         const btnW = 110; const btnH = 70; const btnX = 15; const btnY = this.canvas.height - 85;
         this.ctx.save();
         this.ctx.beginPath(); this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)";
-        this.ctx.shadowBlur = this.state.bombTimer === 0 ? 15 : 0; this.ctx.shadowColor = "#06b6d4";
+        this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4";
         this.ctx.roundRect(btnX, btnY, btnW, btnH, 12); this.ctx.fill();
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 18px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0;
         this.ctx.fillText("BOMB", btnX + btnW/2, btnY + (this.isMobile ? 42 : 36)); 
