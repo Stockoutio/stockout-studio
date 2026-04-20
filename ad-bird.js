@@ -15,7 +15,7 @@ class AdBird {
         // Configurable Settings
         this.config = {
             gravity: options.gravity || 0.5,
-            lift: options.lift || -8,
+            lift: options.lift || -7,
             pipeWidth: options.pipeWidth || 80,
             pipeGap: options.pipeGap || 200,
             pipeSpeed: options.pipeSpeed || 2.2,
@@ -46,7 +46,7 @@ class AdBird {
         };
 
         // Game Objects
-        this.player = { x: 300, y: 150, w: 80, h: 80, velocity: 0 };
+        this.player = { x: 300, y: 150, w: 70, h: 70, velocity: 0 };
         this.pipes = [];
         this.bombs = [];
         this.bubbles = [];
@@ -387,7 +387,7 @@ class AdBird {
         // Player
         ctx.save();
         ctx.translate(player.x + player.w/2, player.y + player.h/2);
-        ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, player.velocity * 0.1)));
+        ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, player.velocity * 0.05)));
         ctx.scale(-1, 1);
         ctx.drawImage(assets.player, -player.w/2, -player.h/2, player.w, player.h);
         ctx.restore();
