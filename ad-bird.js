@@ -49,7 +49,10 @@ class AdBird {
             screenShake: 0
         };
 
-        this.player = { x: 250, y: 150, w: 70, h: 70, velocity: 0 };
+        this.player = { 
+            x: 250, y: 150, w: 70, h: 70, velocity: 0, 
+            flipAngle: 0, isFlipping: false, flipSpeed: 0.2 
+        };
         this.pipes = [];
         this.bombs = [];
         this.bubbles = [];
@@ -130,8 +133,7 @@ class AdBird {
         Object.assign(this.state, {
             gameRunning: true, score: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0
         });
-        this.player.y = 150;
-        this.player.velocity = 0;
+        Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = [];
         this.bombs = [];
         this.floatingTexts = [];
@@ -174,7 +176,6 @@ class AdBird {
         const now = this.audioCtx.currentTime;
         
         if (type === 'splat') {
-            // Victorious Synth Sequence
             const freqs = [300, 450, 600];
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freqs[0], now);
@@ -208,6 +209,15 @@ class AdBird {
         this.state.bgX = (this.state.bgX - this.config.bgSpeed) % this.canvas.width;
         this.player.velocity += this.config.gravity;
         this.player.y += this.player.velocity;
+
+        // Flip Update
+        if (this.player.isFlipping) {
+            this.player.flipAngle += this.player.flipDirection * this.player.flipSpeed;
+            if (Math.abs(this.player.flipAngle) >= Math.PI * 2) {
+                this.player.flipAngle = 0;
+                this.player.isFlipping = false;
+            }
+        }
 
         if (this.state.screenShake > 0) this.state.screenShake *= 0.9;
 
@@ -260,6 +270,13 @@ class AdBird {
 
     _createSplat(p, bx, by) {
         this.state.screenShake = 10;
+        
+        // Trigger Bird Flip
+        this.player.isFlipping = true;
+        this.player.flipDirection = Math.random() > 0.5 ? 1 : -1;
+        this.player.flipAngle = 0;
+        this.player.flipSpeed = 0.25;
+
         const dripCount = 2 + Math.floor(Math.random() * 2);
         const drips = Array.from({ length: dripCount }, () => ({
             xOff: (Math.random() - 0.5) * 20, len: 0, maxLen: 40 + Math.random() * 60,
@@ -298,7 +315,6 @@ class AdBird {
             const sy = (Math.random() - 0.5) * this.state.screenShake;
             this.ctx.translate(sx, sy);
         }
-
         this.ctx.clearRect(-10, -10, this.canvas.width + 20, this.canvas.height + 20);
         this._renderBackground(); this._renderBubbles(); this._renderBombs(); this._renderPipes();
         this._renderFloatingTexts(); this._renderPlayer(); this._renderHUD(); this._renderFlash();
@@ -351,24 +367,22 @@ class AdBird {
     _renderFloatingTexts() {
         this.ctx.textAlign = "center";
         this.floatingTexts.forEach(t => {
-            this.ctx.save();
-            this.ctx.globalAlpha = t.alpha;
+            this.ctx.save(); this.ctx.globalAlpha = t.alpha;
             const shake = (Math.random() - 0.5) * 4;
-            this.ctx.translate(t.x + shake, t.y + shake);
-            this.ctx.scale(t.scale, t.scale);
-            this.ctx.fillStyle = t.color;
-            this.ctx.font = "bold 22px 'Outfit', sans-serif";
-            this.ctx.shadowBlur = 15;
-            this.ctx.shadowColor = t.color;
-            this.ctx.fillText(t.text, 0, 0);
-            this.ctx.restore();
+            this.ctx.translate(t.x + shake, t.y + shake); this.ctx.scale(t.scale, t.scale);
+            this.ctx.fillStyle = t.color; this.ctx.font = "bold 22px 'Outfit', sans-serif";
+            this.ctx.shadowBlur = 15; this.ctx.shadowColor = t.color; this.ctx.fillText(t.text, 0, 0); this.ctx.restore();
         });
     }
 
     _renderPlayer() {
         this.ctx.save();
         this.ctx.translate(this.player.x + this.player.w/2, this.player.y + this.player.h/2);
-        this.ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.player.velocity * 0.05)));
+        
+        // Tilt + Flip Rotation
+        const tilt = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.player.velocity * 0.05));
+        this.ctx.rotate(tilt + this.player.flipAngle);
+        
         this.ctx.scale(-1, 1); this.ctx.drawImage(this.assets.player, -this.player.w/2, -this.player.h/2, this.player.w, this.player.h);
         this.ctx.restore();
     }
