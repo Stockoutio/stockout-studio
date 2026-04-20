@@ -17,7 +17,7 @@ class AdBird {
             gravity: options.gravity || 0.5,
             lift: options.lift || -7,
             pipeWidth: options.pipeWidth || 80,
-            pipeGap: options.pipeGap || 200,
+            pipeGap: options.pipeGap || 230,
             pipeSpeed: options.pipeSpeed || 2.2,
             bgSpeed: options.bgSpeed || 0.5,
             bubbleCount: options.bubbleCount || 20,
@@ -46,7 +46,7 @@ class AdBird {
         };
 
         // Game Objects
-        this.player = { x: 300, y: 150, w: 70, h: 70, velocity: 0 };
+        this.player = { x: 250, y: 150, w: 70, h: 70, velocity: 0 };
         this.pipes = [];
         this.bombs = [];
         this.bubbles = [];
@@ -159,7 +159,7 @@ class AdBird {
         this.bombs.push({
             x: this.player.x + this.player.w / 2,
             y: this.player.y + this.player.h - 10,
-            w: 10, h: 15, speed: 8
+            w: 15, h: 20, speed: 8
         });
     }
 
@@ -268,8 +268,8 @@ class AdBird {
                     const drips = Array.from({ length: dripCount }, () => ({
                         xOff: (Math.random() - 0.5) * 20,
                         len: 0,
-                        maxLen: 20 + Math.random() * 40,
-                        speed: 0.5 + Math.random() * 0.5,
+                        maxLen: 40 + Math.random() * 60,
+                        speed: 1.0 + Math.random() * 1.5,
                         w: 3 + Math.random() * 4
                     }));
 
@@ -394,9 +394,12 @@ class AdBird {
 
         // UI
         ctx.fillStyle = "#fff";
-        ctx.font = "bold 28px 'Outfit', sans-serif";
-        ctx.fillText(state.score, 25, 45);
+        ctx.font = "bold 48px 'Outfit', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(state.score, canvas.width / 2, 60);
+        
         ctx.font = "22px serif";
+        ctx.textAlign = "right";
         ctx.fillText(state.isMuted ? "🔇" : "🔊", canvas.width - 20, 45);
 
         if (state.flashOpacity > 0) {
