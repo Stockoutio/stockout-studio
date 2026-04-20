@@ -3,6 +3,8 @@
  * --------------------------------------
  * A high-performance, modular arcade engine designed for 
  * dynamic billboard advertising and "Marketing Impact" gameplay.
+ * 
+ * V1.4 - Structural Sanitization & Optimization
  */
 
 class AdBird {
@@ -46,11 +48,11 @@ class AdBird {
             msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899"]
         };
 
-        // HUD Geometry (Modular UI)
+        // HUD Geometry & Collision Zones
         this.ui = {
-            fullscreenBtn: { x: this.canvas.width - 35, y: this.canvas.height - 35, radius: 30 },
-            bombBtn: { x: 15, y: this.canvas.height - 85, w: 110, h: 70, radius: 12 },
-            muteBtn: { x: this.canvas.width - 20, y: 50 },
+            fullscreenBtn: { x: this.canvas.width - 35, y: this.canvas.height - 35, radius: 30, buffer: 25 },
+            bombBtn: { x: 15, y: this.canvas.height - 85, w: 110, h: 70, radius: 12, buffer: 20 },
+            muteBtn: { x: this.canvas.width - 20, y: 50, buffer: 60 },
             scoreCenter: this.canvas.width / 2
         };
 
@@ -114,7 +116,7 @@ class AdBird {
     }
 
     _init() {
-        // Asset Management
+        // 1. Asset Loading Lifecycle
         this.assets.player.src = this.config.playerImg;
         this.assets.player.onload = () => this.state.assetsLoaded++;
 
@@ -128,22 +130,18 @@ class AdBird {
             this.assets.worlds.push(img);
         });
 
-        // Event Registration
+        // 2. Event Registration (Consolidated)
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         
-        const handlePtr = (e) => {
-            if (this.isMobile && this.overlay && this.overlay.classList.contains('active')) {
-                return;
-            }
+        const inputTarget = this.canvas.parentElement || this.canvas;
+        inputTarget.addEventListener('pointerdown', (e) => {
+            if (this.isMobile && this.overlay && this.overlay.classList.contains('active')) return;
             e.preventDefault();
             this._handleInput(e);
-        };
+        }, { passive: false });
         
-        const inputTarget = this.canvas.parentElement || this.canvas;
-        inputTarget.addEventListener('pointerdown', handlePtr, { passive: false });
         inputTarget.addEventListener('contextmenu', (e) => e.preventDefault());
         
-        // Mobile Ignition Layer
         if (this.overlay) {
             this.overlay.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
@@ -152,15 +150,11 @@ class AdBird {
             });
         }
 
+        // 3. System Listeners
         const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
         fsEvents.forEach(evt => {
             document.addEventListener(evt, () => {
-                this.state.isFullscreen = !!(
-                    document.fullscreenElement || 
-                    document.webkitFullscreenElement || 
-                    document.mozFullScreenElement || 
-                    document.msFullscreenElement
-                );
+                this.state.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
             });
         });
 
@@ -175,6 +169,34 @@ class AdBird {
             size: Math.random() * 3 + 1,
             speed: Math.random() * 1 + 1
         }));
+    }
+
+    /**
+     * Coordinate Projection Helper
+     * Projects screen pixels to canvas pixels, accounting for object-fit:contain letterboxing
+     */
+    _getCanvasCoords(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const canvasRatio = this.canvas.width / this.canvas.height;
+        const screenRatio = rect.width / rect.height;
+        let dw, dh, dx, dy;
+
+        if (screenRatio > canvasRatio) {
+            dh = rect.height;
+            dw = dh * canvasRatio;
+            dx = (rect.width - dw) / 2;
+            dy = 0;
+        } else {
+            dw = rect.width;
+            dh = dw / canvasRatio;
+            dx = 0;
+            dy = (rect.height - dh) / 2;
+        }
+
+        return {
+            x: Math.max(0, Math.min(this.canvas.width, (e.clientX - (rect.left + dx)) * (this.canvas.width / dw))),
+            y: Math.max(0, Math.min(this.canvas.height, (e.clientY - (rect.top + dy)) * (this.canvas.height / dh)))
+        };
     }
 
     _handleKeydown(e) {
@@ -195,58 +217,33 @@ class AdBird {
     }
 
     _handleInput(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        
-        // Account for 'object-fit: contain' letterboxing
-        const canvasRatio = this.canvas.width / this.canvas.height;
-        const screenRatio = rect.width / rect.height;
-        let dw, dh, dx, dy;
+        const { x, y } = this._getCanvasCoords(e);
 
-        if (screenRatio > canvasRatio) {
-            dh = rect.height;
-            dw = dh * canvasRatio;
-            dx = (rect.width - dw) / 2;
-            dy = 0;
-        } else {
-            dw = rect.width;
-            dh = dw / canvasRatio;
-            dx = 0;
-            dy = (rect.height - dh) / 2;
-        }
-
-        const x = Math.max(0, Math.min(this.canvas.width, (e.clientX - (rect.left + dx)) * (this.canvas.width / dw)));
-        const y = Math.max(0, Math.min(this.canvas.height, (e.clientY - (rect.top + dy)) * (this.canvas.height / dh)));
-
-        // 1. Fullscreen Detection (High Priority + Larger Radius)
-        const distToFS = Math.hypot(x - this.ui.fullscreenBtn.x, y - this.ui.fullscreenBtn.y);
-        if (distToFS < this.ui.fullscreenBtn.radius + 25) {
+        // 1. HUD Interactions (High Priority)
+        const fs = this.ui.fullscreenBtn;
+        if (Math.hypot(x - fs.x, y - fs.y) < fs.radius + fs.buffer) {
             this.toggleFullscreen();
             return;
         }
 
-        // 2. Mute Detection
-        if (x > this.ui.muteBtn.x - 60 && y < 120) {
+        if (x > this.ui.muteBtn.x - this.ui.muteBtn.buffer && y < 120) {
             this.toggleMute();
             return;
         }
 
-        // 3. Bomb Zone Detection (Expanded Hitbox)
         const b = this.ui.bombBtn;
-        if (x >= b.x - 20 && x <= b.x + b.w + 20 &&
-            y >= b.y - 20 && y <= b.y + b.h + 20) {
-            if (this.state.gameRunning) {
-                this.dropBomb();
-            } else {
-                this.start();
-            }
+        if (x >= b.x - b.buffer && x <= b.x + b.w + b.buffer &&
+            y >= b.y - b.buffer && y <= b.y + b.h + b.buffer) {
+            if (this.state.gameRunning) this.dropBomb();
+            else this.start();
             return;
         }
 
-        // Default Actions (Flap vs Bomb)
+        // 2. Gameplay Routing
         if (!this.state.gameRunning) {
             this.start();
         } else {
-            // Secondary click (Right Click) or Ctrl+Click triggers bomb
+            // Right-click or Ctrl+Click triggers bomb
             if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
                 this.dropBomb();
             } else {
@@ -268,7 +265,6 @@ class AdBird {
     }
 
     start() {
-        // Critical Readiness Check
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
 
         if (this.overlay) this.overlay.classList.remove('active');
@@ -334,11 +330,9 @@ class AdBird {
 
     playSound(type) {
         if (this.state.isMuted) return;
-        
         const now = this.audioCtx.currentTime;
         const osc = this.audioCtx.createOscillator();
         const gain = this.audioCtx.createGain();
-        
         osc.connect(gain);
         gain.connect(this.audioCtx.destination);
         
@@ -395,10 +389,7 @@ class AdBird {
         this._updateBubbles();
         this._updateFloatingTexts();
 
-        if (this.player.y + this.player.h > this.canvas.height || this.player.y < 0) {
-            this.gameOver();
-        }
-
+        if (this.player.y + this.player.h > this.canvas.height || this.player.y < 0) this.gameOver();
         this.state.frameCount++;
     }
 
@@ -420,16 +411,9 @@ class AdBird {
         for (let i = this.pipes.length - 1; i >= 0; i--) {
             const p = this.pipes[i];
             p.x -= this.config.pipeSpeed;
+            p.stains.forEach(s => s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; }));
 
-            p.stains.forEach(s => {
-                s.drips.forEach(d => {
-                    if (d.len < d.maxLen) d.len += d.speed;
-                });
-            });
-
-            if (this.player.x + 15 < p.x + p.w && 
-                this.player.x + this.player.w - 15 > p.x && 
-                (this.player.y + 15 < p.y || this.player.y + this.player.h - 15 > p.y + p.gap)) {
+            if (this.player.x + 15 < p.x + p.w && this.player.x + this.player.w - 15 > p.x && (this.player.y + 15 < p.y || this.player.y + this.player.h - 15 > p.y + p.gap)) {
                 this.gameOver();
             }
 
@@ -437,11 +421,8 @@ class AdBird {
                 p.scored = true;
                 this.state.score++;
                 this.playSound('score');
-                if (this.state.score % this.config.worldShiftInterval === 0) {
-                    this._shiftWorld();
-                }
+                if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld();
             }
-
             if (p.x + p.w < -100) this.pipes.splice(i, 1);
         }
     }
@@ -469,31 +450,17 @@ class AdBird {
         this.player.flipDirection = Math.random() > 0.5 ? 1 : -1;
         this.player.flipAngle = 0;
         
-        const drips = Array.from({ length: 3 }, () => ({
-            xOff: (Math.random() - 0.5) * 20,
-            len: 0,
-            maxLen: 40 + Math.random() * 60,
-            speed: 1.0 + Math.random() * 1.5,
-            w: 3 + Math.random() * 4
-        }));
-
         p.stains.push({
             relY: by,
             xOff: bx - p.x,
             size: Math.random() * 8 + 12,
-            drips: drips
+            drips: Array.from({ length: 3 }, () => ({ xOff: (Math.random() - 0.5) * 20, len: 0, maxLen: 40 + Math.random() * 60, speed: 1.0 + Math.random() * 1.5, w: 3 + Math.random() * 4 }))
         });
 
         this.floatingTexts.push({
-            x: bx,
-            y: by,
-            text: this.config.hitMessages[Math.floor(Math.random() * this.config.hitMessages.length)],
-            alpha: 1,
-            velocity: -1.5,
-            scale: 1,
-            color: this.config.msgColors[Math.floor(Math.random() * this.config.msgColors.length)]
+            x: bx, y: by, text: this.config.hitMessages[Math.floor(Math.random() * this.config.hitMessages.length)],
+            alpha: 1, velocity: -1.5, scale: 1, color: this.config.msgColors[Math.floor(Math.random() * this.config.msgColors.length)]
         });
-
         this.playSound('splat');
     }
 
@@ -525,9 +492,7 @@ class AdBird {
         if (this.state.screenShake > 0.5) {
             this.ctx.translate((Math.random() - 0.5) * this.state.screenShake, (Math.random() - 0.5) * this.state.screenShake);
         }
-        
         this.ctx.clearRect(-10, -10, this.canvas.width + 20, this.canvas.height + 20);
-        
         this._renderBackground();
         this._renderBubbles();
         this._renderBombs();
@@ -536,7 +501,6 @@ class AdBird {
         this._renderPlayer();
         this._renderHUD();
         this._renderFlash();
-        
         this.ctx.restore();
     }
 
@@ -572,26 +536,19 @@ class AdBird {
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
             this.ctx.strokeStyle = p.ad.color;
             this.ctx.lineWidth = 4;
-            
             this.ctx.fillRect(p.x, 0, p.w, p.y);
             this.ctx.strokeRect(p.x, -1, p.w, p.y + 1);
-            
             this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height);
             this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
 
-            this.ctx.save();
-            this.ctx.beginPath();
-            this.ctx.rect(p.x, 0, p.w, p.y);
-            this.ctx.clip();
-            this._drawStains(p);
-            this.ctx.restore();
-
-            this.ctx.save();
-            this.ctx.beginPath();
-            this.ctx.rect(p.x, p.y + p.gap, p.w, this.canvas.height);
-            this.ctx.clip();
-            this._drawStains(p);
-            this.ctx.restore();
+            [0, p.y + p.gap].forEach(startY => {
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.rect(p.x, startY, p.w, startY === 0 ? p.y : this.canvas.height);
+                this.ctx.clip();
+                this._drawStains(p);
+                this.ctx.restore();
+            });
 
             this.ctx.save();
             this.ctx.translate(p.x + p.w/2, p.y + p.gap + (this.canvas.height - (p.y + p.gap)) / 2);
@@ -612,7 +569,6 @@ class AdBird {
             this.ctx.beginPath();
             this.ctx.arc(p.x + s.xOff, s.relY, s.size, 0, Math.PI * 2);
             this.ctx.fill();
-            
             s.drips.forEach(d => {
                 this.ctx.beginPath();
                 this.ctx.roundRect(p.x + s.xOff + d.xOff, s.relY, d.w, d.len, d.w/2);
@@ -648,17 +604,13 @@ class AdBird {
     }
 
     _renderHUD() {
-        // Highscore Bar
         this.ctx.fillStyle = "#fff";
         this.ctx.textAlign = "center";
         this.ctx.font = "bold 48px 'Outfit', sans-serif";
         this.ctx.fillText(this.state.score, this.ui.scoreCenter, 65);
-        
         this.ctx.font = "bold 14px 'Outfit', sans-serif";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText(`MARKETING IMPACT: ${this.state.directHits}`, this.ui.scoreCenter, 90);
-
-        // Utility Buttons
         this.ctx.font = "24px serif";
         this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
@@ -674,7 +626,6 @@ class AdBird {
         this.ctx.fillText("⤢", this.ui.fullscreenBtn.x, this.ui.fullscreenBtn.y + 13);
         this.ctx.restore();
 
-        // Bomb System
         this.ctx.save();
         this.ctx.beginPath();
         this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)";
@@ -682,19 +633,16 @@ class AdBird {
         this.ctx.shadowColor = "#06b6d4";
         this.ctx.roundRect(this.ui.bombBtn.x, this.ui.bombBtn.y, this.ui.bombBtn.w, this.ui.bombBtn.h, this.ui.bombBtn.radius);
         this.ctx.fill();
-        
         this.ctx.fillStyle = "#fff";
         this.ctx.textAlign = "center";
         this.ctx.font = "bold 18px 'Outfit', sans-serif";
         this.ctx.shadowBlur = 0;
         this.ctx.fillText("BOMB", this.ui.bombBtn.x + this.ui.bombBtn.w/2, this.ui.bombBtn.y + (this.isMobile ? 42 : 36)); 
-        
         if (!this.isMobile) {
             this.ctx.font = "bold 9px 'Outfit', sans-serif";
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
             this.ctx.fillText("(SHIFT / R-CLICK)", this.ui.bombBtn.x + this.ui.bombBtn.w/2, this.ui.bombBtn.y + 54);
         } 
-        
         if (this.state.bombTimer > 0) {
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
             this.ctx.fillRect(this.ui.bombBtn.x, this.ui.bombBtn.y + this.ui.bombBtn.h - 4, this.ui.bombBtn.w * (this.state.bombTimer / this.config.bombCooldown), 4);
@@ -713,25 +661,15 @@ class AdBird {
     _loop() {
         this._update();
         this._draw();
-        if (this.state.gameRunning) {
-            requestAnimationFrame(() => this._loop());
-        }
+        if (this.state.gameRunning) requestAnimationFrame(() => this._loop());
     }
 
     gameOver() {
         this.state.gameRunning = false;
         this.playSound('crash');
         if (this.assets.music) this.assets.music.pause();
-        
-        if (this.state.score > this.state.highScore) {
-            this.state.highScore = this.state.score;
-            localStorage.setItem('adBirdHighScore', this.state.highScore);
-        }
-        if (this.state.directHits > this.state.highDirectHits) {
-            this.state.highDirectHits = this.state.directHits;
-            localStorage.setItem('adBirdHighDirectHits', this.state.highDirectHits);
-        }
-
+        if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; localStorage.setItem('adBirdHighScore', this.state.highScore); }
+        if (this.state.directHits > this.state.highDirectHits) { this.state.highDirectHits = this.state.directHits; localStorage.setItem('adBirdHighDirectHits', this.state.highDirectHits); }
         if (this.isMobile && this.overlay) this.overlay.classList.add('active');
 
         setTimeout(() => {
@@ -741,17 +679,14 @@ class AdBird {
             this.ctx.font = "bold 32px 'Outfit', sans-serif";
             this.ctx.textAlign = "center";
             this.ctx.fillText("AD-BIRD LOST AT SEA", this.canvas.width / 2, this.canvas.height / 2 - 60);
-            
             this.ctx.font = "bold 20px 'Outfit', sans-serif";
             this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2);
             this.ctx.fillStyle = "#fbbf24";
             this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2);
-            
             this.ctx.fillStyle = "#fff";
             this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35);
             this.ctx.fillStyle = "#06b6d4";
             this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35);
-            
             this.ctx.fillStyle = "rgba(255,255,255,0.5)";
             this.ctx.font = "14px 'Outfit', sans-serif";
             this.ctx.fillText(this.isMobile ? "TAP to fly again" : "SPACE or CLICK to fly again", this.canvas.width / 2, this.canvas.height / 2 + 85);
@@ -764,23 +699,19 @@ class AdBird {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         const bg = this.assets.worlds[0];
         if (bg && bg.complete) this.ctx.drawImage(bg, 0, 0, this.canvas.width, this.canvas.height);
-        
         this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
         this.ctx.fillRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135);
         this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135);
-        
         this.ctx.fillStyle = "#fff";
         this.ctx.textAlign = "center";
         this.ctx.font = "bold 24px 'Outfit', sans-serif";
         this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 10);
-        
         this.ctx.font = "15px 'Outfit', sans-serif";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText(this.isMobile ? "TAP ANYWHERE to flap" : "SPACE or CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 30);
         this.ctx.fillText(this.isMobile ? "BOMB BUTTON to drop ads" : "SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 55);
-        
         this.ctx.font = "24px serif";
         this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
