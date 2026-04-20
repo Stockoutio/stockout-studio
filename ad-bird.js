@@ -49,7 +49,7 @@ function playSound(type) {
         osc.type = 'square';
         osc.frequency.setValueAtTime(150, now);
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-        gain.gain.setValueAtTime(0.6, now); // Max punch
+        gain.gain.setValueAtTime(0.5, now); // Down by 0.1
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
@@ -57,7 +57,7 @@ function playSound(type) {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(800, now);
         osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
-        gain.gain.setValueAtTime(0.6, now); // Clear bell
+        gain.gain.setValueAtTime(0.5, now); // Down by 0.1
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
@@ -65,7 +65,7 @@ function playSound(type) {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(100, now);
         osc.frequency.linearRampToValueAtTime(20, now + 0.5);
-        gain.gain.setValueAtTime(0.8, now); // Deep crunch
+        gain.gain.setValueAtTime(0.7, now); // Down by 0.1
         gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
         osc.start(now);
         osc.stop(now + 0.5);
@@ -73,7 +73,7 @@ function playSound(type) {
         osc.type = 'square';
         osc.frequency.setValueAtTime(200, now);
         osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
-        gain.gain.setValueAtTime(0.7, now); // Strong shift
+        gain.gain.setValueAtTime(0.6, now); // Down by 0.1
         gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
         osc.start(now);
         osc.stop(now + 0.3);
@@ -111,7 +111,7 @@ function initGame() {
     if (!window.music) window.music = document.getElementById('bgMusic');
     if (window.music && window.isPlaying) {
         window.music.currentTime = 0;
-        window.music.volume = 0.7; // Even fuller music volume
+        window.music.volume = 0.8; // Up to 0.8
         window.music.play().catch(e => console.log("Audio waiting for interaction"));
     }
     
@@ -123,12 +123,12 @@ function update() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Draw Background (Far Layer - Slow)
+    // 1. Draw Background
     bgX -= 0.5;
     if (bgX <= -canvas.width) bgX = 0;
     
     let activeBG = worldImages[currentWorldIndex];
-    if (activeBG.complete && activeBG.naturalWidth !== 0) {
+    if (activeBG && activeBG.complete && activeBG.naturalWidth !== 0) {
         let roundedX = Math.floor(bgX);
         ctx.drawImage(activeBG, roundedX, 0, canvas.width + 2, canvas.height);
         ctx.drawImage(activeBG, roundedX + canvas.width, 0, canvas.width + 2, canvas.height);
@@ -147,7 +147,7 @@ function update() {
         ctx.fill();
     });
 
-    // 3. Bird Logic & Rendering
+    // 3. Bird Logic
     bird.velocity += bird.gravity;
     bird.y += bird.velocity;
 
@@ -180,7 +180,6 @@ function update() {
     for (let i = pipes.length - 1; i >= 0; i--) {
         pipes[i].x -= 2.2; 
 
-        // Draw Pipes
         ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
         ctx.strokeStyle = pipes[i].ad.color;
         ctx.lineWidth = 4;
@@ -189,7 +188,6 @@ function update() {
         ctx.fillRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height);
         ctx.strokeRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height + 10);
 
-        // Ad Placement
         let adY = pipes[i].y < 100 ? (pipes[i].y + pipes[i].gap + (canvas.height - (pipes[i].y + pipes[i].gap)) / 2) : pipes[i].y / 2;
         ctx.save();
         ctx.translate(pipes[i].x + pipes[i].width/2, adY);
@@ -202,14 +200,12 @@ function update() {
         ctx.fillText(pipes[i].ad.text, 0, 0);
         ctx.restore();
 
-        // Collision
         if (bird.x + 5 < pipes[i].x + pipes[i].width &&
             bird.x + bird.width - 5 > pipes[i].x &&
             (bird.y + 5 < pipes[i].y || bird.y + bird.height - 5 > pipes[i].y + pipes[i].gap)) {
             gameOver();
         }
 
-        // Scoring & World Shift
         if (!pipes[i].scored && pipes[i].x + pipes[i].width < bird.x) {
             pipes[i].scored = true;
             score++;
@@ -228,19 +224,16 @@ function update() {
         }
     }
 
-    // Score Counter
     ctx.fillStyle = "#fff";
     ctx.font = "bold 28px 'Outfit', sans-serif";
     ctx.textAlign = "left";
     ctx.shadowBlur = 0;
     ctx.fillText(score, 25, 45);
 
-    // Mute Toggle
     ctx.font = "22px serif";
     ctx.textAlign = "right";
     ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 45);
 
-    // Draw Flash Effect
     if (flashOpacity > 0) {
         ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -283,7 +276,7 @@ canvas.addEventListener('mousedown', (e) => {
         window.isPlaying = !window.isPlaying;
         if (!window.isPlaying && window.music) window.music.pause();
         if (window.isPlaying && gameRunning && window.music) {
-            window.music.volume = 0.7;
+            window.music.volume = 0.8;
             window.music.play();
         }
         return;
