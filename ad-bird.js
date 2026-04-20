@@ -86,11 +86,12 @@ class AdBird {
             this.assets.worlds.push(img);
         });
 
+        // Input Listeners
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         this.canvas.addEventListener('mousedown', (e) => this._handleMousedown(e));
+        this.canvas.addEventListener('touchstart', (e) => this._handleTouch(e), { passive: false });
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         
-        // Fullscreen tracking
         document.addEventListener('fullscreenchange', () => {
             this.state.isFullscreen = !!document.fullscreenElement;
         });
@@ -123,11 +124,23 @@ class AdBird {
         }
     }
 
+    _handleTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const x = (touch.clientX - rect.left) * (this.canvas.width / rect.width);
+        const y = (touch.clientY - rect.top) * (this.canvas.height / rect.height);
+        this._processInput(x, y, 0); // Simulate left click behavior for most area
+    }
+
     _handleMousedown(e) {
         const rect = this.canvas.getBoundingClientRect();
         const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
         const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+        this._processInput(x, y, e.button);
+    }
 
+    _processInput(x, y, button) {
         // Mute Button (Top Right)
         if (x > this.canvas.width - 60 && y < 60) {
             this.toggleMute();
@@ -140,11 +153,18 @@ class AdBird {
             return;
         }
 
+        // Bomb Button (Bottom Left) - Mobile specific area
+        if (x < 100 && y > this.canvas.height - 100) {
+            if (this.state.gameRunning) this.dropBomb();
+            else this.start();
+            return;
+        }
+
         if (!this.state.gameRunning) {
             this.start();
         } else {
-            if (e.button === 0) this.flap();
-            else if (e.button === 2) this.dropBomb();
+            if (button === 0) this.flap();
+            else if (button === 2) this.dropBomb();
         }
     }
 
@@ -425,6 +445,23 @@ class AdBird {
         this.ctx.font = "20px serif"; this.ctx.textAlign = "right";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
         this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
+
+        // BOMB BUTTON (Bottom Left) - Mobile optimized
+        this.ctx.textAlign = "left";
+        this.ctx.font = "bold 18px 'Outfit', sans-serif";
+        this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.2)" : "rgba(6, 182, 212, 0.6)";
+        this.ctx.beginPath();
+        this.ctx.roundRect(15, this.canvas.height - 75, 80, 60, 10);
+        this.ctx.fill();
+        this.ctx.fillStyle = "#fff";
+        this.ctx.fillText("BOMB", 28, this.canvas.height - 40);
+        
+        // Cooldown bar on bomb button
+        if (this.state.bombTimer > 0) {
+            const pct = this.state.bombTimer / this.config.bombCooldown;
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+            this.ctx.fillRect(15, this.canvas.height - 18, 80 * pct, 3);
+        }
     }
 
     _renderFlash() {
@@ -460,10 +497,9 @@ class AdBird {
             this.ctx.fillStyle = "#06b6d4";
             this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35);
             this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif";
-            this.ctx.fillText("SPACE or L-CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 85);
-            this.ctx.fillText("SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 110);
+            this.ctx.fillText("TAP to flap", this.canvas.width / 2, this.canvas.height / 2 + 85);
+            this.ctx.fillText("BOMB BUTTON to drop ads", this.canvas.width / 2, this.canvas.height / 2 + 110);
             
-            // Fullscreen Button on Game Over Screen
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
             this.ctx.font = "20px serif"; this.ctx.textAlign = "right";
             this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
@@ -478,8 +514,8 @@ class AdBird {
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 24px 'Outfit', sans-serif";
         this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 10);
         this.ctx.font = "15px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-        this.ctx.fillText("SPACE or L-CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 30);
-        this.ctx.fillText("SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 55);
+        this.ctx.fillText("TAP ANYWHERE to flap", this.canvas.width / 2, this.canvas.height / 2 + 30);
+        this.ctx.fillText("BOMB BUTTON to drop ads", this.canvas.width / 2, this.canvas.height / 2 + 55);
         this.ctx.font = "20px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 45);
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
         this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
