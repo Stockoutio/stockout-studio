@@ -34,7 +34,7 @@ class AdBird {
             highScore: parseInt(localStorage.getItem('adBirdHighScore')) || 0,
             highDirectHits: parseInt(localStorage.getItem('adBirdHighDirectHits')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0,
-            isMuted: false, bgX: 0, screenShake: 0, bombTimer: 0, isFullscreen: false, bombBtnFlash: 0
+            isMuted: false, bgX: 0, screenShake: 0, bombTimer: 0, isFullscreen: false
         };
 
         this.player = { x: 250, y: 150, w: 70, h: 70, velocity: 0, flipAngle: 0, isFlipping: false, flipSpeed: 0.25, flipDirection: 1 };
@@ -62,7 +62,7 @@ class AdBird {
             this.assets.worlds.push(img);
         });
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
-        const handlePtr = (e) => { if (this.overlay && this.overlay.classList.contains('active')) return; e.preventDefault(); this._handleInput(e); };
+        const handlePtr = (e) => { if (this.isMobile && this.overlay && this.overlay.classList.contains('active')) return; e.preventDefault(); this._handleInput(e); };
         this.canvas.addEventListener('pointerdown', handlePtr, { passive: false });
         if (this.overlay) { this.overlay.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.start(); }); }
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -88,7 +88,7 @@ class AdBird {
         if (x > this.canvas.width - 120 && y < 120) { this.toggleMute(); return; }
         if (x > this.canvas.width - 160 && y > this.canvas.height - 160) { this.toggleFullscreen(); return; }
         if (x < 180 && y > this.canvas.height - 180) {
-            if (this.state.gameRunning) { if (this.state.bombTimer === 0) { this.state.bombBtnFlash = 8; this.dropBomb(); } }
+            if (this.state.gameRunning) { if (this.state.bombTimer === 0) { this.dropBomb(); } }
             else { this.start(); }
             return;
         }
@@ -110,7 +110,7 @@ class AdBird {
     start() {
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0, bombBtnFlash: 0 });
+        Object.assign(this.state, { gameRunning: true, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0 });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.volume = 1.0; this.assets.music.play().catch(() => {}); }
@@ -139,7 +139,6 @@ class AdBird {
         this.state.bgX = (this.state.bgX - this.config.bgSpeed) % this.canvas.width;
         this.player.velocity += this.config.gravity; this.player.y += this.player.velocity;
         if (this.state.bombTimer > 0) this.state.bombTimer--;
-        if (this.state.bombBtnFlash > 0) this.state.bombBtnFlash--;
         if (this.state.screenShake > 0) this.state.screenShake *= 0.9;
         if (this.player.isFlipping) { this.player.flipAngle += this.player.flipDirection * this.player.flipSpeed; if (Math.abs(this.player.flipAngle) >= Math.PI * 2) { this.player.flipAngle = 0; this.player.isFlipping = false; } }
         if (this.state.frameCount >= this.state.nextPipeFrame) this._spawnPipe();
@@ -191,12 +190,7 @@ class AdBird {
         const btnW = 110; const btnH = 70; const btnX = 15; const btnY = this.canvas.height - 85;
         this.ctx.save();
         this.ctx.beginPath(); this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)";
-        if (this.state.bombBtnFlash > 0) {
-            this.ctx.shadowBlur = 25; this.ctx.shadowColor = "#fff";
-            this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        } else {
-            this.ctx.shadowBlur = this.state.bombTimer === 0 ? 15 : 0; this.ctx.shadowColor = "#06b6d4";
-        }
+        this.ctx.shadowBlur = this.state.bombTimer === 0 ? 15 : 0; this.ctx.shadowColor = "#06b6d4";
         this.ctx.roundRect(btnX, btnY, btnW, btnH, 12); this.ctx.fill();
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 18px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0;
         this.ctx.fillText("BOMB", btnX + btnW/2, btnY + (this.isMobile ? 42 : 36)); 
@@ -211,12 +205,12 @@ class AdBird {
 
     gameOver() {
         this.state.gameRunning = false; this.playSound('crash'); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; localStorage.setItem('adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.highDirectHits = this.state.directHits; localStorage.setItem('adBirdHighDirectHits', this.state.highDirectHits); }
-        if (this.overlay) this.overlay.classList.add('active');
+        if (this.isMobile && this.overlay) this.overlay.classList.add('active');
         setTimeout(() => { this.ctx.fillStyle = "rgba(0,0,0,0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 32px 'Outfit', sans-serif"; this.ctx.textAlign = "center"; this.ctx.fillText("AD-BIRD LOST AT SEA", this.canvas.width / 2, this.canvas.height / 2 - 60); this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2); this.ctx.fillStyle = "#fbbf24"; this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2); this.ctx.fillStyle = "#fff"; this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "#06b6d4"; this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif"; this.ctx.fillText(this.isMobile ? "TAP to fly again" : "SPACE or CLICK to fly again", this.canvas.width / 2, this.canvas.height / 2 + 85); this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(this.canvas.width - 35, this.canvas.height - 35, 30, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 42px serif"; this.ctx.textAlign = "center"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 35, this.canvas.height - 22); this.ctx.restore(); }, 10);
     }
 
     drawStartScreen() {
-        if (this.overlay) this.overlay.classList.add('active');
+        if (this.isMobile && this.overlay) this.overlay.classList.add('active');
         this.ctx.fillStyle = "#050510"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); const bg = this.assets.worlds[0]; if (bg && bg.complete) this.ctx.drawImage(bg, 0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)"; this.ctx.fillRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)"; this.ctx.lineWidth = 1; this.ctx.strokeRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 24px 'Outfit', sans-serif"; this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 10); this.ctx.font = "15px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; this.ctx.fillText(this.isMobile ? "TAP ANYWHERE to flap" : "SPACE or CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 30); this.ctx.fillText(this.isMobile ? "BOMB BUTTON to drop ads" : "SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 55); this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 50); this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(this.canvas.width - 35, this.canvas.height - 35, 30, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 42px serif"; this.ctx.textAlign = "center"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 35, this.canvas.height - 22); this.ctx.restore();
     }
 }
