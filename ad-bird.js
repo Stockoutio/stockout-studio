@@ -1,7 +1,47 @@
 const canvas = document.getElementById('adBirdCanvas');
 const ctx = canvas.getContext('2d');
 
-// Load Google Noto Bird Asset
+// --- Audio Synth Engine ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+    if (!window.isPlaying) return;
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+
+    if (type === 'flap') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+    } else if (type === 'score') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+    } else if (type === 'crash') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.linearRampToValueAtTime(20, now + 0.5);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.5);
+    }
+}
+
+// --- Assets ---
 const birdImg = new Image();
 birdImg.src = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png';
 
@@ -19,6 +59,7 @@ const ads = [
 ];
 
 function initGame() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     bird.y = 150;
     bird.velocity = 0;
     pipes = [];
@@ -27,10 +68,7 @@ function initGame() {
     nextPipeFrame = 40;
     gameRunning = true;
     
-    // Safety check for music element
     if (!window.music) window.music = document.getElementById('bgMusic');
-    
-    // Start Music if not muted
     if (window.music && window.isPlaying) {
         window.music.currentTime = 0;
         window.music.play().catch(e => console.log("Audio waiting for interaction"));
@@ -50,15 +88,9 @@ function update() {
 
     ctx.save();
     ctx.translate(bird.x + bird.width/2, bird.y + bird.height/2);
-    
-    // Rotate bird based on velocity
     let rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, bird.velocity * 0.1));
     ctx.rotate(rotation);
-    
-    // Flip horizontally so he faces right
     ctx.scale(-1, 1);
-    
-    // Draw the Google Bird
     ctx.drawImage(birdImg, -bird.width/2, -bird.height/2, bird.width, bird.height);
     ctx.restore();
 
@@ -73,7 +105,8 @@ function update() {
             y: pipeHeight, 
             width: 80, 
             gap: gap, 
-            ad: ads[Math.floor(Math.random() * ads.length)] 
+            ad: ads[Math.floor(Math.random() * ads.length)],
+            scored: false
         });
         
         nextPipeFrame = frameCount + Math.floor(Math.random() * 30) + 60;
@@ -82,27 +115,17 @@ function update() {
     for (let i = pipes.length - 1; i >= 0; i--) {
         pipes[i].x -= 2.5;
 
-        // Draw Pipes (Billboards)
+        // Draw Pipes
         ctx.fillStyle = "#1a1a1e";
         ctx.strokeStyle = pipes[i].ad.color;
         ctx.lineWidth = 3;
-        
         ctx.fillRect(pipes[i].x, 0, pipes[i].width, pipes[i].y);
         ctx.strokeRect(pipes[i].x, 0, pipes[i].width, pipes[i].y);
-        
         ctx.fillRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height);
         ctx.strokeRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height);
 
-        // Smart Ad Placement
-        let adY;
-        if (pipes[i].y < 100) {
-            let bottomPipeTop = pipes[i].y + pipes[i].gap;
-            let bottomPipeHeight = canvas.height - bottomPipeTop;
-            adY = bottomPipeTop + (bottomPipeHeight / 2);
-        } else {
-            adY = pipes[i].y / 2;
-        }
-
+        // Ad Placement
+        let adY = pipes[i].y < 100 ? (pipes[i].y + pipes[i].gap + (canvas.height - (pipes[i].y + pipes[i].gap)) / 2) : pipes[i].y / 2;
         ctx.save();
         ctx.translate(pipes[i].x + pipes[i].width/2, adY);
         ctx.rotate(-Math.PI / 2);
@@ -119,19 +142,25 @@ function update() {
             gameOver();
         }
 
+        // Scoring
+        if (!pipes[i].scored && pipes[i].x + pipes[i].width < bird.x) {
+            pipes[i].scored = true;
+            score++;
+            playSound('score');
+        }
+
         if (pipes[i].x + pipes[i].width < 0) {
             pipes.splice(i, 1);
-            score++;
         }
     }
 
-    // Score Counter (HUD)
+    // Score Counter
     ctx.fillStyle = "#fff";
     ctx.font = "bold 24px 'Outfit', sans-serif";
     ctx.textAlign = "left";
     ctx.fillText(score, 20, 40);
 
-    // Mute Toggle Icon (Canvas)
+    // Mute Toggle
     ctx.font = "20px serif";
     ctx.textAlign = "right";
     ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 40);
@@ -145,6 +174,7 @@ function update() {
 }
 
 function gameOver() {
+    if (gameRunning) playSound('crash');
     gameRunning = false;
     pipes = [];
     if (window.music) window.music.pause();
@@ -160,15 +190,9 @@ function gameOver() {
     ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.font = "14px 'Outfit', sans-serif";
     ctx.fillText("Click to try again", canvas.width / 2, canvas.height / 2 + 50);
-    
-    // Mute Toggle Icon on Game Over Screen
-    ctx.font = "20px serif";
-    ctx.textAlign = "right";
-    ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 40);
 }
 
 canvas.addEventListener('mousedown', (e) => {
-    // Check if clicked the mute icon (Top right area)
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -177,25 +201,20 @@ canvas.addEventListener('mousedown', (e) => {
         window.isPlaying = !window.isPlaying;
         if (!window.isPlaying && window.music) window.music.pause();
         if (window.isPlaying && gameRunning && window.music) window.music.play();
-        return; // Don't flap if muting
+        return;
     }
 
     if (!gameRunning) {
         initGame();
     } else {
         bird.velocity = bird.lift;
+        playSound('flap');
     }
 });
 
-// Start screen
 birdImg.onload = () => {
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.font = "bold 16px 'Outfit', sans-serif";
     ctx.fillText("CLICK TO START FLAPPING", canvas.width / 2, canvas.height / 2);
-    
-    // Mute Toggle Icon on Start Screen
-    ctx.font = "20px serif";
-    ctx.textAlign = "right";
-    ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 40);
 };
