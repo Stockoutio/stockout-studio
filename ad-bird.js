@@ -8,14 +8,11 @@
 class AdBird {
     constructor(canvasId, options = {}) {
         this.canvas = document.getElementById(canvasId);
+        this.overlay = document.getElementById('gameOverlay');
         if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
         
         this.canvas.style.touchAction = 'none';
-        this.canvas.style.userSelect = 'none';
-        this.canvas.style.webkitUserSelect = 'none';
-        this.canvas.style.webkitTapHighlightColor = 'transparent';
-
         this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
         this.config = {
@@ -87,11 +84,24 @@ class AdBird {
 
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         
-        // Use PointerDown for universal interaction (Mouse + Touch)
-        this.canvas.addEventListener('pointerdown', (e) => {
+        // Unified Pointer Interaction
+        const handlePtr = (e) => {
+            // If the overlay is active, it handles the start
+            if (this.overlay && this.overlay.classList.contains('active')) return;
             e.preventDefault();
             this._handleInput(e);
-        }, { passive: false });
+        };
+
+        this.canvas.addEventListener('pointerdown', handlePtr, { passive: false });
+        
+        // Native Overlay Interaction (Start/Fly Again)
+        if (this.overlay) {
+            this.overlay.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.start();
+            });
+        }
 
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         
@@ -124,10 +134,10 @@ class AdBird {
         // 1. Mute Button
         if (x > this.canvas.width - 120 && y < 120) { this.toggleMute(); return; }
 
-        // 2. Fullscreen Button
+        // 2. Fullscreen Button (Giant Hitbox)
         if (x > this.canvas.width - 160 && y > this.canvas.height - 160) { this.toggleFullscreen(); return; }
 
-        // 3. Bomb Button
+        // 3. Bomb Button (Giant Hitbox)
         if (x < 180 && y > this.canvas.height - 180) {
             if (this.state.gameRunning) {
                 if (this.state.bombTimer === 0) { this.state.bombBtnFlash = 10; this.dropBomb(); }
@@ -135,27 +145,26 @@ class AdBird {
             return;
         }
 
-        // 4. Default Action
+        // 4. Default Interaction
         if (!this.state.gameRunning) { this.start(); } else {
             if (e.button === 2) this.dropBomb(); else this.flap();
         }
     }
 
     toggleFullscreen() {
-        const isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+        const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
         if (!isFS) {
             const container = this.canvas.parentElement;
-            if (container.requestFullscreen) container.requestFullscreen();
-            else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
-            else if (container.msRequestFullscreen) container.msRequestFullscreen();
+            const request = container.requestFullscreen || container.webkitRequestFullscreen || container.mozRequestFullScreen || container.msRequestFullscreen;
+            if (request) request.call(container);
         } else {
-            if (document.exitFullscreen) document.exitFullscreen();
-            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            else if (document.msExitFullscreen) document.msExitFullscreen();
+            const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+            if (exit) exit.call(document);
         }
     }
 
     start() {
+        if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
         Object.assign(this.state, { gameRunning: true, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0, bombBtnFlash: 0 });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
@@ -244,10 +253,12 @@ class AdBird {
 
     gameOver() {
         this.state.gameRunning = false; this.playSound('crash'); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; localStorage.setItem('adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.highDirectHits = this.state.directHits; localStorage.setItem('adBirdHighDirectHits', this.state.highDirectHits); }
+        if (this.overlay) this.overlay.classList.add('active');
         setTimeout(() => { this.ctx.fillStyle = "rgba(0,0,0,0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 32px 'Outfit', sans-serif"; this.ctx.textAlign = "center"; this.ctx.fillText("AD-BIRD LOST AT SEA", this.canvas.width / 2, this.canvas.height / 2 - 60); this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2); this.ctx.fillStyle = "#fbbf24"; this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2); this.ctx.fillStyle = "#fff"; this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "#06b6d4"; this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif"; this.ctx.fillText(this.isMobile ? "TAP to fly again" : "SPACE or CLICK to fly again", this.canvas.width / 2, this.canvas.height / 2 + 85); this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(this.canvas.width - 35, this.canvas.height - 35, 30, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 42px serif"; this.ctx.textAlign = "center"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 35, this.canvas.height - 22); this.ctx.restore(); }, 10);
     }
 
     drawStartScreen() {
+        if (this.overlay) this.overlay.classList.add('active');
         this.ctx.fillStyle = "#050510"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); const bg = this.assets.worlds[0]; if (bg && bg.complete) this.ctx.drawImage(bg, 0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)"; this.ctx.fillRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)"; this.ctx.lineWidth = 1; this.ctx.strokeRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 24px 'Outfit', sans-serif"; this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 10); this.ctx.font = "15px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; this.ctx.fillText(this.isMobile ? "TAP ANYWHERE to flap" : "SPACE or CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 30); this.ctx.fillText(this.isMobile ? "BOMB BUTTON to drop ads" : "SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 55); this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 50); this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(this.canvas.width - 35, this.canvas.height - 35, 30, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 42px serif"; this.ctx.textAlign = "center"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 35, this.canvas.height - 22); this.ctx.restore();
     }
 }
