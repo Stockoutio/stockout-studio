@@ -1,7 +1,7 @@
 /**
  * Ad-Bird: Stockout Studio Arcade Engine
  * --------------------------------------
- * V2.9 - Slim & Agile Pacing (Pass 12)
+ * V3.1 - Multi-Touch Input Hardening (Pass 15)
  */
 
 class AdBird {
@@ -23,14 +23,15 @@ class AdBird {
 
     _initSettings(options) {
         this.config = {
-            gravity: 0.5, lift: -8, pipeWidth: 110, // Slimmer pipes
-            pipeSpeed: 2.4, bgSpeed: 0.5,
+            gravity: 0.5, lift: -8, pipeWidth: 110, pipeSpeed: 2.4, bgSpeed: 0.5,
             minGap: 250, maxGap: 350,
             minPipeHeightBottom: 250, minPipeHeightTop: 30,
             bubbleCount: 20, worldShiftInterval: 10, bombCooldown: 20,
             playerImg: 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png',
             musicSrc: 'bg-music.mp3', worlds: ['world1.jpg', 'world2.jpg', 'world3.jpg'],
-            ads: options.ads || this._getDefaultAds(),
+            paidAds: options.paidAds || [{ text: "STOCKS UP 🚀", color: "#4ade80", isPaid: true }, { text: "BUY GRIDWING", color: "#8b5cf6", isPaid: true }],
+            stockAds: options.stockAds || this._getDefaultStockAds(),
+            maxStockConsecutive: 3,
             hitMessages: ["WASTED", "REKT", "STAINED", "SPLAT", "GET REKT", "BILLBOARDED", "SIGN SMASHED", "MESSY", "BULLSEYE", "AD-BLASTED", "INKED", "VANDALIZED", "SCORE!", "BIRDPOCALYPSE", "BEAK-TACULAR", "EGG-STERMINATION", "UN-BEAK-ABLE", "FLAPPING SPREE", "WING-SLAUGHTER", "FEATHER-KILL", "DOUBLE BILL", "TRIPLE TWEET", "OVER-FLAP", "BILL-IONAIRE"],
             msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899"],
             gameOverMessages: ["QUARTERLY LOSS", "BRAND DILUTION", "CPC TOO HIGH", "ROAS: ZERO", "CAMPAIGN KILLED", "CLIENT WALKED", "BUDGET BURNED", "IMPRESSIONS LOST", "REACH: DECEASED", "ENGAGEMENT: GRIM", "CTR: DROWNED", "METRICS MASSACRED", "LEAD NOT CONVERTED", "PIPELINE BROKEN", "PERFORMANCE REVIEW", "BIRD DOWN", "FEATHERS EVERYWHERE", "WINGS CLIPPED", "NESTED ETERNAL", "FLEW INTO SIGN", "POOR LIFE CHOICES", "CHICKEN CONFIRMED", "WORM FOOD", "THE SKY WON", "SKILL ISSUE", "GET GUD", "TRY HARDER", "L BOZO", "RATIO'D BY PIPE", "TOUCHED A PIPE", "THE PIPE REMEMBERS", "PIPE: 1, YOU: 0", "PIP INITIATED", "HR INVOLVED", "TERMINATED", "EXIT INTERVIEW", "LINKEDIN UPDATED", "OPEN TO WORK", "SEVERANCE PENDING", "PROJECT CANCELLED", "LIQUIDATED", "BANKRUPTCY", "MARGIN CALLED", "REKT", "STONKS DOWN", "PORTFOLIO: PIPE", "HODL'D TOO LONG", "WHY DID WE FLY", "BIRD WAS A LIE", "NOTHING MATTERS", "THE END", "CERTIFIED DEAD", "LOGGED OFF", "RETURN TO CAVE", "UNSUBSCRIBED FROM LIFE", "404 BIRD", "PRESS F", "GG NO RE", "MAYDAY", "SPLASH", "PIPE DOWN", "OVER-FLAP", "CROP DUSTED", "FLAP DENIED", "WING IT", "PLUMBER'S CRACK", "TALON-TED UNEMPLOYED"]
@@ -52,7 +53,9 @@ class AdBird {
             score: 0, directHits: 0, highScore: parseInt(localStorage.getItem('adBirdHighScore')) || 0,
             highDirectHits: parseInt(localStorage.getItem('adBirdHighDirectHits')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
-            bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, adBag: [], particles: [], deathMsg: ""
+            bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, 
+            paidBag: [], stockBag: [], stockInARow: 0,
+            particles: [], deathMsg: ""
         };
         this.player = { x: 250, y: 150, w: 100, h: 100, velocity: 0, flipAngle: 0, isFlipping: false, flipSpeed: 0.25, flipDirection: 1 };
     }
@@ -68,10 +71,29 @@ class AdBird {
         this.assets.player.src = this.config.playerImg;
         this.assets.player.onload = () => this.state.assetsLoaded++;
         this.config.worlds.forEach((p) => { const img = new Image(); img.src = p; img.onload = () => { this.state.assetsLoaded++; if (!this.state.gameRunning) this.drawStartScreen(); }; this.assets.worlds.push(img); });
+        
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         const it = this.canvas.parentElement || this.canvas;
+        
+        // Desktop Input
         it.addEventListener('mousedown', (e) => { if (!this.isMobile) this._handleInput(e); });
-        it.addEventListener('touchstart', (e) => { if (this.isMobile) { const t = e.touches[0]; this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => e.preventDefault() }); } }, { passive: false });
+        
+        // Multi-Touch Hardened Input
+        it.addEventListener('touchstart', (e) => {
+            if (this.isMobile) {
+                e.preventDefault(); // Immediate browser lock
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    this._handleInput({ 
+                        clientX: t.clientX, 
+                        clientY: t.clientY, 
+                        button: 0,
+                        preventDefault: () => {} 
+                    });
+                }
+            }
+        }, { passive: false });
+
         it.addEventListener('contextmenu', (e) => e.preventDefault());
         if (this.overlay) { this.overlay.addEventListener('mousedown', () => this.start()); this.overlay.addEventListener('touchstart', (e) => { e.preventDefault(); this.start(); }); }
         ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => document.addEventListener(evt, () => { this.state.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); }));
@@ -91,10 +113,23 @@ class AdBird {
         const r = this.state.lastRect || this.canvas.getBoundingClientRect(); const cr = this.canvas.width/this.canvas.height; const sr = r.width/r.height;
         let dw, dh, dx, dy; if (sr > cr) { dh = r.height; dw = dh*cr; dx = (r.width-dw)/2; dy = 0; } else { dw = r.width; dh = dw/cr; dx = 0; dy = (r.height-dh)/2; }
         const x = Math.max(0, Math.min(this.canvas.width, (e.clientX-(r.left+dx))*(this.canvas.width/dw))); const y = Math.max(0, Math.min(this.canvas.height, (e.clientY-(r.top+dy))*(this.canvas.height/dh)));
+        
         if (Math.hypot(x-this.ui.fullscreenBtn.x, y-this.ui.fullscreenBtn.y) < 45+25) { this.toggleFullscreen(); return; }
         if (x > this.canvas.width-80 && y < 120) { this.toggleMute(); return; }
-        const b = this.ui.bombBtn; if (x >= b.x-20 && x <= b.x+b.w+20 && y >= b.y-20 && y <= b.y+b.h+20) { if (this.state.gameRunning) this.dropBomb(); else this.start(); return; }
-        if (!this.state.gameRunning) this.start(); else { if (e.button===2) this.dropBomb(); if (e.button===0) this.flap(); if (e.preventDefault) e.preventDefault(); }
+        
+        const b = this.ui.bombBtn; 
+        if (x >= b.x-20 && x <= b.x+b.w+20 && y >= b.y-20 && y <= b.y+b.h+20) { 
+            if (this.state.gameRunning) this.dropBomb(); 
+            else this.start(); 
+            return; 
+        }
+
+        if (!this.state.gameRunning) this.start(); 
+        else { 
+            if (e.button === 2) this.dropBomb(); 
+            else if (e.button === 0) this.flap(); 
+            if (e.preventDefault) e.preventDefault(); 
+        }
     }
 
     /* --- CORE LOOP & PHYSICS --- */
@@ -103,7 +138,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0, particles: [] });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], stockInARow: 0, particles: [] });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
@@ -140,8 +175,6 @@ class AdBird {
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { const t = this.floatingTexts[i]; t.age++; if (t.age > 30) { t.vy -= 0.3; t.y += t.vy; t.alpha = Math.max(0, 1 - Math.pow((t.age - 30) / 40, 2)); } if (t.alpha <= 0 || t.age > 70) this.floatingTexts.splice(i, 1); }
     }
 
-    /* --- BALANCED SPAWNER --- */
-
     _spawnPipe() {
         const ad = this._nextAd();
         const gap = Math.floor(Math.random() * (this.config.maxGap - this.config.minGap)) + this.config.minGap;
@@ -149,12 +182,8 @@ class AdBird {
         const maxH_top = this.canvas.height - gap - this.config.minPipeHeightBottom;
         const h = Math.floor(Math.random() * (maxH_top - minH_top)) + minH_top;
         this.pipes.push({ x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: gap, ad: ad, scored: false, stains: [] });
-        
-        // Slightly decreased min horizontal distance
         this.state.nextPipeFrame = this.state.frameCount + Math.floor(Math.random() * 100) + 100;
     }
-
-    /* --- RENDERING --- */
 
     _draw() {
         this.ctx.save(); if (this.state.screenShake > 0.5) this.ctx.translate((Math.random()-0.5)*this.state.screenShake, (Math.random()-0.5)*this.state.screenShake);
@@ -188,9 +217,24 @@ class AdBird {
         if (this.state.bombTimer > 0) { this.ctx.fillStyle = "rgba(255, 255, 255, 0.3)"; this.ctx.fillRect(b.x, b.y + b.h - 4, b.w * (this.state.bombTimer / 20), 4); } this.ctx.restore();
     }
 
-    /* --- HELPERS --- */
+    _nextAd() {
+        if (this.state.paidBag.length === 0 && this.config.paidAds.length > 0) {
+            if (this.state.stockInARow >= this.config.maxStockConsecutive || this.state.score === 0) {
+                this.state.paidBag = [...this.config.paidAds].sort(() => Math.random() - 0.5);
+                this.state.stockInARow = 0;
+            }
+        }
+        if (this.state.paidBag.length > 0) {
+            this.state.stockInARow = 0;
+            return this.state.paidBag.pop();
+        }
+        if (this.state.stockBag.length === 0) {
+            this.state.stockBag = [...this.config.stockAds].sort(() => Math.random() - 0.5);
+        }
+        this.state.stockInARow++;
+        return this.state.stockBag.pop();
+    }
 
-    _nextAd() { if (this.state.adBag.length === 0) this.state.adBag = [...this.config.ads].sort(() => Math.random() - 0.5); return this.state.adBag.pop(); }
     _createSplat(p, bx, by) { this.state.screenShake = 10; this.state.directHits++; this.player.isFlipping = true; this.player.flipAngle = 0; for (let i=0; i<15; i++) this.state.particles.push({ x: bx, y: by, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10-2, color: p.ad.color, life: 1.0 }); p.stains.push({ relY: by, xOff: bx-p.x, size: Math.random()*8+12, drips: Array.from({length:3},()=>({xOff:(Math.random()-0.5)*20,len:0,maxLen:40+Math.random()*60,speed:1.0+Math.random()*1.5,w:3+Math.random()*4})) }); let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); this.floatingTexts.push({ x: bx, y: sy, age: 0, vy: 0, alpha: 1, scale: 1, text: this.config.hitMessages[Math.floor(Math.random()*this.config.hitMessages.length)], color: this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)] }); this.playSound('splat'); }
     playSound(type) { if (this.state.isMuted) return; const n = this.audioCtx.currentTime; if (type === 'splat') { const o = this.audioCtx.createOscillator(); const g = this.audioCtx.createGain(); o.connect(g); g.connect(this.audioCtx.destination); o.type = 'square'; o.frequency.setValueAtTime(400, n); o.frequency.exponentialRampToValueAtTime(800, n+0.1); g.gain.setValueAtTime(0.3, n); g.gain.exponentialRampToValueAtTime(0.01, n+0.15); o.start(n); o.stop(n+0.15); return; } if (type === 'death') { [392, 311, 261].forEach((f, i) => { const o = this.audioCtx.createOscillator(); const g = this.audioCtx.createGain(); o.connect(g); g.connect(this.audioCtx.destination); o.type = 'triangle'; const st = n + (i*0.15); o.frequency.setValueAtTime(f, st); o.frequency.exponentialRampToValueAtTime(f*0.8, st+0.4); g.gain.setValueAtTime(0.3, st); g.gain.exponentialRampToValueAtTime(0.01, st+0.4); o.start(st); o.stop(st+0.4); }); return; } const sounds = { flap: { type: 'square', freq: [150, 400], vol: 0.5, dur: 0.1 }, score: { type: 'sine', freq: [800, 1200], vol: 0.4, dur: 0.1 }, crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 }, shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 } }; const s = sounds[type]; const o = this.audioCtx.createOscillator(); const g = this.audioCtx.createGain(); o.connect(g); g.connect(this.audioCtx.destination); o.type = s.type; o.frequency.setValueAtTime(s.freq[0], n); o.frequency.exponentialRampToValueAtTime(s.freq[1], n+s.dur); g.gain.setValueAtTime(s.vol, n); g.gain.exponentialRampToValueAtTime(0.01, n+s.dur); o.start(n); o.stop(n+s.dur); }
     toggleMute() { this.state.isMuted = !this.state.isMuted; if (this.assets.music) { if (this.state.isMuted) this.assets.music.pause(); else if (this.state.gameRunning) this.assets.music.play(); } if (!this.state.gameRunning) this.drawStartScreen(); }
@@ -198,7 +242,7 @@ class AdBird {
     _shiftWorld() { this.state.currentWorld = (this.state.currentWorld + 1) % this.assets.worlds.length; this.state.flashOpacity = 1; this.playSound('shift'); }
     flap() { this.player.velocity = this.config.lift; this.playSound('flap'); }
     dropBomb() { if (this.state.bombTimer > 0) return; this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15, h: 20, speed: 8 }); this.state.bombTimer = 20; }
-    gameOver() { if (this.state.isGameOver) return; this.state.isGameOver = true; this.state.screenShake = 20; this.state.gameRunning = false; this.state.deathMsg = this.config.gameOverMessages[Math.floor(Math.random()*this.config.gameOverMessages.length)]; this.playSound('crash'); setTimeout(() => this.playSound('death'), 300); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; localStorage.setItem('adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.directHits = this.state.directHits; localStorage.setItem('adBirdHighDirectHits', this.state.directHits); } if (this.isMobile && this.overlay) this.overlay.classList.add('active'); }
+    gameOver() { if (this.state.isGameOver) return; this.state.isGameOver = true; this.state.screenShake = 20; this.state.gameRunning = false; this.state.deathMsg = this.config.gameOverMessages[Math.floor(Math.random()*this.config.gameOverMessages.length)]; this.playSound('crash'); setTimeout(() => this.playSound('death'), 300); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; localStorage.setItem('adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.directHits = this.state.directHits; localStorage.setItem('adBirdHighDirectHits', this.state.highDirectHits); } if (this.isMobile && this.overlay) this.overlay.classList.add('active'); }
     _renderWorld() { const bg = this.assets.worlds[this.state.currentWorld]; if (bg && bg.complete) { const rx = Math.floor(this.state.bgX); this.ctx.drawImage(bg, rx, 0, this.canvas.width+2, this.canvas.height); this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width+2, this.canvas.height); } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
     _renderBubbles() { this.ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; this.bubbles.forEach(b => { this.ctx.beginPath(); this.ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderBombs() { this.ctx.fillStyle = "#fff"; this.bombs.forEach(b => { this.ctx.beginPath(); this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2); this.ctx.fill(); }); }
@@ -229,7 +273,7 @@ class AdBird {
     _setupHiDPI() { const dpr = window.devicePixelRatio || 1; if (dpr > 1) { const lw = this.canvas.width; const lh = this.canvas.height; this.canvas.width = lw * dpr; this.canvas.height = lh * dpr; this.ctx.scale(dpr, dpr); Object.defineProperty(this.canvas, 'width', { get: () => lw, configurable: true }); Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true }); } this.canvas.style.touchAction = 'none'; this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
     _renderOverlay() { this._renderHUD(); if (this.state.isGameOver) this._renderGameOverScreen(); }
     _initBubbles() { this.bubbles = Array.from({ length: 20 }, () => ({ x: Math.random() * this.canvas.width, y: Math.random() * this.canvas.height, size: Math.random() * 3 + 1, speed: Math.random() * 0.5 + 0.2 })); }
-    _getDefaultAds() { return [{ text: "YOUR AD HERE", color: "#4ade80" }, { text: "BUY THIS PIPE", color: "#f59e0b" }, { text: "RENT ME $5", color: "#06b6d4" }, { text: "SPONSORED", color: "#a855f7" }, { text: "AD SLOT OPEN", color: "#4ade80" }, { text: "SEO LIVES HERE", color: "#94a3b8" }, { text: "CPC: $0.04", color: "#22c55e" }, { text: "IMPRESSIONS++", color: "#ec4899" }, { text: "SPOT VACANT", color: "#f8fafc" }, { text: "BIG PIPE CO", color: "#4ade80" }, { text: "PIPES.IO", color: "#06b6d4" }, { text: "FLAP & CO", color: "#f59e0b" }, { text: "PIPE DEPOT", color: "#a855f7" }, { text: "DUCTMART", color: "#4ade80" }, { text: "TUBE & SON", color: "#06b6d4" }, { text: "WE'RE HIRING", color: "#22c55e" }, { text: "PIPES AS A SERVICE", color: "#06b6d4" }, { text: "SERIES A PIPE", color: "#f59e0b" }, { text: "DISRUPT PIPES", color: "#a855f7" }, { text: "GO PUBLIC SOON", color: "#ec4899" }, { text: "PIPE TO THE MOON", color: "#4ade80" }, { text: "WEB3 PIPE", color: "#06b6d4" }, { text: "DON'T BOMB ME", color: "#f43f5e" }, { text: "PLEASE NO", color: "#f43f5e" }, { text: "AVOID THIS PIPE", color: "#f59e0b" }, { text: "NOT A BILLBOARD", color: "#94a3b8" }, { text: "DUCK!", color: "#f59e0b" }, { text: "INCOMING", color: "#f43f5e" }, { text: "OUCH", color: "#f43f5e" }, { text: "RIP THIS PIPE", color: "#94a3b8" }, { text: "I HAVE A FAMILY", color: "#ec4899" }, { text: "BUY BITCOIN", color: "#f59e0b" }, { text: "HODL", color: "#f59e0b" }, { text: "DIAMOND PIPES", color: "#06b6d4" }, { text: "PIPE ETF", color: "#4ade80" }, { text: "SHORT THE BIRD", color: "#f43f5e" }, { text: "LONG ON GUANO", color: "#22c55e" }, { text: "ROTH IRAPIPE", color: "#a855f7" }, { text: "PIPE DREAMS", color: "#06b6d4" }, { text: "PIPELINE FULL", color: "#a855f7" }, { text: "PIPE ME UP", color: "#4ade80" }, { text: "DOWN THE PIPE", color: "#f59e0b" }, { text: "PIPE IT UP", color: "#ec4899" }, { text: "HOT PIPE", color: "#f43f5e" }, { text: "DRAIN PIPE 9", color: "#06b6d4" }, { text: "CLOG FREE", color: "#22c55e" }, { text: "FLY AWAY BIRD", color: "#94a3b8" }, { text: "NEST ELSEWHERE", color: "#94a3b8" }, { text: "BIRD-PROOF", color: "#f43f5e" }, { text: "ANTI-BIRD", color: "#f43f5e" }, { text: "NO BIRDS ALLOWED", color: "#f43f5e" }, { text: "BEAK OFF", color: "#a855f7" }, { text: "BIRD REPELLENT", color: "#22c55e" }, { text: "TALON-TESTED", color: "#06b6d4" }, { text: "EGGS ON SALE", color: "#f59e0b" }, { text: "FREE WI-FI", color: "#4ade80" }, { text: "CALL YOUR MOM", color: "#ec4899" }, { text: "MISS YOU MOM", color: "#ec4899" }, { text: "HI MOM", color: "#ec4899" }, { text: "THIS IS FINE", color: "#f59e0b" }, { text: "LIVE LAUGH LOVE", color: "#ec4899" }, { text: "NAMASTE", color: "#06b6d4" }, { text: "TOUCH GRASS", color: "#22c55e" }, { text: "VISIT MY SITE", color: "#06b6d4" }, { text: "DM FOR RATES", color: "#a855f7" }, { text: "LINK IN BEAK", color: "#4ade80" }, { text: "1-800-PIPE", color: "#f59e0b" }, { text: "PIPE.LY/BUY", color: "#06b6d4" }, { text: "CLICK HERE", color: "#22c55e" }, { text: "SCAN QR CODE", color: "#a855f7" }, { text: "TAP TO CALL", color: "#4ade80" }, { text: "WHY AM I HERE", color: "#94a3b8" }, { text: "WHAT IS PIPE", color: "#94a3b8" }, { text: "AM I REAL", color: "#94a3b8" }, { text: "HELP", color: "#f43f5e" }, { text: "I SEE YOU", color: "#ec4899" }, { text: "GOODBYE WORLD", color: "#94a3b8" }, { text: "SEND HELP", color: "#f43f5e" }, { text: "THE END IS PIPE", color: "#a855f7" }]; }
+    _getDefaultStockAds() { return [{ text: "YOUR AD HERE", color: "#4ade80" }, { text: "BUY THIS PIPE", color: "#f59e0b" }, { text: "RENT ME $5", color: "#06b6d4" }, { text: "SPONSORED", color: "#a855f7" }, { text: "AD SLOT OPEN", color: "#4ade80" }, { text: "SEO LIVES HERE", color: "#94a3b8" }, { text: "CPC: $0.04", color: "#22c55e" }, { text: "IMPRESSIONS++", color: "#ec4899" }, { text: "SPOT VACANT", color: "#f8fafc" }, { text: "BIG PIPE CO", color: "#4ade80" }, { text: "PIPES.IO", color: "#06b6d4" }, { text: "FLAP & CO", color: "#f59e0b" }, { text: "PIPE DEPOT", color: "#a855f7" }, { text: "DUCTMART", color: "#4ade80" }, { text: "TUBE & SON", color: "#06b6d4" }, { text: "WE'RE HIRING", color: "#22c55e" }, { text: "PIPES AS A SERVICE", color: "#06b6d4" }, { text: "SERIES A PIPE", color: "#f59e0b" }, { text: "DISRUPT PIPES", color: "#a855f7" }, { text: "GO PUBLIC SOON", color: "#ec4899" }, { text: "PIPE TO THE MOON", color: "#4ade80" }, { text: "WEB3 PIPE", color: "#06b6d4" }, { text: "DON'T BOMB ME", color: "#f43f5e" }, { text: "PLEASE NO", color: "#f43f5e" }, { text: "AVOID THIS PIPE", color: "#f59e0b" }, { text: "NOT A BILLBOARD", color: "#94a3b8" }, { text: "DUCK!", color: "#f59e0b" }, { text: "INCOMING", color: "#f43f5e" }, { text: "OUCH", color: "#f43f5e" }, { text: "RIP THIS PIPE", color: "#94a3b8" }, { text: "I HAVE A FAMILY", color: "#ec4899" }, { text: "BUY BITCOIN", color: "#f59e0b" }, { text: "HODL", color: "#f59e0b" }, { text: "DIAMOND PIPES", color: "#06b6d4" }, { text: "PIPE ETF", color: "#4ade80" }, { text: "SHORT THE BIRD", color: "#f43f5e" }, { text: "LONG ON GUANO", color: "#22c55e" }, { text: "ROTH IRAPIPE", color: "#a855f7" }, { text: "PIPE DREAMS", color: "#06b6d4" }, { text: "PIPELINE FULL", color: "#a855f7" }, { text: "PIPE ME UP", color: "#4ade80" }, { text: "DOWN THE PIPE", color: "#f59e0b" }, { text: "PIPE IT UP", color: "#ec4899" }, { text: "HOT PIPE", color: "#f43f5e" }, { text: "DRAIN PIPE 9", color: "#06b6d4" }, { text: "CLOG FREE", color: "#22c55e" }, { text: "FLY AWAY BIRD", color: "#94a3b8" }, { text: "NEST ELSEWHERE", color: "#94a3b8" }, { text: "BIRD-PROOF", color: "#f43f5e" }, { text: "ANTI-BIRD", color: "#f43f5e" }, { text: "NO BIRDS ALLOWED", color: "#f43f5e" }, { text: "BEAK OFF", color: "#a855f7" }, { text: "BIRD REPELLENT", color: "#22c55e" }, { text: "TALON-TESTED", color: "#06b6d4" }, { text: "EGGS ON SALE", color: "#f59e0b" }, { text: "FREE WI-FI", color: "#4ade80" }, { text: "CALL YOUR MOM", color: "#ec4899" }, { text: "MISS YOU MOM", color: "#ec4899" }, { text: "HI MOM", color: "#ec4899" }, { text: "THIS IS FINE", color: "#f59e0b" }, { text: "LIVE LAUGH LOVE", color: "#ec4899" }, { text: "NAMASTE", color: "#06b6d4" }, { text: "TOUCH GRASS", color: "#22c55e" }, { text: "VISIT MY SITE", color: "#06b6d4" }, { text: "DM FOR RATES", color: "#a855f7" }, { text: "LINK IN BEAK", color: "#4ade80" }, { text: "1-800-PIPE", color: "#f59e0b" }, { text: "PIPE.LY/BUY", color: "#06b6d4" }, { text: "CLICK HERE", color: "#22c55e" }, { text: "SCAN QR CODE", color: "#a855f7" }, { text: "TAP TO CALL", color: "#4ade80" }, { text: "WHY AM I HERE", color: "#94a3b8" }, { text: "WHAT IS PIPE", color: "#94a3b8" }, { text: "AM I REAL", color: "#94a3b8" }, { text: "HELP", color: "#f43f5e" }, { text: "I SEE YOU", color: "#ec4899" }, { text: "GOODBYE WORLD", color: "#94a3b8" }, { text: "SEND HELP", color: "#f43f5e" }, { text: "THE END IS PIPE", color: "#a855f7" }]; }
 }
 
 // Global Init
