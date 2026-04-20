@@ -8,6 +8,22 @@ birdImg.src = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png
 const bgImg = new Image();
 bgImg.src = 'game-bg.jpg'; 
 
+// --- Parallax State ---
+let bgX = 0;
+let bubbles = [];
+
+function initBubbles() {
+    bubbles = [];
+    for (let i = 0; i < 20; i++) {
+        bubbles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 3 + 1,
+            speed: Math.random() * 1 + 1 // Moves faster than background
+        });
+    }
+}
+
 // --- Audio Synth Engine ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -54,9 +70,9 @@ let gameRunning = false;
 let nextPipeFrame = 40;
 
 const ads = [
-    { text: "YOUR AD HERE", color: "#4ade80" }, // Seafoam Green
-    { text: "BUY BITCOIN", color: "#22d3ee" }, // Cyan
-    { text: "FOLLOW ME", color: "#818cf8" }  // Indigo
+    { text: "YOUR AD HERE", color: "#4ade80" },
+    { text: "BUY BITCOIN", color: "#22d3ee" },
+    { text: "FOLLOW ME", color: "#818cf8" }
 ];
 
 function initGame() {
@@ -67,6 +83,8 @@ function initGame() {
     score = 0;
     frameCount = 0;
     nextPipeFrame = 40;
+    bgX = 0;
+    initBubbles();
     gameRunning = true;
     
     if (!window.music) window.music = document.getElementById('bgMusic');
@@ -83,14 +101,30 @@ function update() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Background (with fallback)
-    ctx.fillStyle = "#050510";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 1. Draw Background (Far Layer - Slow)
+    bgX -= 0.5;
+    if (bgX <= -canvas.width) bgX = 0;
+    
+    // Draw background twice for seamless loop
     if (bgImg.complete && bgImg.naturalWidth !== 0) {
-        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(bgImg, bgX, 0, canvas.width, canvas.height);
+        ctx.drawImage(bgImg, bgX + canvas.width, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = "#050510";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Bird Logic & Rendering
+    // 2. Draw Midground Bubbles (Middle Layer - Faster)
+    ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+    bubbles.forEach(bubble => {
+        bubble.x -= bubble.speed;
+        if (bubble.x < -10) bubble.x = canvas.width + 10;
+        ctx.beginPath();
+        ctx.arc(bubble.x, bubble.y, bubble.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // 3. Bird Logic & Rendering
     bird.velocity += bird.gravity;
     bird.y += bird.velocity;
 
@@ -102,7 +136,7 @@ function update() {
     ctx.drawImage(birdImg, -bird.width/2, -bird.height/2, bird.width, bird.height);
     ctx.restore();
 
-    // Pipe Logic
+    // 4. Pipe Logic (Fore Layer - Fast)
     if (frameCount >= nextPipeFrame) {
         let gap = 200; 
         let minPipeHeight = 60;
@@ -121,22 +155,18 @@ function update() {
     }
 
     for (let i = pipes.length - 1; i >= 0; i--) {
-        pipes[i].x -= 2.2; // Slightly slower for underwater feel
+        pipes[i].x -= 2.2; 
 
-        // Draw Pipes (Glassy Billboards)
+        // Draw Pipes
         ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
         ctx.strokeStyle = pipes[i].ad.color;
         ctx.lineWidth = 4;
-        
-        // Top Pipe
         ctx.fillRect(pipes[i].x, 0, pipes[i].width, pipes[i].y);
         ctx.strokeRect(pipes[i].x, -10, pipes[i].width, pipes[i].y + 10);
-        
-        // Bottom Pipe
         ctx.fillRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height);
         ctx.strokeRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height + 10);
 
-        // Smart Ad Placement
+        // Ad Placement
         let adY = pipes[i].y < 100 ? (pipes[i].y + pipes[i].gap + (canvas.height - (pipes[i].y + pipes[i].gap)) / 2) : pipes[i].y / 2;
         ctx.save();
         ctx.translate(pipes[i].x + pipes[i].width/2, adY);
@@ -232,12 +262,11 @@ bgImg.onload = () => {
 };
 
 bgImg.onerror = () => {
-    console.log("Background image not found, using fallback.");
     renderStartScreen();
 };
 
 function renderStartScreen() {
-    ctx.fillStyle = "#050510"; // Fallback dark blue
+    ctx.fillStyle = "#050510";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (bgImg.complete && bgImg.naturalWidth !== 0) {
         ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
@@ -245,11 +274,8 @@ function renderStartScreen() {
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.font = "bold 18px 'Outfit', sans-serif";
-    ctx.shadowColor = "rgba(0,0,0,0.5)";
     ctx.shadowBlur = 10;
     ctx.fillText("CLICK TO START FLAPPING", canvas.width / 2, canvas.height / 2);
-    
-    // Initial Mute Toggle Icon
     ctx.font = "22px serif";
     ctx.textAlign = "right";
     ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 45);
