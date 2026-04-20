@@ -210,7 +210,10 @@ class AdBird {
     }
 
     spawnPipe() {
-        const h = Math.floor(Math.random() * (this.canvas.height - this.config.pipeGap - 120)) + 60;
+        const minBottomHeight = 150; // Guaranteed space for ad text
+        const maxTopHeight = this.canvas.height - this.config.pipeGap - minBottomHeight;
+        const h = Math.floor(Math.random() * (maxTopHeight - 60)) + 60;
+        
         this.pipes.push({
             x: this.canvas.width,
             y: h,
@@ -310,12 +313,9 @@ class AdBird {
 
         p.stains.forEach(s => {
             ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-            // Main glob
             ctx.beginPath();
             ctx.arc(p.x + s.xOff, s.relY, s.size, 0, Math.PI * 2);
             ctx.fill();
-
-            // Drips
             s.drips.forEach(d => {
                 ctx.beginPath();
                 ctx.roundRect(p.x + s.xOff + d.xOff, s.relY, d.w, d.len, d.w/2);
@@ -359,18 +359,19 @@ class AdBird {
             ctx.strokeStyle = p.ad.color;
             ctx.lineWidth = 4;
             
-            // Draw Pipe Body
             ctx.fillRect(p.x, 0, p.w, p.y);
             ctx.strokeRect(p.x, -1, p.w, p.y + 1);
             ctx.fillRect(p.x, p.y + p.gap, p.w, canvas.height);
             ctx.strokeRect(p.x, p.y + p.gap, p.w, canvas.height + 1);
 
-            // Draw Clipped Stains
             this._drawStains(p, true);  // Top
             this._drawStains(p, false); // Bottom
 
-            // Ad Text
-            const adY = p.y < 100 ? (p.y + p.gap + (canvas.height - (p.y + p.gap)) / 2) : p.y / 2;
+            // Ad Text - Only on BOTTOM pipe
+            const bottomPipeTop = p.y + p.gap;
+            const bottomPipeHeight = canvas.height - bottomPipeTop;
+            const adY = bottomPipeTop + (bottomPipeHeight / 2);
+            
             ctx.save();
             ctx.translate(p.x + p.w/2, adY);
             ctx.rotate(-Math.PI / 2);
