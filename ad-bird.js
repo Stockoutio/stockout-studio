@@ -243,8 +243,8 @@ class AdBird {
         if (!this.state.gameRunning) {
             this.start();
         } else {
-            // Right-click or Ctrl+Click triggers bomb
-            if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
+            // Robust secondary-click detection using bitmask (2 = Right Click)
+            if ((e.buttons & 2) || e.button === 2 || (e.button === 0 && e.ctrlKey)) {
                 this.dropBomb();
             } else {
                 this.flap();
