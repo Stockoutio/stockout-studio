@@ -5,22 +5,25 @@ const ctx = canvas.getContext('2d');
 const birdImg = new Image();
 birdImg.src = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png';
 
-// --- World Rotation ---
-const worldPaths = ['world1.jpg', 'world2.jpg', 'world3.jpg'];
-let worldImages = [];
-let currentWorldIndex = 0;
-let flashOpacity = 0;
-let lastMilestone = 0;
+const bgImg = new Image();
+bgImg.src = 'game-bg.jpg'; 
 
-worldPaths.forEach(path => {
-    const img = new Image();
-    img.src = path;
-    worldImages.push(img);
-});
-
-// --- Parallax State ---
+// --- Game State ---
+let bird = { x: 50, y: 150, width: 60, height: 60, gravity: 0.5, lift: -8, velocity: 0 };
+let pipes = [];
+let bombs = [];
+let frameCount = 0;
+let score = 0;
+let gameRunning = false;
+let nextPipeFrame = 40;
 let bgX = 0;
 let bubbles = [];
+
+const ads = [
+    { text: "YOUR AD HERE", color: "#4ade80" },
+    { text: "BUY BITCOIN", color: "#f59e0b" },
+    { text: "FOLLOW ME", color: "#06b6d4" }
+];
 
 function initBubbles() {
     bubbles = [];
@@ -49,7 +52,7 @@ function playSound(type) {
         osc.type = 'square';
         osc.frequency.setValueAtTime(150, now);
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-        gain.gain.setValueAtTime(0.5, now); // Down by 0.1
+        gain.gain.setValueAtTime(0.4, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
@@ -57,7 +60,7 @@ function playSound(type) {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(800, now);
         osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
-        gain.gain.setValueAtTime(0.5, now); // Down by 0.1
+        gain.gain.setValueAtTime(0.4, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
@@ -65,7 +68,7 @@ function playSound(type) {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(100, now);
         osc.frequency.linearRampToValueAtTime(20, now + 0.5);
-        gain.gain.setValueAtTime(0.7, now); // Down by 0.1
+        gain.gain.setValueAtTime(0.6, now);
         gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
         osc.start(now);
         osc.stop(now + 0.5);
@@ -73,31 +76,38 @@ function playSound(type) {
         osc.type = 'square';
         osc.frequency.setValueAtTime(200, now);
         osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
-        gain.gain.setValueAtTime(0.6, now); // Down by 0.1
+        gain.gain.setValueAtTime(0.5, now);
         gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
         osc.start(now);
         osc.stop(now + 0.3);
+    } else if (type === 'splat') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(50, now + 0.2);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
     }
 }
 
-let bird = { x: 50, y: 150, width: 34, height: 34, gravity: 0.5, lift: -7, velocity: 0 };
-let pipes = [];
-let frameCount = 0;
-let score = 0;
-let gameRunning = false;
-let nextPipeFrame = 40;
-
-const ads = [
-    { text: "YOUR AD HERE", color: "#4ade80" },
-    { text: "BUY BITCOIN", color: "#22d3ee" },
-    { text: "FOLLOW ME", color: "#818cf8" }
-];
+function dropBomb() {
+    if (!gameRunning) return;
+    bombs.push({
+        x: bird.x + bird.width / 2,
+        y: bird.y + bird.height,
+        width: 10,
+        height: 15,
+        speed: 8
+    });
+}
 
 function initGame() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     bird.y = 150;
     bird.velocity = 0;
     pipes = [];
+    bombs = [];
     score = 0;
     lastMilestone = 0;
     currentWorldIndex = 0;
@@ -111,7 +121,7 @@ function initGame() {
     if (!window.music) window.music = document.getElementById('bgMusic');
     if (window.music && window.isPlaying) {
         window.music.currentTime = 0;
-            window.music.volume = 1.0;
+        window.music.volume = 1.0;
         window.music.play().catch(e => console.log("Audio waiting for interaction"));
     }
     
@@ -123,7 +133,7 @@ function update() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Draw Background
+    // 1. Draw Background (Far Layer - Slow)
     bgX -= 0.5;
     if (bgX <= -canvas.width) bgX = 0;
     
@@ -147,7 +157,41 @@ function update() {
         ctx.fill();
     });
 
-    // 3. Bird Logic
+    // 3. Update Bombs
+    for (let i = bombs.length - 1; i >= 0; i--) {
+        bombs[i].y += bombs[i].speed;
+        
+        // Draw Bomb
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.ellipse(bombs[i].x, bombs[i].y, bombs[i].width/2, bombs[i].height/2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Check collision with pipes
+        pipes.forEach(pipe => {
+            // Hit Top Pipe or Bottom Pipe
+            const hitTop = bombs[i].x > pipe.x && bombs[i].x < pipe.x + pipe.width && bombs[i].y > 0 && bombs[i].y < pipe.y;
+            const hitBottom = bombs[i].x > pipe.x && bombs[i].x < pipe.x + pipe.width && bombs[i].y > pipe.y + pipe.gap && bombs[i].y < canvas.height;
+
+            if (hitTop || hitBottom) {
+                if (!pipe.stains) pipe.stains = [];
+                pipe.stains.push({
+                    relY: bombs[i].y,
+                    xOffset: bombs[i].x - pipe.x,
+                    size: Math.random() * 10 + 10
+                });
+                bombs.splice(i, 1);
+                playSound('splat');
+            }
+        });
+
+        // Remove off-screen bombs
+        if (bombs[i] && bombs[i].y > canvas.height) {
+            bombs.splice(i, 1);
+        }
+    }
+
+    // 4. Bird Logic & Rendering
     bird.velocity += bird.gravity;
     bird.y += bird.velocity;
 
@@ -159,7 +203,7 @@ function update() {
     ctx.drawImage(birdImg, -bird.width/2, -bird.height/2, bird.width, bird.height);
     ctx.restore();
 
-    // 4. Pipe Logic
+    // 5. Pipe Logic
     if (frameCount >= nextPipeFrame) {
         let gap = 200; 
         let minPipeHeight = 60;
@@ -171,7 +215,8 @@ function update() {
             width: 80, 
             gap: gap, 
             ad: ads[Math.floor(Math.random() * ads.length)],
-            scored: false
+            scored: false,
+            stains: []
         });
         
         nextPipeFrame = frameCount + Math.floor(Math.random() * 50) + 100;
@@ -180,6 +225,7 @@ function update() {
     for (let i = pipes.length - 1; i >= 0; i--) {
         pipes[i].x -= 2.2; 
 
+        // Draw Pipes
         ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
         ctx.strokeStyle = pipes[i].ad.color;
         ctx.lineWidth = 4;
@@ -188,6 +234,19 @@ function update() {
         ctx.fillRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height);
         ctx.strokeRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height + 10);
 
+        // Draw Stains
+        if (pipes[i].stains) {
+            pipes[i].stains.forEach(stain => {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                ctx.beginPath();
+                ctx.arc(pipes[i].x + stain.xOffset, stain.relY, stain.size, 0, Math.PI * 2);
+                ctx.fill();
+                // Drip effect
+                ctx.fillRect(pipes[i].x + stain.xOffset - 2, stain.relY, 4, 15);
+            });
+        }
+
+        // Ad Placement
         let adY = pipes[i].y < 100 ? (pipes[i].y + pipes[i].gap + (canvas.height - (pipes[i].y + pipes[i].gap)) / 2) : pipes[i].y / 2;
         ctx.save();
         ctx.translate(pipes[i].x + pipes[i].width/2, adY);
@@ -200,12 +259,14 @@ function update() {
         ctx.fillText(pipes[i].ad.text, 0, 0);
         ctx.restore();
 
-        if (bird.x + 5 < pipes[i].x + pipes[i].width &&
-            bird.x + bird.width - 5 > pipes[i].x &&
-            (bird.y + 5 < pipes[i].y || bird.y + bird.height - 5 > pipes[i].y + pipes[i].gap)) {
+        // Collision
+        if (bird.x + 10 < pipes[i].x + pipes[i].width &&
+            bird.x + bird.width - 10 > pipes[i].x &&
+            (bird.y + 10 < pipes[i].y || bird.y + bird.height - 10 > pipes[i].y + pipes[i].gap)) {
             gameOver();
         }
 
+        // Scoring
         if (!pipes[i].scored && pipes[i].x + pipes[i].width < bird.x) {
             pipes[i].scored = true;
             score++;
@@ -224,13 +285,14 @@ function update() {
         }
     }
 
+    // HUD & Effects
     ctx.fillStyle = "#fff";
     ctx.font = "bold 28px 'Outfit', sans-serif";
     ctx.textAlign = "left";
     ctx.shadowBlur = 0;
     ctx.fillText(score, 25, 45);
 
-    ctx.font = "22px serif";
+    ctx.font = "20px serif";
     ctx.textAlign = "right";
     ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 45);
 
@@ -252,6 +314,7 @@ function gameOver() {
     if (gameRunning) playSound('crash');
     gameRunning = false;
     pipes = [];
+    bombs = [];
     if (window.music) window.music.pause();
 
     ctx.fillStyle = "rgba(0,0,0,0.85)";
@@ -264,8 +327,18 @@ function gameOver() {
     ctx.fillText("Score: " + score, canvas.width / 2, canvas.height / 2 + 25);
     ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.font = "14px 'Outfit', sans-serif";
-    ctx.fillText("Click to respawn", canvas.width / 2, canvas.height / 2 + 60);
+    ctx.fillText("SPACE or CLICK to respawn", canvas.width / 2, canvas.height / 2 + 60);
 }
+
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        if (!gameRunning) {
+            initGame();
+        } else {
+            dropBomb();
+        }
+    }
+});
 
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -301,16 +374,11 @@ function renderStartScreen() {
     ctx.textAlign = "center";
     ctx.font = "bold 18px 'Outfit', sans-serif";
     ctx.shadowBlur = 10;
-    ctx.fillText("CLICK TO START FLAPPING", canvas.width / 2, canvas.height / 2);
-    ctx.font = "22px serif";
+    ctx.fillText("CLICK TO START", canvas.width / 2, canvas.height / 2);
+    ctx.font = "14px 'Outfit', sans-serif";
+    ctx.fillText("SPACE to bomb, CLICK to flap", canvas.width / 2, canvas.height / 2 + 30);
+    
+    ctx.font = "20px serif";
     ctx.textAlign = "right";
     ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 45);
 }
-
-let loadedCount = 0;
-worldImages.forEach(img => {
-    img.onload = () => {
-        loadedCount++;
-        if (loadedCount === worldImages.length) renderStartScreen();
-    };
-});
