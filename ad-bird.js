@@ -111,7 +111,7 @@ function initGame() {
     if (!window.music) window.music = document.getElementById('bgMusic');
     if (window.music && window.isPlaying) {
         window.music.currentTime = 0;
-        window.music.volume = 0.5; // Fuller music volume
+        window.music.volume = 0.7; // Even fuller music volume
         window.music.play().catch(e => console.log("Audio waiting for interaction"));
     }
     
@@ -283,7 +283,7 @@ canvas.addEventListener('mousedown', (e) => {
         window.isPlaying = !window.isPlaying;
         if (!window.isPlaying && window.music) window.music.pause();
         if (window.isPlaying && gameRunning && window.music) {
-            window.music.volume = 0.5;
+            window.music.volume = 0.7;
             window.music.play();
         }
         return;
