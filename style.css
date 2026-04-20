@@ -1,4 +1,4 @@
-/* V1.1 - Hyper-Button Update */
+/* V1.2 - Global Architectural Cleanup */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
 
 :root {
@@ -10,6 +10,8 @@
     --glass-border: rgba(255, 255, 255, 0.1);
     --bg-card: rgba(255, 255, 255, 0.05);
     --gradient-glow: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    --glass-bg: rgba(10, 10, 12, 0.4);
+    --glass-blur: blur(15px);
 }
 
 * {
@@ -17,6 +19,7 @@
     padding: 0;
     box-sizing: border-box;
     font-family: 'Outfit', sans-serif;
+    -webkit-tap-highlight-color: transparent; /* Global mobile flash protection */
 }
 
 body {
@@ -39,10 +42,10 @@ nav {
     width: 100%;
     z-index: 1000;
     padding: 1.2rem 0;
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    background: rgba(10, 10, 12, 0.4);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--glass-bg);
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .nav-content {
@@ -144,6 +147,7 @@ nav {
     width: 100%;
 }
 
+/* --- Unified Game Viewport System --- */
 .game-main {
     flex: 1.5;
     background: #000;
@@ -152,16 +156,17 @@ nav {
     overflow: hidden;
     box-shadow: 0 40px 100px rgba(0,0,0,0.6);
     position: relative;
-    -webkit-tap-highlight-color: transparent; /* Kill the mobile tap flash */
 }
 
 .game-viewport {
     position: relative;
     width: 100%;
     height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
-/* Force container to fill screen and center canvas in Fullscreen mode */
+/* Fullscreen Master Logic */
 .game-viewport:fullscreen,
 .game-viewport:-webkit-full-screen,
 .game-viewport:-ms-fullscreen {
@@ -180,25 +185,10 @@ nav {
     object-fit: contain !important;
 }
 
-.game-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 100;
+/* Hide header in fullscreen for maximum immersion */
+.game-viewport:fullscreen .game-header,
+.game-viewport:-webkit-full-screen .game-header {
     display: none;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    cursor: pointer;
-    transition: all 0.4s ease;
-}
-
-.game-overlay.active {
-    display: flex;
 }
 
 .game-header {
@@ -232,32 +222,31 @@ nav {
     cursor: pointer;
 }
 
-/* Fullscreen Scaling Fix */
-.game-main:fullscreen {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: #000;
-}
-
-.game-main:fullscreen canvas {
-    width: auto !important;
-    height: calc(100vh - 45px) !important; /* Account for header height */
-    max-width: 100vw;
-    object-fit: contain;
-    border-radius: 0;
-}
-
-.game-main:fullscreen .game-header {
+/* Ignition Overlay */
+.game-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    max-width: calc(100vh - 45px); /* Match canvas width */
-    border-radius: 0;
+    height: 100%;
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    cursor: pointer;
+    transition: all 0.4s ease;
 }
 
+.game-overlay.active {
+    display: flex;
+}
+
+/* --- Layout Sections --- */
 .labs-side {
     flex: 1;
-    text-align: left;
 }
 
 .labs-title {
@@ -317,7 +306,7 @@ nav {
     display: inline-block;
     width: 100%;
     padding: 1.2rem;
-    background: linear-gradient(90deg, #06b6d4, #3b82f6, #06b6d4);
+    background: linear-gradient(90deg, var(--accent-secondary), #3b82f6, var(--accent-secondary));
     background-size: 200% auto;
     color: #fff;
     text-decoration: none;
@@ -346,30 +335,15 @@ nav {
 .cta-button:hover {
     transform: translateY(-5px) scale(1.05);
     box-shadow: 0 10px 40px rgba(6, 182, 212, 0.8);
-    background-size: 100% auto;
-    animation: none; /* Focus intensity on hover */
+    animation: none;
 }
 
 .cta-button:active {
     transform: translateY(2px) scale(0.95);
-    box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
     transition: all 0.1s ease;
 }
 
-.cta-button::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: rgba(255, 255, 255, 0.1);
-    transform: rotate(45deg);
-    transition: all 0.5s ease;
-    pointer-events: none;
-}
-
-/* --- Background Effects --- */
+/* --- Global Background Effects --- */
 .glow-orb {
     position: absolute;
     width: 60vh;

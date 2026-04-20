@@ -46,8 +46,9 @@
                     <div class="dot" style="background: #27c93f;"></div>
                     <span>AD_BIRD_TISING.EXE</span>
                 </div>
-                <div class="game-viewport">
-                    <div id="gameOverlay" class="game-overlay">TAP TO START</div>
+                <div class="game-viewport" id="gameViewport">
+                    <!-- Invisible layer to capture initial user gesture for audio/mobile -->
+                    <div id="gameOverlay" class="game-overlay"></div>
                     <canvas id="adBirdCanvas" width="600" height="600"></canvas>
                 </div>
             </section>
@@ -77,9 +78,6 @@
     <!-- Game Scripts -->
     <script src="script.js"></script>
     <script src="ad-bird.js"></script>
-    
-    <!-- Audio Assets -->
-    <audio id="bgMusic" loop src="bg-music.mp3"></audio>
 
 </body>
 </html>
