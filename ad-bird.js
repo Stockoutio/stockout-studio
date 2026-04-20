@@ -1,18 +1,14 @@
 /**
  * Ad-Bird: Stockout Studio Edition
- * A modular, self-contained game engine.
+ * A modular, high-performance arcade engine for billboard-smashing action.
  */
 
 class AdBird {
     constructor(canvasId, options = {}) {
         this.canvas = document.getElementById(canvasId);
-        if (!this.canvas) {
-            console.error(`Canvas with id "${canvasId}" not found.`);
-            return;
-        }
+        if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
         
-        // Configurable Settings
         this.config = {
             gravity: options.gravity || 0.5,
             lift: options.lift || -7,
@@ -32,26 +28,22 @@ class AdBird {
             ]
         };
 
-        // Internal State
         this.state = {
             gameRunning: false,
             score: 0,
             frameCount: 0,
             nextPipeFrame: 40,
             currentWorld: 0,
-            lastMilestone: 0,
             flashOpacity: 0,
             isMuted: false,
             bgX: 0
         };
 
-        // Game Objects
         this.player = { x: 250, y: 150, w: 70, h: 70, velocity: 0 };
         this.pipes = [];
         this.bombs = [];
         this.bubbles = [];
         
-        // Asset Loading
         this.assets = {
             player: new Image(),
             worlds: [],
@@ -64,22 +56,18 @@ class AdBird {
     }
 
     _init() {
-        // Load Images
         this.assets.player.src = this.config.playerImg;
-        this.config.worlds.forEach((path, i) => {
+        this.config.worlds.forEach((path) => {
             const img = new Image();
             img.src = path;
             img.onload = () => { if (!this.state.gameRunning) this.drawStartScreen(); };
             this.assets.worlds.push(img);
         });
 
-        // Event Listeners
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         this.canvas.addEventListener('mousedown', (e) => this._handleMousedown(e));
 
         this._initBubbles();
-        
-        // Initial Draw
         requestAnimationFrame(() => this.drawStartScreen());
     }
 
@@ -123,7 +111,6 @@ class AdBird {
             frameCount: 0,
             nextPipeFrame: 40,
             currentWorld: 0,
-            lastMilestone: 0,
             bgX: 0
         });
 
@@ -196,7 +183,7 @@ class AdBird {
         this.player.velocity += this.config.gravity;
         this.player.y += this.player.velocity;
 
-        if (this.state.frameCount >= this.state.nextPipeFrame) this.spawnPipe();
+        if (this.state.frameCount >= this.state.nextPipeFrame) this._spawnPipe();
         
         this._updatePipes();
         this._updateBombs();
@@ -209,8 +196,8 @@ class AdBird {
         this.state.frameCount++;
     }
 
-    spawnPipe() {
-        const minBottomHeight = 150; // Guaranteed space for ad text
+    _spawnPipe() {
+        const minBottomHeight = 150;
         const maxTopHeight = this.canvas.height - this.config.pipeGap - minBottomHeight;
         const h = Math.floor(Math.random() * (maxTopHeight - 60)) + 60;
         
@@ -231,11 +218,8 @@ class AdBird {
             const p = this.pipes[i];
             p.x -= this.config.pipeSpeed;
 
-            // Update stain drips
             p.stains.forEach(s => {
-                s.drips.forEach(d => {
-                    if (d.len < d.maxLen) d.len += d.speed;
-                });
+                s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; });
             });
 
             if (this.player.x + 15 < p.x + p.w && this.player.x + this.player.w - 15 > p.x &&
@@ -247,10 +231,10 @@ class AdBird {
                 p.scored = true;
                 this.state.score++;
                 this.playSound('score');
-                if (this.state.score % this.config.worldShiftInterval === 0) this.shiftWorld();
+                if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld();
             }
 
-            if (p.x + p.w < 0) this.pipes.splice(i, 1);
+            if (p.x + p.w < -100) this.pipes.splice(i, 1);
         }
     }
 
@@ -259,32 +243,38 @@ class AdBird {
             const b = this.bombs[i];
             b.y += b.speed;
             let hit = false;
-            this.pipes.forEach(p => {
+            
+            for (const p of this.pipes) {
                 const hitTop = b.x > p.x && b.x < p.x + p.w && b.y < p.y;
                 const hitBottom = b.x > p.x && b.x < p.x + p.w && b.y > p.y + p.gap;
                 
                 if (hitTop || hitBottom) {
-                    const dripCount = 2 + Math.floor(Math.random() * 2);
-                    const drips = Array.from({ length: dripCount }, () => ({
-                        xOff: (Math.random() - 0.5) * 20,
-                        len: 0,
-                        maxLen: 40 + Math.random() * 60,
-                        speed: 1.0 + Math.random() * 1.5,
-                        w: 3 + Math.random() * 4
-                    }));
-
-                    p.stains.push({ 
-                        relY: b.y, 
-                        xOff: b.x - p.x, 
-                        size: Math.random() * 8 + 12,
-                        drips: drips
-                    });
-                    this.playSound('splat');
+                    this._createSplat(p, b.x, b.y);
                     hit = true;
+                    break;
                 }
-            });
+            }
             if (hit || b.y > this.canvas.height) this.bombs.splice(i, 1);
         }
+    }
+
+    _createSplat(p, bx, by) {
+        const dripCount = 2 + Math.floor(Math.random() * 2);
+        const drips = Array.from({ length: dripCount }, () => ({
+            xOff: (Math.random() - 0.5) * 20,
+            len: 0,
+            maxLen: 40 + Math.random() * 60,
+            speed: 1.0 + Math.random() * 1.5,
+            w: 3 + Math.random() * 4
+        }));
+
+        p.stains.push({ 
+            relY: by, 
+            xOff: bx - p.x, 
+            size: Math.random() * 8 + 12,
+            drips: drips
+        });
+        this.playSound('splat');
     }
 
     _updateBubbles() {
@@ -294,117 +284,131 @@ class AdBird {
         });
     }
 
-    shiftWorld() {
+    _shiftWorld() {
         this.state.currentWorld = (this.state.currentWorld + 1) % this.assets.worlds.length;
         this.state.flashOpacity = 1;
         this.playSound('shift');
     }
 
-    _drawStains(p, isTop) {
-        const { ctx } = this;
-        ctx.save();
-        ctx.beginPath();
-        if (isTop) {
-            ctx.rect(p.x, 0, p.w, p.y);
-        } else {
-            ctx.rect(p.x, p.y + p.gap, p.w, this.canvas.height - (p.y + p.gap));
-        }
-        ctx.clip();
-
-        p.stains.forEach(s => {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-            ctx.beginPath();
-            ctx.arc(p.x + s.xOff, s.relY, s.size, 0, Math.PI * 2);
-            ctx.fill();
-            s.drips.forEach(d => {
-                ctx.beginPath();
-                ctx.roundRect(p.x + s.xOff + d.xOff, s.relY, d.w, d.len, d.w/2);
-                ctx.fill();
-            });
-        });
-        ctx.restore();
-    }
+    // --- Rendering Pipeline ---
 
     _draw() {
-        const { ctx, canvas, state, player, pipes, bombs, bubbles, assets } = this;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this._renderBackground();
+        this._renderBubbles();
+        this._renderBombs();
+        this._renderPipes();
+        this._renderPlayer();
+        this._renderHUD();
+        this._renderFlash();
+    }
 
-        // BG
-        const bg = assets.worlds[state.currentWorld];
+    _renderBackground() {
+        const bg = this.assets.worlds[this.state.currentWorld];
         if (bg && bg.complete) {
-            const rx = Math.floor(state.bgX);
-            ctx.drawImage(bg, rx, 0, canvas.width + 2, canvas.height);
-            ctx.drawImage(bg, rx + canvas.width, 0, canvas.width + 2, canvas.height);
+            const rx = Math.floor(this.state.bgX);
+            this.ctx.drawImage(bg, rx, 0, this.canvas.width + 2, this.canvas.height);
+            this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width + 2, this.canvas.height);
         }
+    }
 
-        // Bubbles
-        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-        bubbles.forEach(b => {
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
-            ctx.fill();
+    _renderBubbles() {
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        this.bubbles.forEach(b => {
+            this.ctx.beginPath();
+            this.ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+            this.ctx.fill();
         });
+    }
 
-        // Bombs
-        ctx.fillStyle = "#fff";
-        bombs.forEach(b => {
-            ctx.beginPath();
-            ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI * 2);
-            ctx.fill();
+    _renderBombs() {
+        this.ctx.fillStyle = "#fff";
+        this.bombs.forEach(b => {
+            this.ctx.beginPath();
+            this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI * 2);
+            this.ctx.fill();
         });
+    }
 
-        // Pipes
-        pipes.forEach(p => {
-            ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
-            ctx.strokeStyle = p.ad.color;
-            ctx.lineWidth = 4;
+    _renderPipes() {
+        this.pipes.forEach(p => {
+            this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
+            this.ctx.strokeStyle = p.ad.color;
+            this.ctx.lineWidth = 4;
             
-            ctx.fillRect(p.x, 0, p.w, p.y);
-            ctx.strokeRect(p.x, -1, p.w, p.y + 1);
-            ctx.fillRect(p.x, p.y + p.gap, p.w, canvas.height);
-            ctx.strokeRect(p.x, p.y + p.gap, p.w, canvas.height + 1);
+            // Bodies
+            this.ctx.fillRect(p.x, 0, p.w, p.y);
+            this.ctx.strokeRect(p.x, -1, p.w, p.y + 1);
+            this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height);
+            this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
 
-            this._drawStains(p, true);  // Top
-            this._drawStains(p, false); // Bottom
+            // Stains
+            this._renderClippedStains(p, true);  // Top
+            this._renderClippedStains(p, false); // Bottom
 
-            // Ad Text - Only on BOTTOM pipe
-            const bottomPipeTop = p.y + p.gap;
-            const bottomPipeHeight = canvas.height - bottomPipeTop;
-            const adY = bottomPipeTop + (bottomPipeHeight / 2);
+            // Ad Text (Bottom Only)
+            const bTop = p.y + p.gap;
+            const bHeight = this.canvas.height - bTop;
+            const adY = bTop + (bHeight / 2);
             
-            ctx.save();
-            ctx.translate(p.x + p.w/2, adY);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillStyle = "#fff";
-            ctx.font = "bold 13px 'Outfit', sans-serif";
-            ctx.textAlign = "center";
-            ctx.shadowColor = p.ad.color;
-            ctx.shadowBlur = 10;
-            ctx.fillText(p.ad.text, 0, 0);
-            ctx.restore();
+            this.ctx.save();
+            this.ctx.translate(p.x + p.w/2, adY);
+            this.ctx.rotate(-Math.PI / 2);
+            this.ctx.fillStyle = "#fff";
+            this.ctx.font = "bold 13px 'Outfit', sans-serif";
+            this.ctx.textAlign = "center";
+            this.ctx.shadowColor = p.ad.color;
+            this.ctx.shadowBlur = 10;
+            this.ctx.fillText(p.ad.text, 0, 0);
+            this.ctx.restore();
         });
+    }
 
-        // Player
-        ctx.save();
-        ctx.translate(player.x + player.w/2, player.y + player.h/2);
-        ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, player.velocity * 0.05)));
-        ctx.scale(-1, 1);
-        ctx.drawImage(assets.player, -player.w/2, -player.h/2, player.w, player.h);
-        ctx.restore();
+    _renderClippedStains(p, isTop) {
+        this.ctx.save();
+        this.ctx.beginPath();
+        if (isTop) this.ctx.rect(p.x, 0, p.w, p.y);
+        else this.ctx.rect(p.x, p.y + p.gap, p.w, this.canvas.height);
+        this.ctx.clip();
 
-        // UI
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 48px 'Outfit', sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(state.score, canvas.width / 2, 60);
+        p.stains.forEach(s => {
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            this.ctx.beginPath();
+            this.ctx.arc(p.x + s.xOff, s.relY, s.size, 0, Math.PI * 2);
+            this.ctx.fill();
+            s.drips.forEach(d => {
+                this.ctx.beginPath();
+                this.ctx.roundRect(p.x + s.xOff + d.xOff, s.relY, d.w, d.len, d.w/2);
+                this.ctx.fill();
+            });
+        });
+        this.ctx.restore();
+    }
+
+    _renderPlayer() {
+        this.ctx.save();
+        this.ctx.translate(this.player.x + this.player.w/2, this.player.y + this.player.h/2);
+        this.ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.player.velocity * 0.05)));
+        this.ctx.scale(-1, 1);
+        this.ctx.drawImage(this.assets.player, -this.player.w/2, -this.player.h/2, this.player.w, this.player.h);
+        this.ctx.restore();
+    }
+
+    _renderHUD() {
+        this.ctx.fillStyle = "#fff";
+        this.ctx.font = "bold 48px 'Outfit', sans-serif";
+        this.ctx.textAlign = "center";
+        this.ctx.fillText(this.state.score, this.canvas.width / 2, 65);
         
-        ctx.font = "22px serif";
-        ctx.textAlign = "right";
-        ctx.fillText(state.isMuted ? "🔇" : "🔊", canvas.width - 20, 45);
+        this.ctx.font = "22px serif";
+        this.ctx.textAlign = "right";
+        this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 45);
+    }
 
-        if (state.flashOpacity > 0) {
-            ctx.fillStyle = `rgba(255, 255, 255, ${state.flashOpacity})`;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+    _renderFlash() {
+        if (this.state.flashOpacity > 0) {
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             this.state.flashOpacity -= 0.05;
         }
     }
