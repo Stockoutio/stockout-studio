@@ -330,6 +330,7 @@ class AdBird {
         ctx.save();
         ctx.translate(player.x + player.w/2, player.y + player.h/2);
         ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, player.velocity * 0.1)));
+        ctx.scale(-1, 1); // Flip bird to face right
         ctx.drawImage(assets.player, -player.w/2, -player.h/2, player.w, player.h);
         ctx.restore();
 
