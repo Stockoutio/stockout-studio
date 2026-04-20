@@ -1,7 +1,7 @@
 /**
  * Ad-Bird: Stockout Studio Arcade Engine
  * --------------------------------------
- * V3.1 - Multi-Touch Input Hardening (Pass 15)
+ * V3.2 - Fisher-Yates Entropy Engine (Pass 16)
  */
 
 class AdBird {
@@ -54,7 +54,7 @@ class AdBird {
             highDirectHits: parseInt(localStorage.getItem('adBirdHighDirectHits')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, 
-            paidBag: [], stockBag: [], stockInARow: 0,
+            paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0,
             particles: [], deathMsg: ""
         };
         this.player = { x: 250, y: 150, w: 100, h: 100, velocity: 0, flipAngle: 0, isFlipping: false, flipSpeed: 0.25, flipDirection: 1 };
@@ -71,29 +71,10 @@ class AdBird {
         this.assets.player.src = this.config.playerImg;
         this.assets.player.onload = () => this.state.assetsLoaded++;
         this.config.worlds.forEach((p) => { const img = new Image(); img.src = p; img.onload = () => { this.state.assetsLoaded++; if (!this.state.gameRunning) this.drawStartScreen(); }; this.assets.worlds.push(img); });
-        
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         const it = this.canvas.parentElement || this.canvas;
-        
-        // Desktop Input
         it.addEventListener('mousedown', (e) => { if (!this.isMobile) this._handleInput(e); });
-        
-        // Multi-Touch Hardened Input
-        it.addEventListener('touchstart', (e) => {
-            if (this.isMobile) {
-                e.preventDefault(); // Immediate browser lock
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    const t = e.changedTouches[i];
-                    this._handleInput({ 
-                        clientX: t.clientX, 
-                        clientY: t.clientY, 
-                        button: 0,
-                        preventDefault: () => {} 
-                    });
-                }
-            }
-        }, { passive: false });
-
+        it.addEventListener('touchstart', (e) => { if (this.isMobile) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} }); } } }, { passive: false });
         it.addEventListener('contextmenu', (e) => e.preventDefault());
         if (this.overlay) { this.overlay.addEventListener('mousedown', () => this.start()); this.overlay.addEventListener('touchstart', (e) => { e.preventDefault(); this.start(); }); }
         ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => document.addEventListener(evt, () => { this.state.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); }));
@@ -113,23 +94,10 @@ class AdBird {
         const r = this.state.lastRect || this.canvas.getBoundingClientRect(); const cr = this.canvas.width/this.canvas.height; const sr = r.width/r.height;
         let dw, dh, dx, dy; if (sr > cr) { dh = r.height; dw = dh*cr; dx = (r.width-dw)/2; dy = 0; } else { dw = r.width; dh = dw/cr; dx = 0; dy = (r.height-dh)/2; }
         const x = Math.max(0, Math.min(this.canvas.width, (e.clientX-(r.left+dx))*(this.canvas.width/dw))); const y = Math.max(0, Math.min(this.canvas.height, (e.clientY-(r.top+dy))*(this.canvas.height/dh)));
-        
         if (Math.hypot(x-this.ui.fullscreenBtn.x, y-this.ui.fullscreenBtn.y) < 45+25) { this.toggleFullscreen(); return; }
         if (x > this.canvas.width-80 && y < 120) { this.toggleMute(); return; }
-        
-        const b = this.ui.bombBtn; 
-        if (x >= b.x-20 && x <= b.x+b.w+20 && y >= b.y-20 && y <= b.y+b.h+20) { 
-            if (this.state.gameRunning) this.dropBomb(); 
-            else this.start(); 
-            return; 
-        }
-
-        if (!this.state.gameRunning) this.start(); 
-        else { 
-            if (e.button === 2) this.dropBomb(); 
-            else if (e.button === 0) this.flap(); 
-            if (e.preventDefault) e.preventDefault(); 
-        }
+        const b = this.ui.bombBtn; if (x >= b.x-20 && x <= b.x+b.w+20 && y >= b.y-20 && y <= b.y+b.h+20) { if (this.state.gameRunning) this.dropBomb(); else this.start(); return; }
+        if (!this.state.gameRunning) this.start(); else { if (e.button === 2) this.dropBomb(); else if (e.button === 0) this.flap(); if (e.preventDefault) e.preventDefault(); }
     }
 
     /* --- CORE LOOP & PHYSICS --- */
@@ -138,7 +106,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], stockInARow: 0, particles: [] });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0, particles: [] });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
@@ -175,6 +143,8 @@ class AdBird {
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { const t = this.floatingTexts[i]; t.age++; if (t.age > 30) { t.vy -= 0.3; t.y += t.vy; t.alpha = Math.max(0, 1 - Math.pow((t.age - 30) / 40, 2)); } if (t.alpha <= 0 || t.age > 70) this.floatingTexts.splice(i, 1); }
     }
 
+    /* --- TIERED SPAWNER --- */
+
     _spawnPipe() {
         const ad = this._nextAd();
         const gap = Math.floor(Math.random() * (this.config.maxGap - this.config.minGap)) + this.config.minGap;
@@ -184,6 +154,8 @@ class AdBird {
         this.pipes.push({ x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: gap, ad: ad, scored: false, stains: [] });
         this.state.nextPipeFrame = this.state.frameCount + Math.floor(Math.random() * 100) + 100;
     }
+
+    /* --- RENDERING --- */
 
     _draw() {
         this.ctx.save(); if (this.state.screenShake > 0.5) this.ctx.translate((Math.random()-0.5)*this.state.screenShake, (Math.random()-0.5)*this.state.screenShake);
@@ -217,10 +189,28 @@ class AdBird {
         if (this.state.bombTimer > 0) { this.ctx.fillStyle = "rgba(255, 255, 255, 0.3)"; this.ctx.fillRect(b.x, b.y + b.h - 4, b.w * (this.state.bombTimer / 20), 4); } this.ctx.restore();
     }
 
+    /* --- ENTROPY & AD ENGINE --- */
+
+    _shuffle(array) {
+        const arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    _nextFromBag(bagKey, configKey) {
+        if (this.state[bagKey].length === 0) {
+            this.state[bagKey] = this._shuffle(this.config[configKey]);
+        }
+        return this.state[bagKey].pop();
+    }
+
     _nextAd() {
         if (this.state.paidBag.length === 0 && this.config.paidAds.length > 0) {
             if (this.state.stockInARow >= this.config.maxStockConsecutive || this.state.score === 0) {
-                this.state.paidBag = [...this.config.paidAds].sort(() => Math.random() - 0.5);
+                this.state.paidBag = this._shuffle(this.config.paidAds);
                 this.state.stockInARow = 0;
             }
         }
@@ -229,45 +219,59 @@ class AdBird {
             return this.state.paidBag.pop();
         }
         if (this.state.stockBag.length === 0) {
-            this.state.stockBag = [...this.config.stockAds].sort(() => Math.random() - 0.5);
+            this.state.stockBag = this._shuffle(this.config.stockAds);
         }
         this.state.stockInARow++;
         return this.state.stockBag.pop();
     }
 
-    _createSplat(p, bx, by) { this.state.screenShake = 10; this.state.directHits++; this.player.isFlipping = true; this.player.flipAngle = 0; for (let i=0; i<15; i++) this.state.particles.push({ x: bx, y: by, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10-2, color: p.ad.color, life: 1.0 }); p.stains.push({ relY: by, xOff: bx-p.x, size: Math.random()*8+12, drips: Array.from({length:3},()=>({xOff:(Math.random()-0.5)*20,len:0,maxLen:40+Math.random()*60,speed:1.0+Math.random()*1.5,w:3+Math.random()*4})) }); let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); this.floatingTexts.push({ x: bx, y: sy, age: 0, vy: 0, alpha: 1, scale: 1, text: this.config.hitMessages[Math.floor(Math.random()*this.config.hitMessages.length)], color: this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)] }); this.playSound('splat'); }
+    _createSplat(p, bx, by) { 
+        this.state.screenShake = 10; 
+        this.state.directHits++; 
+        this.player.isFlipping = true; 
+        this.player.flipAngle = 0; 
+        for (let i=0; i<15; i++) this.state.particles.push({ x: bx, y: by, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10-2, color: p.ad.color, life: 1.0 }); 
+        p.stains.push({ relY: by, xOff: bx-p.x, size: Math.random()*8+12, drips: Array.from({length:3},()=>({xOff:(Math.random()-0.5)*20,len:0,maxLen:40+Math.random()*60,speed:1.0+Math.random()*1.5,w:3+Math.random()*4})) }); 
+        let sy = by-40; 
+        this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
+        
+        // Fisher-Yates Hit Message
+        const hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
+        this.floatingTexts.push({ x: bx, y: sy, age: 0, vy: 0, alpha: 1, scale: 1, text: hitMsg, color: this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)] }); 
+        this.playSound('splat'); 
+    }
+
+    gameOver() { 
+        if (this.state.isGameOver) return; 
+        this.state.isGameOver = true; 
+        this.state.screenShake = 20; 
+        this.state.gameRunning = false; 
+        
+        // Fisher-Yates Game Over Message
+        this.state.deathMsg = this._nextFromBag('gameOverMsgBag', 'gameOverMessages');
+        
+        this.playSound('crash'); 
+        setTimeout(() => this.playSound('death'), 300); 
+        if (this.assets.music) this.assets.music.pause(); 
+        if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; localStorage.setItem('adBirdHighScore', this.state.highScore); } 
+        if (this.state.directHits > this.state.highDirectHits) { this.state.directHits = this.state.directHits; localStorage.setItem('adBirdHighDirectHits', this.state.directHits); } 
+        if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
+    }
+
+    /* --- HELPERS --- */
+
     playSound(type) { if (this.state.isMuted) return; const n = this.audioCtx.currentTime; if (type === 'splat') { const o = this.audioCtx.createOscillator(); const g = this.audioCtx.createGain(); o.connect(g); g.connect(this.audioCtx.destination); o.type = 'square'; o.frequency.setValueAtTime(400, n); o.frequency.exponentialRampToValueAtTime(800, n+0.1); g.gain.setValueAtTime(0.3, n); g.gain.exponentialRampToValueAtTime(0.01, n+0.15); o.start(n); o.stop(n+0.15); return; } if (type === 'death') { [392, 311, 261].forEach((f, i) => { const o = this.audioCtx.createOscillator(); const g = this.audioCtx.createGain(); o.connect(g); g.connect(this.audioCtx.destination); o.type = 'triangle'; const st = n + (i*0.15); o.frequency.setValueAtTime(f, st); o.frequency.exponentialRampToValueAtTime(f*0.8, st+0.4); g.gain.setValueAtTime(0.3, st); g.gain.exponentialRampToValueAtTime(0.01, st+0.4); o.start(st); o.stop(st+0.4); }); return; } const sounds = { flap: { type: 'square', freq: [150, 400], vol: 0.5, dur: 0.1 }, score: { type: 'sine', freq: [800, 1200], vol: 0.4, dur: 0.1 }, crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 }, shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 } }; const s = sounds[type]; const o = this.audioCtx.createOscillator(); const g = this.audioCtx.createGain(); o.connect(g); g.connect(this.audioCtx.destination); o.type = s.type; o.frequency.setValueAtTime(s.freq[0], n); o.frequency.exponentialRampToValueAtTime(s.freq[1], n+s.dur); g.gain.setValueAtTime(s.vol, n); g.gain.exponentialRampToValueAtTime(0.01, n+s.dur); o.start(n); o.stop(n+s.dur); }
     toggleMute() { this.state.isMuted = !this.state.isMuted; if (this.assets.music) { if (this.state.isMuted) this.assets.music.pause(); else if (this.state.gameRunning) this.assets.music.play(); } if (!this.state.gameRunning) this.drawStartScreen(); }
     toggleFullscreen() { const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); if (!isFS) { const c = this.canvas.parentElement; const r = c.requestFullscreen || c.webkitRequestFullscreen || c.mozRequestFullScreen || c.msRequestFullscreen; if (r) r.call(c); } else { const e = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen; if (e) e.call(document); } }
     _shiftWorld() { this.state.currentWorld = (this.state.currentWorld + 1) % this.assets.worlds.length; this.state.flashOpacity = 1; this.playSound('shift'); }
     flap() { this.player.velocity = this.config.lift; this.playSound('flap'); }
     dropBomb() { if (this.state.bombTimer > 0) return; this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15, h: 20, speed: 8 }); this.state.bombTimer = 20; }
-    gameOver() { if (this.state.isGameOver) return; this.state.isGameOver = true; this.state.screenShake = 20; this.state.gameRunning = false; this.state.deathMsg = this.config.gameOverMessages[Math.floor(Math.random()*this.config.gameOverMessages.length)]; this.playSound('crash'); setTimeout(() => this.playSound('death'), 300); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; localStorage.setItem('adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.directHits = this.state.directHits; localStorage.setItem('adBirdHighDirectHits', this.state.highDirectHits); } if (this.isMobile && this.overlay) this.overlay.classList.add('active'); }
     _renderWorld() { const bg = this.assets.worlds[this.state.currentWorld]; if (bg && bg.complete) { const rx = Math.floor(this.state.bgX); this.ctx.drawImage(bg, rx, 0, this.canvas.width+2, this.canvas.height); this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width+2, this.canvas.height); } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
     _renderBubbles() { this.ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; this.bubbles.forEach(b => { this.ctx.beginPath(); this.ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderBombs() { this.ctx.fillStyle = "#fff"; this.bombs.forEach(b => { this.ctx.beginPath(); this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderPlayer() { this.ctx.save(); this.ctx.translate(this.player.x+this.player.w/2, this.player.y+this.player.h/2); this.ctx.rotate(Math.min(Math.PI/4, Math.max(-Math.PI/4, this.player.velocity*0.05)) + this.player.flipAngle); this.ctx.scale(-1, 1); this.ctx.drawImage(this.assets.player, -this.player.w/2, -this.player.h/2, this.player.w, this.player.h); this.ctx.restore(); }
     _renderParticles() { this.state.particles.forEach(p => { this.ctx.globalAlpha = p.life; this.ctx.fillStyle = p.color; this.ctx.shadowBlur = 10; this.ctx.shadowColor = p.color; this.ctx.beginPath(); this.ctx.arc(p.x, p.y, 3, 0, Math.PI*2); this.ctx.fill(); }); this.ctx.globalAlpha = 1; this.ctx.shadowBlur = 0; }
-    
-    _renderFloatingTexts() {
-        this.ctx.textAlign = "center";
-        this.floatingTexts.forEach(t => {
-            this.ctx.save();
-            this.ctx.globalAlpha = t.alpha;
-            this.ctx.translate(t.x, t.y);
-            this.ctx.scale(t.scale, t.scale);
-            this.ctx.font = "bold 36px 'Outfit', sans-serif";
-            this.ctx.strokeStyle = "#000";
-            this.ctx.lineWidth = 1.5;
-            this.ctx.strokeText(t.text, 0, 0);
-            this.ctx.fillStyle = t.color;
-            this.ctx.shadowBlur = 15;
-            this.ctx.shadowColor = t.color;
-            this.ctx.fillText(t.text, 0, 0);
-            this.ctx.restore();
-        });
-    }
-
+    _renderFloatingTexts() { this.ctx.textAlign = "center"; this.floatingTexts.forEach(t => { this.ctx.save(); this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale); this.ctx.font = "bold 36px 'Outfit', sans-serif"; this.ctx.strokeStyle = "#000"; this.ctx.lineWidth = 1.5; this.ctx.strokeText(t.text, 0, 0); this.ctx.fillStyle = t.color; this.ctx.shadowBlur = 15; this.ctx.shadowColor = t.color; this.ctx.fillText(t.text, 0, 0); this.ctx.restore(); }); }
     _renderGameOverScreen() { this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 36px 'Outfit', sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "alphabetic"; this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 60); this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2); this.ctx.fillStyle = "#fbbf24"; this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2); this.ctx.fillStyle = "#fff"; this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "#06b6d4"; this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif"; this.ctx.fillText(this.isMobile ? "TAP to fly again" : "SPACE or CLICK to fly again", this.canvas.width / 2, this.canvas.height / 2 + 85); }
     drawStartScreen() { if (this.isMobile && this.overlay) this.overlay.classList.add('active'); this.ctx.fillStyle = "#050510"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); const bg = this.assets.worlds[0]; if (bg && bg.complete) this.ctx.drawImage(bg, 0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)"; this.ctx.fillRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)"; this.ctx.strokeRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 24px 'Outfit', sans-serif"; this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 10); this.ctx.font = "15px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; this.ctx.fillText(this.isMobile ? "TAP ANYWHERE to flap" : "SPACE or CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 30); this.ctx.fillText(this.isMobile ? "BOMB BUTTON to drop ads" : "SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 55); }
     _setupHiDPI() { const dpr = window.devicePixelRatio || 1; if (dpr > 1) { const lw = this.canvas.width; const lh = this.canvas.height; this.canvas.width = lw * dpr; this.canvas.height = lh * dpr; this.ctx.scale(dpr, dpr); Object.defineProperty(this.canvas, 'width', { get: () => lw, configurable: true }); Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true }); } this.canvas.style.touchAction = 'none'; this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
@@ -279,17 +283,6 @@ class AdBird {
 // Global Init
 document.addEventListener('DOMContentLoaded', () => {
     const t = document.getElementById('mobileMenuToggle'); const n = document.getElementById('navLinks');
-    if (t && n) { 
-        t.onclick=(e)=>{
-            e.stopPropagation(); 
-            n.classList.toggle('active');
-            t.classList.toggle('active');
-        }; 
-        document.addEventListener('click',()=>{
-            n.classList.remove('active');
-            t.classList.remove('active');
-        }); 
-        n.onclick=(e)=>e.stopPropagation(); 
-    }
+    if (t && n) { t.onclick=(e)=>{e.stopPropagation(); n.classList.toggle('active'); t.classList.toggle('active');}; document.addEventListener('click',()=>{n.classList.remove('active'); t.classList.remove('active');}); n.onclick=(e)=>e.stopPropagation(); }
     setTimeout(() => { window.adBirdGame = new AdBird('adBirdCanvas'); }, 100);
 });
