@@ -333,6 +333,7 @@ function gameOver() {
 
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
+        e.preventDefault(); // Prevent page scroll
         if (!gameRunning) {
             initGame();
         } else {
