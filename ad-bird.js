@@ -414,8 +414,7 @@ class AdBird {
     }
 
     _spawnPipe() {
-        const minPipeHeight = 140;
-        const h = Math.floor(Math.random() * (this.canvas.height - this.config.pipeGap - (minPipeHeight * 2))) + minPipeHeight;
+        const h = Math.floor(Math.random() * (this.canvas.height - this.config.pipeGap - 150 - 60)) + 60;
         this.pipes.push({
             x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: this.config.pipeGap,
             ad: this.config.ads[Math.floor(Math.random() * this.config.ads.length)],
@@ -539,36 +538,17 @@ class AdBird {
             this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height); this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
 
             [0, p.y + p.gap].forEach(startY => {
-                // 1. Draw Stains
-                this.ctx.save(); 
-                this.ctx.beginPath();
+                this.ctx.save(); this.ctx.beginPath();
                 this.ctx.rect(p.x, startY, p.w, startY === 0 ? p.y : this.canvas.height);
-                this.ctx.clip(); 
-                this._drawStains(p); 
-                this.ctx.restore();
-
-                // 2. Draw Ad Text
-                this.ctx.save();
-                const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
-                this.ctx.translate(p.x + p.w/2, startY === 0 ? p.y / 2 : p.y + p.gap + pipeHeight / 2);
-                this.ctx.rotate(-Math.PI / 2);
-                
-                let fontSize = 18;
-                this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
-                const textWidth = this.ctx.measureText(p.ad.text).width;
-                const maxTextWidth = pipeHeight - 30;
-                
-                if (textWidth > maxTextWidth) {
-                    fontSize = Math.max(10, Math.floor(fontSize * (maxTextWidth / textWidth)));
-                    this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
-                }
-
-                this.ctx.fillStyle = "#fff";
-                this.ctx.textAlign = "center";
-                this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
-                this.ctx.fillText(p.ad.text, 0, 0); 
-                this.ctx.restore();
+                this.ctx.clip(); this._drawStains(p); this.ctx.restore();
             });
+
+            this.ctx.save();
+            this.ctx.translate(p.x + p.w/2, p.y + p.gap + (this.canvas.height - (p.y + p.gap)) / 2);
+            this.ctx.rotate(-Math.PI / 2); this.ctx.fillStyle = "#fff";
+            this.ctx.font = "bold 18px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
+            this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
+            this.ctx.fillText(p.ad.text, 0, 0); this.ctx.restore();
         });
     }
 

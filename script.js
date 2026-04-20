@@ -18,10 +18,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // URL Hash Purge: Ensures a clean single-page experience
-    if (window.location.hash) {
-        history.replaceState(null, null, window.location.pathname);
-    }
-
     console.log("Stockout Studio UI Initialized");
 });
