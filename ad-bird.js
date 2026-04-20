@@ -141,7 +141,9 @@ class AdBird {
         
         const inputTarget = this.canvas.parentElement || this.canvas;
         inputTarget.addEventListener('pointerdown', handlePtr, { passive: false });
+        inputTarget.addEventListener('contextmenu', (e) => e.preventDefault());
         
+        // Mobile Ignition Layer
         if (this.overlay) {
             this.overlay.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
@@ -149,8 +151,6 @@ class AdBird {
                 this.start();
             });
         }
-
-        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
         const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
         fsEvents.forEach(evt => {
@@ -242,12 +242,16 @@ class AdBird {
             return;
         }
 
-        // Default Actions
+        // Default Actions (Flap vs Bomb)
         if (!this.state.gameRunning) {
             this.start();
         } else {
-            if (e.button === 2) this.dropBomb();
-            else this.flap();
+            // Secondary click (Right Click) or Ctrl+Click triggers bomb
+            if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
+                this.dropBomb();
+            } else {
+                this.flap();
+            }
         }
     }
 
