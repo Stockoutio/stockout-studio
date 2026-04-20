@@ -46,7 +46,7 @@ class AdBird {
         };
 
         // Game Objects
-        this.player = { x: 150, y: 150, w: 60, h: 60, velocity: 0 };
+        this.player = { x: 300, y: 150, w: 80, h: 80, velocity: 0 };
         this.pipes = [];
         this.bombs = [];
         this.bubbles = [];
