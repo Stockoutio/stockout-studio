@@ -49,7 +49,7 @@ function playSound(type) {
         osc.type = 'square';
         osc.frequency.setValueAtTime(150, now);
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.setValueAtTime(0.2, now); // Louder
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
@@ -57,7 +57,7 @@ function playSound(type) {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(800, now);
         osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
-        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.setValueAtTime(0.2, now); // Louder
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
@@ -65,7 +65,7 @@ function playSound(type) {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(100, now);
         osc.frequency.linearRampToValueAtTime(20, now + 0.5);
-        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.setValueAtTime(0.3, now); // Louder
         gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
         osc.start(now);
         osc.stop(now + 0.5);
@@ -73,7 +73,7 @@ function playSound(type) {
         osc.type = 'square';
         osc.frequency.setValueAtTime(200, now);
         osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
-        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.setValueAtTime(0.3, now); // Louder
         gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
         osc.start(now);
         osc.stop(now + 0.3);
@@ -111,6 +111,7 @@ function initGame() {
     if (!window.music) window.music = document.getElementById('bgMusic');
     if (window.music && window.isPlaying) {
         window.music.currentTime = 0;
+        window.music.volume = 0.3; // Duck music volume
         window.music.play().catch(e => console.log("Audio waiting for interaction"));
     }
     
@@ -128,7 +129,6 @@ function update() {
     
     let activeBG = worldImages[currentWorldIndex];
     if (activeBG.complete && activeBG.naturalWidth !== 0) {
-        // Round to floor and add 2px overlap to prevent tearing
         let roundedX = Math.floor(bgX);
         ctx.drawImage(activeBG, roundedX, 0, canvas.width + 2, canvas.height);
         ctx.drawImage(activeBG, roundedX + canvas.width, 0, canvas.width + 2, canvas.height);
@@ -174,7 +174,6 @@ function update() {
             scored: false
         });
         
-        // Wider horizontal spacing (100 to 150 frames)
         nextPipeFrame = frameCount + Math.floor(Math.random() * 50) + 100;
     }
 
@@ -216,11 +215,10 @@ function update() {
             score++;
             playSound('score');
             
-            // Trigger World Shift every 10 points
             if (score > 0 && score % 10 === 0 && score !== lastMilestone) {
                 lastMilestone = score;
                 currentWorldIndex = (currentWorldIndex + 1) % worldImages.length;
-                flashOpacity = 1; // Trigger flash
+                flashOpacity = 1; 
                 playSound('shift');
             }
         }
@@ -246,7 +244,7 @@ function update() {
     if (flashOpacity > 0) {
         ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        flashOpacity -= 0.05; // Fade out
+        flashOpacity -= 0.05; 
     }
 
     if (bird.y + bird.height > canvas.height || bird.y < 0) {
@@ -284,7 +282,10 @@ canvas.addEventListener('mousedown', (e) => {
     if (x > canvas.width - 60 && y < 60) {
         window.isPlaying = !window.isPlaying;
         if (!window.isPlaying && window.music) window.music.pause();
-        if (window.isPlaying && gameRunning && window.music) window.music.play();
+        if (window.isPlaying && gameRunning && window.music) {
+            window.music.volume = 0.3;
+            window.music.play();
+        }
         return;
     }
 
@@ -299,12 +300,10 @@ canvas.addEventListener('mousedown', (e) => {
 function renderStartScreen() {
     ctx.fillStyle = "#050510";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
     let activeBG = worldImages[currentWorldIndex];
     if (activeBG && activeBG.complete && activeBG.naturalWidth !== 0) {
         ctx.drawImage(activeBG, 0, 0, canvas.width, canvas.height);
     }
-    
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.font = "bold 18px 'Outfit', sans-serif";
@@ -315,7 +314,6 @@ function renderStartScreen() {
     ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 45);
 }
 
-// Check if worlds are loaded
 let loadedCount = 0;
 worldImages.forEach(img => {
     img.onload = () => {
