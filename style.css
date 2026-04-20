@@ -160,6 +160,18 @@ nav {
     height: 100%;
 }
 
+/* Force container to fill screen and center canvas in Fullscreen mode */
+.game-viewport:fullscreen,
+.game-viewport:-webkit-full-screen,
+.game-viewport:-ms-fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .game-overlay {
     position: absolute;
     top: 0;
