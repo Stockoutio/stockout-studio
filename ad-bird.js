@@ -11,8 +11,8 @@ class AdBird {
         if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
         
-        // Prevent default mobile actions like scrolling/zooming on the canvas
         this.canvas.style.touchAction = 'none';
+        this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
         this.config = {
             gravity: options.gravity || 0.5,
@@ -89,7 +89,6 @@ class AdBird {
             toggle.onclick = () => {
                 nav.classList.toggle('active');
             };
-            // Close menu when link is clicked
             nav.querySelectorAll('.nav-item').forEach(link => {
                 link.onclick = () => nav.classList.remove('active');
             });
@@ -146,18 +145,13 @@ class AdBird {
         e.preventDefault();
         const touch = e.touches[0];
         const rect = this.canvas.getBoundingClientRect();
-        
-        // Correctly map touch coordinate to internal 600x600 canvas coordinate
         const x = (touch.clientX - rect.left) * (this.canvas.width / rect.width);
         const y = (touch.clientY - rect.top) * (this.canvas.height / rect.height);
-        
         this._processInput(x, y, 0); 
     }
 
     _handleMousedown(e) {
-        // Prevent double fire on mobile
-        if ('ontouchstart' in window) return;
-        
+        if (this.isMobile) return;
         const rect = this.canvas.getBoundingClientRect();
         const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
         const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
@@ -171,13 +165,13 @@ class AdBird {
             return;
         }
 
-        // 2. GIANT Fullscreen Button (Bottom Right) - 160x160 HITBOX
+        // 2. GIANT Fullscreen Button (Bottom Right)
         if (x > this.canvas.width - 160 && y > this.canvas.height - 160) {
             this.toggleFullscreen();
             return;
         }
 
-        // 3. Bomb Button (Bottom Left) - MASSIVE 180x180 HITBOX
+        // 3. Bomb Button (Bottom Left)
         if (x < 180 && y > this.canvas.height - 180) {
             if (this.state.gameRunning) {
                 if (this.state.bombTimer === 0) {
@@ -479,38 +473,37 @@ class AdBird {
         this.ctx.beginPath();
         this.ctx.arc(this.canvas.width - 35, this.canvas.height - 35, 30, 0, Math.PI * 2);
         this.ctx.fill();
-        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-        this.ctx.stroke();
-
         this.ctx.font = "bold 42px serif"; this.ctx.textAlign = "center";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
         this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 35, this.canvas.height - 22);
         this.ctx.restore();
 
         // BOMB BUTTON (Bottom Left)
-        this.ctx.textAlign = "left";
-        this.ctx.font = "bold 18px 'Outfit', sans-serif";
+        const btnW = 110; const btnH = 70; const btnX = 15; const btnY = this.canvas.height - 85;
+        this.ctx.beginPath();
         if (this.state.bombBtnFlash > 0) this.ctx.fillStyle = "#fff";
         else this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.2)" : "rgba(6, 182, 212, 0.6)";
-        this.ctx.beginPath();
-        this.ctx.roundRect(15, this.canvas.height - 85, 110, 70, 12);
+        this.ctx.roundRect(btnX, btnY, btnW, btnH, 12);
         this.ctx.fill();
         
-        this.ctx.fillStyle = "#fff";
-        this.ctx.shadowBlur = this.state.bombTimer === 0 ? 15 : 0;
+        this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center";
+        this.ctx.font = "bold 18px 'Outfit', sans-serif";
+        this.ctx.shadowBlur = (this.state.bombTimer === 0 && !this.isMobile) ? 15 : 0;
         this.ctx.shadowColor = "#06b6d4";
-        this.ctx.fillText("BOMB", 35, this.canvas.height - 48);
+        // Centered Text in the box
+        this.ctx.fillText("BOMB", btnX + btnW/2, btnY + (this.isMobile ? 42 : 36));
         this.ctx.shadowBlur = 0;
         
-        // DESKTOP HINT (Fine Print)
-        this.ctx.font = "bold 9px 'Outfit', sans-serif";
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        this.ctx.fillText("(SHIFT / R-CLICK)", 26, this.canvas.height - 30);
+        if (!this.isMobile) {
+            this.ctx.font = "bold 9px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            this.ctx.fillText("(SHIFT / R-CLICK)", btnX + btnW/2, btnY + 54);
+        }
         
         if (this.state.bombTimer > 0) {
             const pct = this.state.bombTimer / this.config.bombCooldown;
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-            this.ctx.fillRect(15, this.canvas.height - 18, 110 * pct, 4);
+            this.ctx.fillRect(btnX, btnY + btnH - 4, btnW * pct, 4);
         }
     }
 
@@ -547,8 +540,9 @@ class AdBird {
             this.ctx.fillStyle = "#06b6d4";
             this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35);
             this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif";
-            this.ctx.fillText("TAP to flap", this.canvas.width / 2, this.canvas.height / 2 + 85);
-            this.ctx.fillText("BOMB BUTTON to drop ads", this.canvas.width / 2, this.canvas.height / 2 + 110);
+            
+            const startText = this.isMobile ? "TAP to fly again" : "SPACE or CLICK to fly again";
+            this.ctx.fillText(startText, this.canvas.width / 2, this.canvas.height / 2 + 85);
             
             this.ctx.save();
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
@@ -570,8 +564,13 @@ class AdBird {
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 24px 'Outfit', sans-serif";
         this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 10);
         this.ctx.font = "15px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-        this.ctx.fillText("TAP ANYWHERE to flap", this.canvas.width / 2, this.canvas.height / 2 + 30);
-        this.ctx.fillText("BOMB BUTTON to drop ads", this.canvas.width / 2, this.canvas.height / 2 + 55);
+        
+        const startLine1 = this.isMobile ? "TAP ANYWHERE to flap" : "SPACE or CLICK to flap";
+        const startLine2 = this.isMobile ? "BOMB BUTTON to drop ads" : "SHIFT or R-CLICK to bomb";
+        
+        this.ctx.fillText(startLine1, this.canvas.width / 2, this.canvas.height / 2 + 30);
+        this.ctx.fillText(startLine2, this.canvas.width / 2, this.canvas.height / 2 + 55);
+        
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 50);
         
         this.ctx.save();
