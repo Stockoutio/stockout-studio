@@ -15,7 +15,19 @@ class AdBird {
         
         if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
-        
+
+        // HiDPI: match backing buffer to physical pixels so canvas text stays sharp on mobile
+        const dpr = window.devicePixelRatio || 1;
+        if (dpr > 1) {
+            const lw = this.canvas.width;
+            const lh = this.canvas.height;
+            this.canvas.width = lw * dpr;
+            this.canvas.height = lh * dpr;
+            this.ctx.scale(dpr, dpr);
+            Object.defineProperty(this.canvas, 'width', { get: () => lw, configurable: true });
+            Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true });
+        }
+
         // Platform profile
         this.canvas.style.touchAction = 'none';
         this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
