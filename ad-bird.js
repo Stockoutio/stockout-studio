@@ -11,6 +11,9 @@ class AdBird {
         if (!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
         
+        // Prevent default mobile actions like scrolling/zooming on the canvas
+        this.canvas.style.touchAction = 'none';
+
         this.config = {
             gravity: options.gravity || 0.5,
             lift: options.lift || -8,
@@ -76,6 +79,21 @@ class AdBird {
 
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         this._init();
+        this._initNav();
+    }
+
+    _initNav() {
+        const toggle = document.getElementById('mobileMenuToggle');
+        const nav = document.getElementById('navLinks');
+        if (toggle && nav) {
+            toggle.onclick = () => {
+                nav.classList.toggle('active');
+            };
+            // Close menu when link is clicked
+            nav.querySelectorAll('.nav-item').forEach(link => {
+                link.onclick = () => nav.classList.remove('active');
+            });
+        }
     }
 
     _init() {
@@ -128,13 +146,18 @@ class AdBird {
         e.preventDefault();
         const touch = e.touches[0];
         const rect = this.canvas.getBoundingClientRect();
+        
+        // Correctly map touch coordinate to internal 600x600 canvas coordinate
         const x = (touch.clientX - rect.left) * (this.canvas.width / rect.width);
         const y = (touch.clientY - rect.top) * (this.canvas.height / rect.height);
+        
         this._processInput(x, y, 0); 
     }
 
     _handleMousedown(e) {
-        if (e.type === 'mousedown' && 'ontouchstart' in window) return;
+        // Prevent double fire on mobile
+        if ('ontouchstart' in window) return;
+        
         const rect = this.canvas.getBoundingClientRect();
         const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
         const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
@@ -142,20 +165,23 @@ class AdBird {
     }
 
     _processInput(x, y, button) {
-        if (x > this.canvas.width - 120 && y < 100) {
+        // 1. Mute Button (Top Right)
+        if (x > this.canvas.width - 120 && y < 120) {
             this.toggleMute();
             return;
         }
 
-        if (x > this.canvas.width - 120 && y > this.canvas.height - 120) {
+        // 2. Fullscreen Button (Bottom Right)
+        if (x > this.canvas.width - 140 && y > this.canvas.height - 140) {
             this.toggleFullscreen();
             return;
         }
 
-        if (x < 150 && y > this.canvas.height - 150) {
+        // 3. Bomb Button (Bottom Left) - MASSIVE HITBOX
+        if (x < 180 && y > this.canvas.height - 180) {
             if (this.state.gameRunning) {
                 if (this.state.bombTimer === 0) {
-                    this.state.bombBtnFlash = 5;
+                    this.state.bombBtnFlash = 10;
                     this.dropBomb();
                 }
             } else {
@@ -164,9 +190,11 @@ class AdBird {
             return;
         }
 
+        // 4. Default Interaction (Start or Flap)
         if (!this.state.gameRunning) {
             this.start();
         } else {
+            // ONLY flap if we haven't hit a UI area
             if (button === 0) this.flap();
             else if (button === 2) this.dropBomb();
         }
