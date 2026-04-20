@@ -5,8 +5,18 @@ const ctx = canvas.getContext('2d');
 const birdImg = new Image();
 birdImg.src = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png';
 
-const bgImg = new Image();
-bgImg.src = 'game-bg.jpg'; 
+// --- World Rotation ---
+const worldPaths = ['world1.jpg', 'world2.jpg', 'world3.jpg'];
+let worldImages = [];
+let currentWorldIndex = 0;
+let flashOpacity = 0;
+let lastMilestone = 0;
+
+worldPaths.forEach(path => {
+    const img = new Image();
+    img.src = path;
+    worldImages.push(img);
+});
 
 // --- Parallax State ---
 let bgX = 0;
@@ -19,7 +29,7 @@ function initBubbles() {
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
             size: Math.random() * 3 + 1,
-            speed: Math.random() * 1 + 1 // Moves faster than background
+            speed: Math.random() * 1 + 1 
         });
     }
 }
@@ -59,6 +69,14 @@ function playSound(type) {
         gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
         osc.start(now);
         osc.stop(now + 0.5);
+    } else if (type === 'shift') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
     }
 }
 
@@ -81,9 +99,12 @@ function initGame() {
     bird.velocity = 0;
     pipes = [];
     score = 0;
+    lastMilestone = 0;
+    currentWorldIndex = 0;
     frameCount = 0;
     nextPipeFrame = 40;
     bgX = 0;
+    flashOpacity = 0;
     initBubbles();
     gameRunning = true;
     
@@ -105,16 +126,16 @@ function update() {
     bgX -= 0.5;
     if (bgX <= -canvas.width) bgX = 0;
     
-    // Draw background twice for seamless loop
-    if (bgImg.complete && bgImg.naturalWidth !== 0) {
-        ctx.drawImage(bgImg, bgX, 0, canvas.width, canvas.height);
-        ctx.drawImage(bgImg, bgX + canvas.width, 0, canvas.width, canvas.height);
+    let activeBG = worldImages[currentWorldIndex];
+    if (activeBG.complete && activeBG.naturalWidth !== 0) {
+        ctx.drawImage(activeBG, bgX, 0, canvas.width, canvas.height);
+        ctx.drawImage(activeBG, bgX + canvas.width, 0, canvas.width, canvas.height);
     } else {
         ctx.fillStyle = "#050510";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 2. Draw Midground Bubbles (Middle Layer - Faster)
+    // 2. Draw Midground Bubbles
     ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
     bubbles.forEach(bubble => {
         bubble.x -= bubble.speed;
@@ -136,7 +157,7 @@ function update() {
     ctx.drawImage(birdImg, -bird.width/2, -bird.height/2, bird.width, bird.height);
     ctx.restore();
 
-    // 4. Pipe Logic (Fore Layer - Fast)
+    // 4. Pipe Logic
     if (frameCount >= nextPipeFrame) {
         let gap = 200; 
         let minPipeHeight = 60;
@@ -186,11 +207,19 @@ function update() {
             gameOver();
         }
 
-        // Scoring
+        // Scoring & World Shift
         if (!pipes[i].scored && pipes[i].x + pipes[i].width < bird.x) {
             pipes[i].scored = true;
             score++;
             playSound('score');
+            
+            // Trigger World Shift every 10 points
+            if (score > 0 && score % 10 === 0 && score !== lastMilestone) {
+                lastMilestone = score;
+                currentWorldIndex = (currentWorldIndex + 1) % worldImages.length;
+                flashOpacity = 1; // Trigger flash
+                playSound('shift');
+            }
         }
 
         if (pipes[i].x + pipes[i].width < 0) {
@@ -209,6 +238,13 @@ function update() {
     ctx.font = "22px serif";
     ctx.textAlign = "right";
     ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 45);
+
+    // Draw Flash Effect
+    if (flashOpacity > 0) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        flashOpacity -= 0.05; // Fade out
+    }
 
     if (bird.y + bird.height > canvas.height || bird.y < 0) {
         gameOver();
@@ -257,20 +293,15 @@ canvas.addEventListener('mousedown', (e) => {
     }
 });
 
-bgImg.onload = () => {
-    renderStartScreen();
-};
-
-bgImg.onerror = () => {
-    renderStartScreen();
-};
-
 function renderStartScreen() {
     ctx.fillStyle = "#050510";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (bgImg.complete && bgImg.naturalWidth !== 0) {
-        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    
+    let activeBG = worldImages[currentWorldIndex];
+    if (activeBG && activeBG.complete && activeBG.naturalWidth !== 0) {
+        ctx.drawImage(activeBG, 0, 0, canvas.width, canvas.height);
     }
+    
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.font = "bold 18px 'Outfit', sans-serif";
@@ -280,3 +311,12 @@ function renderStartScreen() {
     ctx.textAlign = "right";
     ctx.fillText(window.isPlaying ? "🔊" : "🔇", canvas.width - 20, 45);
 }
+
+// Check if worlds are loaded
+let loadedCount = 0;
+worldImages.forEach(img => {
+    img.onload = () => {
+        loadedCount++;
+        if (loadedCount === worldImages.length) renderStartScreen();
+    };
+});
