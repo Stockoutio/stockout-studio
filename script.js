@@ -1,18 +1,18 @@
 // Music Control Logic
-const music = document.getElementById('bgMusic');
+window.music = document.getElementById('bgMusic');
+window.isPlaying = false; // Muted by default
+
 const musicToggle = document.getElementById('musicToggle');
-let isPlaying = false;
 
 if (musicToggle) {
     musicToggle.addEventListener('click', () => {
-        if (!isPlaying) {
-            music.play();
+        if (!window.isPlaying) {
+            window.isPlaying = true;
             musicToggle.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-            isPlaying = true;
         } else {
-            music.pause();
+            window.isPlaying = false;
+            window.music.pause();
             musicToggle.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
-            isPlaying = false;
         }
     });
 }

@@ -24,6 +24,13 @@ function initGame() {
     score = 0;
     frameCount = 0;
     gameRunning = true;
+    
+    // Start Music if not muted
+    if (music && isPlaying) {
+        music.currentTime = 0;
+        music.play();
+    }
+    
     requestAnimationFrame(update);
 }
 
@@ -124,6 +131,12 @@ function update() {
 function gameOver() {
     gameRunning = false;
     pipes = []; // Pipes disappear instantly on hit
+    
+    // Stop Music
+    if (music) {
+        music.pause();
+    }
+
     ctx.fillStyle = "rgba(0,0,0,0.85)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#fff";
