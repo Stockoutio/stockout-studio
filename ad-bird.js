@@ -11,7 +11,7 @@ class AdBird {
         
         this.config = {
             gravity: options.gravity || 0.5,
-            lift: options.lift || -7,
+            lift: options.lift || -5.5,
             pipeWidth: options.pipeWidth || 80,
             pipeGap: options.pipeGap || 230,
             pipeSpeed: options.pipeSpeed || 2.2,
