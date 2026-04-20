@@ -23,8 +23,8 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 body {
@@ -61,6 +61,7 @@ nav {
 }
 
 .logo {
+    width: 140px; /* Fixed width to prevent layout shifting on hover */
     font-size: 1.2rem;
     font-weight: 800;
     letter-spacing: 3px;
