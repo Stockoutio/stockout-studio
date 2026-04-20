@@ -5,7 +5,7 @@ const ctx = canvas.getContext('2d');
 const birdImg = new Image();
 birdImg.src = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png';
 
-let bird = { x: 50, y: 150, width: 38, height: 38, gravity: 0.6, lift: -10, velocity: 0 };
+let bird = { x: 50, y: 150, width: 38, height: 38, gravity: 0.6, lift: -8, velocity: 0 };
 let pipes = [];
 let frameCount = 0;
 let score = 0;
