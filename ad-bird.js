@@ -94,9 +94,22 @@ function update() {
         ctx.fillRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height);
         ctx.strokeRect(pipes[i].x, pipes[i].y + pipes[i].gap, pipes[i].width, canvas.height);
 
-        // Ad Text
+        // Smart Ad Placement
+        let adY;
+        let adTextPipeHeight;
+        
+        if (pipes[i].y < 100) {
+            // Top pipe too small, use bottom pipe
+            let bottomPipeTop = pipes[i].y + pipes[i].gap;
+            let bottomPipeHeight = canvas.height - bottomPipeTop;
+            adY = bottomPipeTop + (bottomPipeHeight / 2);
+        } else {
+            // Use top pipe
+            adY = pipes[i].y / 2;
+        }
+
         ctx.save();
-        ctx.translate(pipes[i].x + pipes[i].width/2, pipes[i].y / 2);
+        ctx.translate(pipes[i].x + pipes[i].width/2, adY);
         ctx.rotate(-Math.PI / 2);
         ctx.fillStyle = "#fff";
         ctx.font = "bold 12px 'Outfit', sans-serif";
