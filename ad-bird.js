@@ -26,7 +26,11 @@ class AdBird {
                 { text: "BUY BITCOIN", color: "#f59e0b" },
                 { text: "FOLLOW ME", color: "#06b6d4" }
             ],
-            hitMessages: ["WASTED", "REKT", "STAINED", "SPLAT", "OOPS"]
+            hitMessages: [
+                "WASTED", "REKT", "STAINED", "SPLAT", "OOPS", 
+                "GET REKT", "BILLBOARDED", "SIGN SMASHED", "MESSY", "BULLSEYE",
+                "AD-BLASTED", "INKED", "VANDALIZED", "SCORE!"
+            ]
         };
 
         this.state = {
@@ -66,8 +70,10 @@ class AdBird {
             this.assets.worlds.push(img);
         });
 
+        // Event Listeners
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         this.canvas.addEventListener('mousedown', (e) => this._handleMousedown(e));
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // Disable context menu for right-click play
 
         this._initBubbles();
         requestAnimationFrame(() => this.drawStartScreen());
@@ -83,7 +89,14 @@ class AdBird {
     }
 
     _handleKeydown(e) {
-        if (e.code === 'Space') {
+        const flapKeys = ['ArrowUp', 'KeyW', 'KeyK'];
+        const bombKeys = ['Space', 'ArrowDown', 'KeyS', 'KeyJ'];
+
+        if (flapKeys.includes(e.code)) {
+            e.preventDefault();
+            if (!this.state.gameRunning) this.start();
+            else this.flap();
+        } else if (bombKeys.includes(e.code)) {
             e.preventDefault();
             if (!this.state.gameRunning) this.start();
             else this.dropBomb();
@@ -95,13 +108,21 @@ class AdBird {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
+        // Mute Button Hitbox
         if (x > this.canvas.width - 60 && y < 60) {
             this.toggleMute();
             return;
         }
 
-        if (!this.state.gameRunning) this.start();
-        else this.flap();
+        if (!this.state.gameRunning) {
+            this.start();
+        } else {
+            if (e.button === 0) { // Left Click
+                this.flap();
+            } else if (e.button === 2) { // Right Click
+                this.dropBomb();
+            }
+        }
     }
 
     start() {
@@ -166,7 +187,7 @@ class AdBird {
             score: { type: 'sine', freq: [800, 1200], vol: 0.4, dur: 0.1 },
             crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 },
             shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 },
-            splat: { type: 'triangle', freq: [180, 40], vol: 0.3, dur: 0.2 } // Punchier splat
+            splat: { type: 'triangle', freq: [180, 40], vol: 0.3, dur: 0.2 }
         };
 
         const s = sounds[type];
@@ -279,7 +300,6 @@ class AdBird {
             drips: drips
         });
 
-        // Add Floating Text
         const msg = this.config.hitMessages[Math.floor(Math.random() * this.config.hitMessages.length)];
         this.floatingTexts.push({
             x: bx,
@@ -500,7 +520,7 @@ class AdBird {
         this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 10);
         this.ctx.font = "16px 'Outfit', sans-serif";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-        this.ctx.fillText("CLICK to flap • SPACE to bomb", this.canvas.width / 2, this.canvas.height / 2 + 30);
+        this.ctx.fillText("L-CLICK to flap • R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 30);
         
         this.ctx.font = "20px serif";
         this.ctx.textAlign = "right";
