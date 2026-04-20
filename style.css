@@ -152,6 +152,7 @@ nav {
     overflow: hidden;
     box-shadow: 0 40px 100px rgba(0,0,0,0.6);
     position: relative;
+    -webkit-tap-highlight-color: transparent; /* Kill the mobile tap flash */
 }
 
 .game-viewport {
