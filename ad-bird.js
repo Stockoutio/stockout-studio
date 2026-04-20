@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
         
         try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/ads?select=text,color&is_paid=eq.true&status=eq.approved&expires_at=gt.now()`, {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/ads?select=text&is_paid=eq.true&status=eq.approved&expires_at=gt.now()`, {
                 headers: {
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`
@@ -295,7 +295,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (response.ok) {
                 const data = await response.json();
-                paidAds = data.map(ad => ({ ...ad, isPaid: true }));
+                // Assign a random vibrant color from our config to each ad
+                const colors = ['#a855f7', '#06b6d4', '#f59e0b', '#22c55e', '#ec4899'];
+                paidAds = data.map(ad => ({ 
+                    ...ad, 
+                    isPaid: true, 
+                    color: colors[Math.floor(Math.random() * colors.length)] 
+                }));
                 console.log(`Backend Hook: ${paidAds.length} Paid Ads Loaded.`);
             }
         } catch (e) {
