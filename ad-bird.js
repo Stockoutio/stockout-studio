@@ -1,7 +1,7 @@
 const canvas = document.getElementById('adBirdCanvas');
 const ctx = canvas.getContext('2d');
 
-let bird = { x: 50, y: 150, width: 20, height: 20, gravity: 0.6, lift: -10, velocity: 0 };
+let bird = { x: 50, y: 150, width: 34, height: 34, gravity: 0.6, lift: -10, velocity: 0 };
 let pipes = [];
 let frameCount = 0;
 let score = 0;
@@ -29,12 +29,21 @@ function update() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Bird Logic
+    // Bird Logic & Rendering
     bird.velocity += bird.gravity;
     bird.y += bird.velocity;
 
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+    ctx.save();
+    ctx.translate(bird.x + bird.width/2, bird.y + bird.height/2);
+    // Rotate bird based on velocity
+    let rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, bird.velocity * 0.1));
+    ctx.rotate(rotation);
+    
+    ctx.font = `${bird.width}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🐦", 0, 0);
+    ctx.restore();
 
     // Pipe Logic
     if (frameCount % 100 === 0) {
