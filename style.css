@@ -238,7 +238,46 @@ footer {
     color: var(--text-muted);
 }
 
+.game-container {
+    background: #000;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 20px rgba(139, 92, 246, 0.1);
+    margin-top: -50px;
+    position: relative;
+    z-index: 10;
+}
+
+.game-header {
+    background: #1a1a1e;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.game-header .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #333;
+}
+
+.game-header span {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-left: 10px;
+}
+
 @media (max-width: 768px) {
     .nav-links { display: none; }
     .portfolio-grid { grid-template-columns: 1fr; }
+    .game-container iframe {
+        height: 400px;
+    }
 }
+
