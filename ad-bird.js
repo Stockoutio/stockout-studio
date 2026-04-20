@@ -545,11 +545,26 @@ class AdBird {
             });
 
             this.ctx.save();
-            this.ctx.translate(p.x + p.w/2, p.y + p.gap + (this.canvas.height - (p.y + p.gap)) / 2);
-            this.ctx.rotate(-Math.PI / 2); this.ctx.fillStyle = "#fff";
-            this.ctx.font = "bold 18px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
+            const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
+            this.ctx.translate(p.x + p.w/2, startY === 0 ? p.y / 2 : p.y + p.gap + pipeHeight / 2);
+            this.ctx.rotate(-Math.PI / 2);
+            
+            // Auto-scale font to fit pipe height
+            let fontSize = 18;
+            this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
+            const textWidth = this.ctx.measureText(p.ad.text).width;
+            const maxTextWidth = pipeHeight - 30; // 15px padding each side
+            
+            if (textWidth > maxTextWidth) {
+                fontSize = Math.max(10, Math.floor(fontSize * (maxTextWidth / textWidth)));
+                this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
+            }
+
+            this.ctx.fillStyle = "#fff";
+            this.ctx.textAlign = "center";
             this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
-            this.ctx.fillText(p.ad.text, 0, 0); this.ctx.restore();
+            this.ctx.fillText(p.ad.text, 0, 0); 
+            this.ctx.restore();
         });
     }
 
