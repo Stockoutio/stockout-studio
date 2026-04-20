@@ -279,6 +279,17 @@ class AdBird {
 // Global Init
 document.addEventListener('DOMContentLoaded', () => {
     const t = document.getElementById('mobileMenuToggle'); const n = document.getElementById('navLinks');
-    if (t && n) { t.onclick=(e)=>{e.stopPropagation(); n.classList.toggle('active');}; document.addEventListener('click',()=>n.classList.remove('active')); n.onclick=(e)=>e.stopPropagation(); }
+    if (t && n) { 
+        t.onclick=(e)=>{
+            e.stopPropagation(); 
+            n.classList.toggle('active');
+            t.classList.toggle('active');
+        }; 
+        document.addEventListener('click',()=>{
+            n.classList.remove('active');
+            t.classList.remove('active');
+        }); 
+        n.onclick=(e)=>e.stopPropagation(); 
+    }
     setTimeout(() => { window.adBirdGame = new AdBird('adBirdCanvas'); }, 100);
 });
