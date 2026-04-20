@@ -54,7 +54,8 @@ class AdBird {
             bgX: 0,
             screenShake: 0,
             bombTimer: 0,
-            isFullscreen: false
+            isFullscreen: false,
+            bombBtnFlash: 0
         };
 
         this.player = { 
@@ -86,7 +87,6 @@ class AdBird {
             this.assets.worlds.push(img);
         });
 
-        // Input Listeners
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         this.canvas.addEventListener('mousedown', (e) => this._handleMousedown(e));
         this.canvas.addEventListener('touchstart', (e) => this._handleTouch(e), { passive: false });
@@ -130,7 +130,7 @@ class AdBird {
         const rect = this.canvas.getBoundingClientRect();
         const x = (touch.clientX - rect.left) * (this.canvas.width / rect.width);
         const y = (touch.clientY - rect.top) * (this.canvas.height / rect.height);
-        this._processInput(x, y, 0); // Simulate left click behavior for most area
+        this._processInput(x, y, 0); 
     }
 
     _handleMousedown(e) {
@@ -142,21 +142,27 @@ class AdBird {
 
     _processInput(x, y, button) {
         // Mute Button (Top Right)
-        if (x > this.canvas.width - 60 && y < 60) {
+        if (x > this.canvas.width - 70 && y < 70) {
             this.toggleMute();
             return;
         }
 
         // Fullscreen Button (Bottom Right)
-        if (x > this.canvas.width - 60 && y > this.canvas.height - 60) {
+        if (x > this.canvas.width - 70 && y > this.canvas.height - 70) {
             this.toggleFullscreen();
             return;
         }
 
-        // Bomb Button (Bottom Left) - Mobile specific area
-        if (x < 100 && y > this.canvas.height - 100) {
-            if (this.state.gameRunning) this.dropBomb();
-            else this.start();
+        // Expanded Bomb Button Hitbox (Bottom Left)
+        if (x < 130 && y > this.canvas.height - 130) {
+            if (this.state.gameRunning) {
+                if (this.state.bombTimer === 0) {
+                    this.state.bombBtnFlash = 5; // Flash effect
+                    this.dropBomb();
+                }
+            } else {
+                this.start();
+            }
             return;
         }
 
@@ -182,7 +188,7 @@ class AdBird {
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
         Object.assign(this.state, {
             gameRunning: true, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, 
-            currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0
+            currentWorld: 0, bgX: 0, screenShake: 0, bombTimer: 0, bombBtnFlash: 0
         });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = [];
@@ -262,6 +268,7 @@ class AdBird {
         this.player.velocity += this.config.gravity;
         this.player.y += this.player.velocity;
         if (this.state.bombTimer > 0) this.state.bombTimer--;
+        if (this.state.bombBtnFlash > 0) this.state.bombBtnFlash--;
         if (this.state.screenShake > 0) this.state.screenShake *= 0.9;
         if (this.player.isFlipping) {
             this.player.flipAngle += this.player.flipDirection * this.player.flipSpeed;
@@ -437,30 +444,38 @@ class AdBird {
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText(`MARKETING IMPACT: ${this.state.directHits}`, this.canvas.width / 2, 90);
         
-        // Mute Button (Top Right)
+        // Buttons HUD
         this.ctx.font = "22px serif"; this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 45);
-        
-        // Fullscreen Button (Bottom Right)
-        this.ctx.font = "20px serif"; this.ctx.textAlign = "right";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
         this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
 
-        // BOMB BUTTON (Bottom Left) - Mobile optimized
+        // BOMB BUTTON (Bottom Left)
         this.ctx.textAlign = "left";
         this.ctx.font = "bold 18px 'Outfit', sans-serif";
-        this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.2)" : "rgba(6, 182, 212, 0.6)";
-        this.ctx.beginPath();
-        this.ctx.roundRect(15, this.canvas.height - 75, 80, 60, 10);
-        this.ctx.fill();
-        this.ctx.fillStyle = "#fff";
-        this.ctx.fillText("BOMB", 28, this.canvas.height - 40);
         
-        // Cooldown bar on bomb button
+        // Flash or Glow
+        if (this.state.bombBtnFlash > 0) {
+            this.ctx.fillStyle = "#fff";
+        } else {
+            this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.2)" : "rgba(6, 182, 212, 0.6)";
+        }
+        
+        this.ctx.beginPath();
+        this.ctx.roundRect(15, this.canvas.height - 85, 90, 70, 12);
+        this.ctx.fill();
+        
+        this.ctx.fillStyle = "#fff";
+        this.ctx.shadowBlur = this.state.bombTimer === 0 ? 15 : 0;
+        this.ctx.shadowColor = "#06b6d4";
+        this.ctx.fillText("BOMB", 32, this.canvas.height - 45);
+        this.ctx.shadowBlur = 0;
+        
+        // Cooldown bar
         if (this.state.bombTimer > 0) {
             const pct = this.state.bombTimer / this.config.bombCooldown;
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-            this.ctx.fillRect(15, this.canvas.height - 18, 80 * pct, 3);
+            this.ctx.fillRect(15, this.canvas.height - 18, 90 * pct, 4);
         }
     }
 
