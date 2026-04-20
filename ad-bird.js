@@ -243,11 +243,19 @@ class AdBird {
         if (!this.state.gameRunning) {
             this.start();
         } else {
-            // Robust secondary-click detection using bitmask (2 = Right Click)
+            let actDone = false;
+
+            // Check for Bomb Action (Right Click / Ctrl+Click / Chorded)
             if ((e.buttons & 2) || e.button === 2 || (e.button === 0 && e.ctrlKey)) {
                 this.dropBomb();
-            } else {
+                actDone = true;
+            }
+
+            // Check for Flap Action (Left Click / Chorded)
+            // We flap if it's a primary click OR if we're chording buttons
+            if (e.button === 0 || (e.buttons & 1)) {
                 this.flap();
+                actDone = true;
             }
         }
     }
