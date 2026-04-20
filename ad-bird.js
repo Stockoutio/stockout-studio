@@ -177,15 +177,15 @@ class AdBird {
         const now = this.audioCtx.currentTime;
         
         if (type === 'splat') {
-            const freqs = [300, 450, 600];
-            osc.type = 'sine';
+            const freqs = [400, 600, 800];
+            osc.type = 'square';
             osc.frequency.setValueAtTime(freqs[0], now);
-            osc.frequency.exponentialRampToValueAtTime(freqs[1], now + 0.1);
-            osc.frequency.exponentialRampToValueAtTime(freqs[2], now + 0.2);
-            gain.gain.setValueAtTime(0.4, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.frequency.exponentialRampToValueAtTime(freqs[1], now + 0.05);
+            osc.frequency.exponentialRampToValueAtTime(freqs[2], now + 0.1);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
             osc.start(now);
-            osc.stop(now + 0.2);
+            osc.stop(now + 0.15);
             return;
         }
 
