@@ -6,6 +6,29 @@
     <title>Stockout Studio</title>
     <meta name="description" content="Creative development and digital experiences.">
     <link rel="stylesheet" href="style.css">
+    <style>
+        #adBirdCanvas {
+            background: #000;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 400px;
+            height: 400px;
+        }
+        .ad-section {
+            margin-top: 4rem;
+            text-align: center;
+        }
+        .ad-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            padding: 2rem;
+            border-radius: 24px;
+            max-width: 500px;
+            margin: 2rem auto;
+        }
+    </style>
 </head>
 <body>
 
@@ -23,9 +46,22 @@
             <h1>Stockout <br><span style="background: var(--gradient-glow); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Studio.</span></h1>
             <p style="margin-bottom: 2rem;">Building immersive mechanics and digital experiences.</p>
             
-            <div class="game-teaser">
+            <div class="game-teaser" style="margin-bottom: 4rem;">
                 <a href="https://stockout.itch.io/gridwingdemo" target="_blank" class="cta-button" style="text-decoration: none; display: inline-block;">Play Gridwing Demo</a>
-                <p style="font-size: 0.8rem; margin-top: 1rem; opacity: 0.6;">Available on Itch.io</p>
+            </div>
+
+            <div class="ad-section">
+                <h2 style="font-size: 1.5rem; letter-spacing: 2px;">AD-BIRD-TISING LABS</h2>
+                <p style="opacity: 0.6; font-size: 0.9rem;">High-performance marketing, one flap at a time.</p>
+                
+                <div class="ad-card">
+                    <canvas id="adBirdCanvas" width="400" height="400"></canvas>
+                    <div style="margin-top: 2rem;">
+                        <h3>Rent-A-Pipe™</h3>
+                        <p style="font-size: 0.9rem; margin: 1rem 0;">Put your brand in the direct path of certain destruction.</p>
+                        <a href="mailto:hello@stockout.studio?subject=I want to buy a pipe" class="cta-button" style="padding: 0.8rem 2rem; font-size: 0.9rem; text-decoration: none;">Buy a Pipe ($5)</a>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -37,5 +73,6 @@
     </footer>
 
     <script src="script.js"></script>
+    <script src="ad-bird.js"></script>
 </body>
 </html>
