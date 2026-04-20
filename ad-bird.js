@@ -414,8 +414,7 @@ class AdBird {
     }
 
     _spawnPipe() {
-        const minPipeHeight = 140;
-        const h = Math.floor(Math.random() * (this.canvas.height - this.config.pipeGap - (minPipeHeight * 2))) + minPipeHeight;
+        const h = Math.floor(Math.random() * (this.canvas.height - this.config.pipeGap - 150 - 60)) + 60;
         this.pipes.push({
             x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: this.config.pipeGap,
             ad: this.config.ads[Math.floor(Math.random() * this.config.ads.length)],
@@ -532,76 +531,24 @@ class AdBird {
     }
 
     _renderPipes() {
-        if (!this.pipes || this.pipes.length === 0) return;
-        
-        // Reset global shadow state to prevent GPU memory leaks
-        this.ctx.shadowBlur = 0;
-        this.ctx.shadowColor = "transparent";
-
         this.pipes.forEach(p => {
-            if (!p || !p.ad) return;
-            
-            this.ctx.save();
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
-            this.ctx.strokeStyle = p.ad.color || "#fff"; 
-            this.ctx.lineWidth = 4;
-            
-            // Main Pipe Bodies
-            this.ctx.fillRect(p.x, 0, p.w, p.y); 
-            this.ctx.strokeRect(p.x, -1, p.w, p.y + 1);
-            this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height); 
-            this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
-            this.ctx.restore();
+            this.ctx.strokeStyle = p.ad.color; this.ctx.lineWidth = 4;
+            this.ctx.fillRect(p.x, 0, p.w, p.y); this.ctx.strokeRect(p.x, -1, p.w, p.y + 1);
+            this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height); this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
 
             [0, p.y + p.gap].forEach(startY => {
-                const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
-                if (pipeHeight <= 0) return;
-
-                // Clipping for stains
-                this.ctx.save(); 
-                this.ctx.beginPath();
-                this.ctx.rect(p.x, startY, p.w, pipeHeight);
-                this.ctx.clip(); 
-                this._drawStains(p); 
-                this.ctx.restore();
-
-                // Draw Pipe Cap (Arcade Rim)
-                const capHeight = 30;
-                const overhang = 8;
-                this.ctx.fillStyle = "rgba(15, 15, 25, 0.95)";
-                if (startY === 0) {
-                    this.ctx.fillRect(p.x - overhang, p.y - capHeight, p.w + (overhang * 2), capHeight);
-                    this.ctx.strokeRect(p.x - overhang, p.y - capHeight, p.w + (overhang * 2), capHeight);
-                } else {
-                    this.ctx.fillRect(p.x - overhang, p.y + p.gap, p.w + (overhang * 2), capHeight);
-                    this.ctx.strokeRect(p.x - overhang, p.y + p.gap, p.w + (overhang * 2), capHeight);
-                }
-
-                // Draw Ad Text
-                this.ctx.save();
-                this.ctx.translate(p.x + p.w/2, startY === 0 ? p.y / 2 : p.y + p.gap + pipeHeight / 2);
-                this.ctx.rotate(-Math.PI / 2);
-                
-                let adText = p.ad.text || "";
-                let fontSize = 18;
-                this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
-                
-                const textMetrics = this.ctx.measureText(adText);
-                const textWidth = textMetrics.width;
-                const maxTextWidth = Math.max(10, pipeHeight - 50); 
-                
-                if (textWidth > maxTextWidth) {
-                    fontSize = Math.max(10, Math.floor(fontSize * (maxTextWidth / textWidth)));
-                    this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
-                }
-
-                this.ctx.fillStyle = "#fff";
-                this.ctx.textAlign = "center";
-                this.ctx.shadowColor = p.ad.color || "#fff"; 
-                this.ctx.shadowBlur = 10;
-                this.ctx.fillText(adText, 0, 0); 
-                this.ctx.restore();
+                this.ctx.save(); this.ctx.beginPath();
+                this.ctx.rect(p.x, startY, p.w, startY === 0 ? p.y : this.canvas.height);
+                this.ctx.clip(); this._drawStains(p); this.ctx.restore();
             });
+
+            this.ctx.save();
+            this.ctx.translate(p.x + p.w/2, p.y + p.gap + (this.canvas.height - (p.y + p.gap)) / 2);
+            this.ctx.rotate(-Math.PI / 2); this.ctx.fillStyle = "#fff";
+            this.ctx.font = "bold 13px 'Outfit', sans-serif"; this.ctx.textAlign = "center";
+            this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
+            this.ctx.fillText(p.ad.text, 0, 0); this.ctx.restore();
         });
     }
 
@@ -610,9 +557,7 @@ class AdBird {
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
             this.ctx.beginPath(); this.ctx.arc(p.x + s.xOff, s.relY, s.size, 0, Math.PI * 2); this.ctx.fill();
             s.drips.forEach(d => {
-                this.ctx.beginPath(); 
-                this.ctx.rect(p.x + s.xOff + d.xOff, s.relY, d.w, d.len); 
-                this.ctx.fill();
+                this.ctx.beginPath(); this.ctx.roundRect(p.x + s.xOff + d.xOff, s.relY, d.w, d.len, d.w/2); this.ctx.fill();
             });
         });
     }
@@ -621,7 +566,7 @@ class AdBird {
         this.ctx.textAlign = "center";
         this.floatingTexts.forEach(t => {
             this.ctx.save(); this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale);
-            this.ctx.fillStyle = t.color; this.ctx.font = "bold 26px 'Outfit', sans-serif";
+            this.ctx.fillStyle = t.color; this.ctx.font = "bold 22px 'Outfit', sans-serif";
             this.ctx.shadowBlur = 15; this.ctx.shadowColor = t.color;
             this.ctx.fillText(t.text, 0, 0); this.ctx.restore();
         });
@@ -639,7 +584,7 @@ class AdBird {
     _renderHUD() {
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center";
         this.ctx.font = "bold 48px 'Outfit', sans-serif"; this.ctx.fillText(this.state.score, this.ui.scoreCenter, 65);
-        this.ctx.font = "bold 16px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        this.ctx.font = "bold 14px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText(`MARKETING IMPACT: ${this.state.directHits}`, this.ui.scoreCenter, 90);
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
@@ -655,7 +600,7 @@ class AdBird {
         this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4";
         this.ctx.roundRect(this.ui.bombBtn.x, this.ui.bombBtn.y, this.ui.bombBtn.w, this.ui.bombBtn.h, this.ui.bombBtn.radius); this.ctx.fill();
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center";
-        this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0;
+        this.ctx.font = "bold 18px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0;
         this.ctx.fillText("BOMB", this.ui.bombBtn.x + this.ui.bombBtn.w/2, this.ui.bombBtn.y + (this.isMobile ? 42 : 36)); 
         if (!this.isMobile) {
             this.ctx.font = "bold 9px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
