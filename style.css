@@ -2,9 +2,8 @@
 
 :root {
     --bg-dark: #0a0a0c;
-    --bg-card: rgba(255, 255, 255, 0.03);
-    --accent-primary: #8b5cf6; /* Electric Purple */
-    --accent-secondary: #06b6d4; /* Cyan */
+    --accent-primary: #8b5cf6;
+    --accent-secondary: #06b6d4;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --glass-border: rgba(255, 255, 255, 0.1);
@@ -21,11 +20,8 @@
 body {
     background-color: var(--bg-dark);
     color: var(--text-main);
-    overflow-x: hidden;
-    line-height: 1.6;
+    overflow: hidden; /* Clean single-page look */
 }
-
-/* --- Layout --- */
 
 .container {
     max-width: 1200px;
@@ -33,54 +29,23 @@ body {
     padding: 0 2rem;
 }
 
-section {
-    padding: 100px 0;
-}
-
-/* --- Navigation --- */
-
 nav {
     position: fixed;
     top: 0;
     width: 100%;
     z-index: 1000;
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--glass-border);
-    padding: 1.5rem 0;
-}
-
-.nav-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding: 2rem 0;
 }
 
 .logo {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 800;
-    letter-spacing: -0.5px;
+    letter-spacing: 2px;
     background: var(--gradient-glow);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    opacity: 0.8;
 }
-
-.nav-links {
-    display: flex;
-    gap: 2.5rem;
-}
-
-.nav-links a {
-    text-decoration: none;
-    color: var(--text-muted);
-    font-weight: 500;
-    transition: color 0.3s ease;
-}
-
-.nav-links a:hover {
-    color: var(--text-main);
-}
-
-/* --- Hero Section --- */
 
 .hero {
     height: 100vh;
@@ -88,8 +53,7 @@ nav {
     align-items: center;
     justify-content: center;
     position: relative;
-    overflow: hidden;
-    background: linear-gradient(rgba(10, 10, 12, 0.8), rgba(10, 10, 12, 0.8)), url('hero-bg.png');
+    background: linear-gradient(rgba(10, 10, 12, 0.85), rgba(10, 10, 12, 0.85)), url('hero-bg.png');
     background-size: cover;
     background-position: center;
 }
@@ -100,184 +64,55 @@ nav {
 }
 
 .hero h1 {
-    font-size: clamp(3rem, 8vw, 6rem);
+    font-size: clamp(3rem, 10vw, 5rem);
     font-weight: 800;
     line-height: 1.1;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     letter-spacing: -2px;
 }
 
 .hero p {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     color: var(--text-muted);
-    max-width: 600px;
-    margin: 0 auto 2.5rem;
+    max-width: 500px;
+    margin: 0 auto;
 }
 
 .cta-button {
-    padding: 1rem 2.5rem;
+    padding: 1.2rem 3rem;
     font-size: 1rem;
     font-weight: 600;
-    border: none;
     border-radius: 50px;
     background: var(--gradient-glow);
     color: white;
-    cursor: pointer;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
 }
 
 .cta-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 10px 40px rgba(139, 92, 246, 0.5);
 }
 
-/* Background Glows */
 .glow-orb {
     position: absolute;
-    width: 600px;
-    height: 600px;
+    width: 60vh;
+    height: 60vh;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
-    filter: blur(80px);
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+    filter: blur(100px);
     z-index: 0;
 }
 
-.orb-1 { top: -100px; right: -100px; }
-.orb-2 { bottom: -200px; left: -200px; }
-
-/* --- Services --- */
-
-.section-title {
-    text-align: center;
-    margin-bottom: 4rem;
-}
-
-.section-title h2 {
-    font-size: 2.5rem;
-    font-weight: 700;
-}
-
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-}
-
-.card {
-    background: var(--bg-card);
-    border: 1px solid var(--glass-border);
-    padding: 3rem;
-    border-radius: 24px;
-    transition: transform 0.3s ease, border-color 0.3s ease;
-}
-
-.card:hover {
-    transform: translateY(-10px);
-    border-color: var(--accent-primary);
-}
-
-.card i {
-    font-size: 2rem;
-    margin-bottom: 1.5rem;
-    display: block;
-    color: var(--accent-primary);
-}
-
-.card h3 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-}
-
-.card p {
-    color: var(--text-muted);
-}
-
-/* --- Portfolio --- */
-
-.portfolio-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-}
-
-.portfolio-item {
-    position: relative;
-    border-radius: 24px;
-    overflow: hidden;
-    aspect-ratio: 16 / 9;
-    background: #1e1e20;
-}
-
-.portfolio-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.7;
-    transition: scale 0.5s ease;
-}
-
-.portfolio-item:hover img {
-    scale: 1.05;
-}
-
-.portfolio-info {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    padding: 2rem;
-    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-}
-
-/* --- Footer --- */
+.orb-1 { top: -10%; right: -10%; }
+.orb-2 { bottom: -10%; left: -10%; }
 
 footer {
-    border-top: 1px solid var(--glass-border);
-    padding: 4rem 0;
+    position: absolute;
+    bottom: 2rem;
+    width: 100%;
     text-align: center;
-    color: var(--text-muted);
-}
-
-.game-container {
-    background: #000;
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 20px rgba(139, 92, 246, 0.1);
-    margin-top: -50px;
-    position: relative;
-    z-index: 10;
-}
-
-.game-header {
-    background: #1a1a1e;
-    padding: 10px 20px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-bottom: 1px solid var(--glass-border);
-}
-
-.game-header .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #333;
-}
-
-.game-header span {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-muted);
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.3);
     letter-spacing: 1px;
-    margin-left: 10px;
 }
-
-@media (max-width: 768px) {
-    .nav-links { display: none; }
-    .portfolio-grid { grid-template-columns: 1fr; }
-    .game-container iframe {
-        height: 400px;
-    }
-}
-
