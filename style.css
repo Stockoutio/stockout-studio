@@ -37,15 +37,21 @@ nav {
     top: 0;
     width: 100%;
     z-index: 1000;
-    padding: 1.5rem 0;
+    padding: 1.2rem 0;
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     background: rgba(10, 10, 12, 0.4);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.nav-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .logo {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 800;
     letter-spacing: 2px;
     background: var(--gradient-glow);
@@ -54,13 +60,26 @@ nav {
     opacity: 0.8;
 }
 
+.nav-item {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    letter-spacing: 1px;
+    transition: color 0.3s ease;
+}
+
+.nav-item:hover {
+    color: var(--text-main);
+}
+
 /* --- Hero Section --- */
 .hero {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 180px;
+    padding-top: 140px; /* Adjusted for no headline */
     padding-bottom: 100px;
     position: relative;
     background: linear-gradient(rgba(10, 10, 12, 0.9), rgba(10, 10, 12, 0.9)), url('hero-bg.png');
@@ -73,27 +92,6 @@ nav {
     text-align: center;
     z-index: 1;
     width: 100%;
-}
-
-.hero h1 {
-    font-size: clamp(3.5rem, 12vw, 6rem);
-    font-weight: 800;
-    line-height: 0.9;
-    margin-bottom: 1.5rem;
-    letter-spacing: -3px;
-}
-
-.accent-text {
-    background: var(--gradient-glow);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.hero-subline {
-    font-size: 1.1rem;
-    color: var(--text-muted);
-    max-width: 500px;
-    margin: 0 auto 2rem;
 }
 
 /* --- Components --- */
@@ -120,17 +118,13 @@ nav {
     box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
 }
 
-.main-cta {
-    margin-bottom: 5rem;
-}
-
 /* --- Labs Section --- */
 .labs-section {
-    margin-top: 4rem;
+    margin-top: 2rem;
 }
 
 .labs-title {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     letter-spacing: 3px;
     font-weight: 600;
     margin-bottom: 0.5rem;
@@ -139,7 +133,7 @@ nav {
 .labs-subline {
     opacity: 0.5;
     font-size: 0.9rem;
-    margin-bottom: 3rem;
+    margin-bottom: 4rem;
 }
 
 .ad-card {
