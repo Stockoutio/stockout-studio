@@ -132,21 +132,25 @@ nav {
 .mobile-menu-toggle {
     display: none;
     position: absolute;
-    right: 5%;
+    right: 20px;
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
-    z-index: 5000; /* Above everything */
-    padding: 10px;
-    background: transparent;
-    border: none;
-    outline: none;
+    z-index: 5000;
+    color: #fff;
+    font-size: 32px;
+    font-weight: bold;
+    line-height: 1;
+    user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
 @media (max-width: 768px) {
+    nav {
+        height: 70px; /* Force consistent anchor height */
+    }
     .mobile-menu-toggle { 
-        display: block !important; /* Standalone block positioning */
+        display: block !important;
     }
     .nav-links {
         position: fixed;
