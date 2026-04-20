@@ -139,7 +139,8 @@ class AdBird {
             this._handleInput(e);
         };
         
-        this.canvas.addEventListener('pointerdown', handlePtr, { passive: false });
+        const inputTarget = this.canvas.parentElement || this.canvas;
+        inputTarget.addEventListener('pointerdown', handlePtr, { passive: false });
         
         if (this.overlay) {
             this.overlay.addEventListener('pointerdown', (e) => {
