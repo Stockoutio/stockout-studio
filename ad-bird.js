@@ -130,15 +130,21 @@ class AdBird {
             this.assets.worlds.push(img);
         });
 
-        // 2. Event Registration (Consolidated)
+        // Event Registration (Window-Level for Zero Latency)
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         
-        const inputTarget = this.canvas.parentElement || this.canvas;
-        inputTarget.addEventListener('pointerdown', (e) => {
+        window.addEventListener('pointerdown', (e) => {
             if (this.isMobile && this.overlay && this.overlay.classList.contains('active')) return;
             this._handleInput(e);
         }, { passive: false });
-        inputTarget.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        window.addEventListener('contextmenu', (e) => {
+            // Only block context menu if clicking near the game viewport
+            const rect = this.canvas.parentElement.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                e.preventDefault();
+            }
+        });
         
         if (this.overlay) {
             this.overlay.addEventListener('pointerdown', (e) => {
@@ -239,24 +245,25 @@ class AdBird {
             return;
         }
 
-        // 2. Gameplay Routing (Rapid-Fire Parallel Execution)
+        // 2. Gameplay Routing (Atomic Processing)
         if (!this.state.gameRunning) {
-            this.start();
-        } else {
-            // Check for Bomb Action (Right Click / Ctrl+Click / Chorded)
-            if ((e.buttons & 2) || e.button === 2 || (e.button === 0 && e.ctrlKey)) {
-                this.dropBomb();
-                actionTriggered = true;
+            // Filter for clicks actually landing on the game viewport to start
+            const rect = this.canvas.parentElement.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                this.start();
             }
-
-            // Check for Flap Action (Left Click / Chorded)
-            if (e.button === 0 || (e.buttons & 1)) {
+        } else {
+            // Check for secondary action first (Bomb)
+            if (e.button === 2 || (e.buttons & 2) || (e.button === 0 && e.ctrlKey)) {
+                this.dropBomb();
+                e.preventDefault();
+            } 
+            // Then check for primary action (Flap)
+            else if (e.button === 0 || (e.buttons & 1)) {
                 this.flap();
-                actionTriggered = true;
+                e.preventDefault();
             }
         }
-        
-        if (actionTriggered) e.preventDefault();
     }
 
     toggleFullscreen() {
