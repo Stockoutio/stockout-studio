@@ -414,7 +414,8 @@ class AdBird {
     }
 
     _spawnPipe() {
-        const h = Math.floor(Math.random() * (this.canvas.height - this.config.pipeGap - 150 - 60)) + 60;
+        const minPipeHeight = 120;
+        const h = Math.floor(Math.random() * (this.canvas.height - this.config.pipeGap - (minPipeHeight * 2))) + minPipeHeight;
         this.pipes.push({
             x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: this.config.pipeGap,
             ad: this.config.ads[Math.floor(Math.random() * this.config.ads.length)],
