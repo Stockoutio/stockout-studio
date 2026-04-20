@@ -130,26 +130,36 @@ class AdBird {
             this.assets.worlds.push(img);
         });
 
-        // Event Registration (Window-Level for Zero Latency)
+        // Event Registration (Low-Level Arcade Priority)
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         
-        window.addEventListener('pointerdown', (e) => {
-            if (this.isMobile && this.overlay && this.overlay.classList.contains('active')) return;
-            this._handleInput(e);
-        }, { passive: false });
+        const inputTarget = this.canvas.parentElement || this.canvas;
         
-        window.addEventListener('contextmenu', (e) => {
-            // Only block context menu if clicking near the game viewport
-            const rect = this.canvas.parentElement.getBoundingClientRect();
-            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-                e.preventDefault();
-            }
+        // Desktop Raw Priority
+        inputTarget.addEventListener('mousedown', (e) => {
+            if (this.isMobile) return; 
+            this._handleInput(e);
         });
+
+        // Mobile Raw Priority
+        inputTarget.addEventListener('touchstart', (e) => {
+            if (!this.isMobile) return;
+            const touch = e.touches[0];
+            // Fake a mouse event for the handler
+            this._handleInput({ 
+                clientX: touch.clientX, 
+                clientY: touch.clientY, 
+                button: 0,
+                preventDefault: () => e.preventDefault()
+            });
+        }, { passive: false });
+
+        inputTarget.addEventListener('contextmenu', (e) => e.preventDefault());
         
         if (this.overlay) {
-            this.overlay.addEventListener('pointerdown', (e) => {
+            this.overlay.addEventListener('mousedown', () => this.start());
+            this.overlay.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
                 this.start();
             });
         }
@@ -245,24 +255,20 @@ class AdBird {
             return;
         }
 
-        // 2. Gameplay Routing (Parallel Execution - No Shadowing)
+        // 2. Gameplay Routing (Absolute Raw Priority)
         if (!this.state.gameRunning) {
-            const rect = this.canvas.parentElement.getBoundingClientRect();
-            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
-                this.start();
-            }
+            this.start();
         } else {
-            // Check for Bomb (Secondary)
-            if (e.button === 2 || (e.buttons & 2) || (e.button === 0 && e.ctrlKey)) {
+            // Atomic check for secondary (Right Click)
+            if (e.button === 2) {
                 this.dropBomb();
             } 
-            
-            // Check for Flap (Primary)
-            if (e.button === 0 || (e.buttons & 1)) {
+            // Atomic check for primary (Left Click)
+            if (e.button === 0) {
                 this.flap();
             }
             
-            e.preventDefault();
+            if (e.preventDefault) e.preventDefault();
         }
     }
 
