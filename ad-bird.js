@@ -171,13 +171,13 @@ class AdBird {
             return;
         }
 
-        // 2. Fullscreen Button (Bottom Right)
-        if (x > this.canvas.width - 140 && y > this.canvas.height - 140) {
+        // 2. GIANT Fullscreen Button (Bottom Right) - 160x160 HITBOX
+        if (x > this.canvas.width - 160 && y > this.canvas.height - 160) {
             this.toggleFullscreen();
             return;
         }
 
-        // 3. Bomb Button (Bottom Left) - MASSIVE HITBOX
+        // 3. Bomb Button (Bottom Left) - MASSIVE 180x180 HITBOX
         if (x < 180 && y > this.canvas.height - 180) {
             if (this.state.gameRunning) {
                 if (this.state.bombTimer === 0) {
@@ -194,7 +194,6 @@ class AdBird {
         if (!this.state.gameRunning) {
             this.start();
         } else {
-            // ONLY flap if we haven't hit a UI area
             if (button === 0) this.flap();
             else if (button === 2) this.dropBomb();
         }
@@ -474,10 +473,19 @@ class AdBird {
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 50);
         
-        // BOLDER Fullscreen Button (Bottom Right)
-        this.ctx.font = "bold 32px serif"; this.ctx.textAlign = "right";
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-        this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
+        // GIANT Fullscreen Button (Bottom Right)
+        this.ctx.save();
+        this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
+        this.ctx.beginPath();
+        this.ctx.arc(this.canvas.width - 35, this.canvas.height - 35, 30, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        this.ctx.stroke();
+
+        this.ctx.font = "bold 42px serif"; this.ctx.textAlign = "center";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 35, this.canvas.height - 22);
+        this.ctx.restore();
 
         // BOMB BUTTON (Bottom Left)
         this.ctx.textAlign = "left";
@@ -542,9 +550,15 @@ class AdBird {
             this.ctx.fillText("TAP to flap", this.canvas.width / 2, this.canvas.height / 2 + 85);
             this.ctx.fillText("BOMB BUTTON to drop ads", this.canvas.width / 2, this.canvas.height / 2 + 110);
             
-            this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-            this.ctx.font = "bold 32px serif"; this.ctx.textAlign = "right";
-            this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
+            this.ctx.save();
+            this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
+            this.ctx.beginPath();
+            this.ctx.arc(this.canvas.width - 35, this.canvas.height - 35, 30, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.font = "bold 42px serif"; this.ctx.textAlign = "center";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 35, this.canvas.height - 22);
+            this.ctx.restore();
         }, 10);
     }
 
@@ -559,9 +573,16 @@ class AdBird {
         this.ctx.fillText("TAP ANYWHERE to flap", this.canvas.width / 2, this.canvas.height / 2 + 30);
         this.ctx.fillText("BOMB BUTTON to drop ads", this.canvas.width / 2, this.canvas.height / 2 + 55);
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 50);
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        this.ctx.font = "bold 32px serif"; this.ctx.textAlign = "right";
-        this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
+        
+        this.ctx.save();
+        this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
+        this.ctx.beginPath();
+        this.ctx.arc(this.canvas.width - 35, this.canvas.height - 35, 30, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.font = "bold 42px serif"; this.ctx.textAlign = "center";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 35, this.canvas.height - 22);
+        this.ctx.restore();
     }
 }
 window.adBirdGame = new AdBird('adBirdCanvas');
