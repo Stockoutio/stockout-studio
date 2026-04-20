@@ -128,10 +128,10 @@ function update() {
     
     let activeBG = worldImages[currentWorldIndex];
     if (activeBG.complete && activeBG.naturalWidth !== 0) {
-        // Round to floor and add 1px overlap to prevent tearing
+        // Round to floor and add 2px overlap to prevent tearing
         let roundedX = Math.floor(bgX);
-        ctx.drawImage(activeBG, roundedX, 0, canvas.width + 1, canvas.height);
-        ctx.drawImage(activeBG, roundedX + canvas.width, 0, canvas.width + 1, canvas.height);
+        ctx.drawImage(activeBG, roundedX, 0, canvas.width + 2, canvas.height);
+        ctx.drawImage(activeBG, roundedX + canvas.width, 0, canvas.width + 2, canvas.height);
     } else {
         ctx.fillStyle = "#050510";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
