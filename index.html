@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stockout Studio | Ad-Bird-tising</title>
-    <meta name="description" content="High-performance marketing, one flap at a time.">
+    
+    <!-- SEO & Social -->
+    <meta name="description" content="Rent-A-Pipe: The world's first flappy-based advertising platform. Put your brand in the path of the Pufferfish.">
+    <meta property="og:title" content="Stockout Studio | Ad-Bird-tising">
+    <meta property="og:description" content="High-performance marketing, one flap at a time.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@stockoutio">
+
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -15,48 +22,56 @@
             <div class="logo">STOCKOUT STUDIO</div>
             <div class="nav-links">
                 <a href="https://stockout.itch.io/gridwingdemo" target="_blank" class="nav-item">Play Gridwing</a>
-                <a href="https://x.com/stockoutio" target="_blank" class="nav-item"><i class="fa-brands fa-x-twitter" style="margin-right: 8px;"></i> Twitter</a>
+                <a href="https://x.com/stockoutio" target="_blank" class="nav-item">
+                    <i class="fa-brands fa-x-twitter" style="margin-right: 8px;"></i> Twitter
+                </a>
             </div>
         </div>
     </nav>
 
-    <header class="hero">
+    <main class="hero">
         <div class="glow-orb orb-1"></div>
         <div class="glow-orb orb-2"></div>
         
         <div class="container hero-split">
-            <!-- Left: The Big Ad-Bird Game -->
-            <div class="game-main">
+            <!-- Left: The Ad-Bird Game -->
+            <section class="game-main">
                 <div class="game-header">
-                    <div class="dot"></div>
+                    <div class="dot" style="background: #ff5f56;"></div>
+                    <div class="dot" style="background: #ffbd2e;"></div>
+                    <div class="dot" style="background: #27c93f;"></div>
                     <span>AD_BIRD_TISING.EXE</span>
                 </div>
                 <canvas id="adBirdCanvas" width="600" height="600"></canvas>
-            </div>
+            </section>
 
-            <!-- Right: The Info -->
-            <div class="labs-side">
+            <!-- Right: The Marketing Info -->
+            <aside class="labs-side">
                 <h1 class="labs-title">AD-BIRD-TISING</h1>
                 <p class="labs-subline">High-performance marketing, <br>one flap at a time.</p>
 
                 <div class="pipe-card">
                     <h3>Rent-A-Pipe™</h3>
-                    <p>Put your brand in the path of destruction. Each pipe is a billboard for your business, your cat, or your chaos.</p>
+                    <p>Put your brand in the path of destruction. Each pipe is a premium billboard for your business, your cat, or your chaos.</p>
                     <div class="price-tag">$5 / 24hrs</div>
                     <a href="https://x.com/stockoutio" target="_blank" class="cta-button">DM to Buy a Pipe</a>
                 </div>
-            </div>
+            </aside>
         </div>
-    </header>
+    </main>
 
     <footer>
         <div class="container">
-            <p>&copy; 2026 Stockout Studio</p>
+            <p>&copy; 2026 Stockout Studio | Built for the next generation of arcade marketing.</p>
         </div>
     </footer>
 
+    <!-- Game Scripts -->
     <script src="script.js"></script>
     <script src="ad-bird.js"></script>
+    
+    <!-- Audio Assets -->
     <audio id="bgMusic" loop src="bg-music.mp3"></audio>
+
 </body>
 </html>
