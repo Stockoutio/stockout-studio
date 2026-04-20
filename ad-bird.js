@@ -535,36 +535,51 @@ class AdBird {
         this.pipes.forEach(p => {
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
             this.ctx.strokeStyle = p.ad.color; this.ctx.lineWidth = 4;
+            // Main Pipe Bodies
             this.ctx.fillRect(p.x, 0, p.w, p.y); this.ctx.strokeRect(p.x, -1, p.w, p.y + 1);
             this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height); this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
 
             [0, p.y + p.gap].forEach(startY => {
+                const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
+                
+                // Clipping for stains
                 this.ctx.save(); this.ctx.beginPath();
-                this.ctx.rect(p.x, startY, p.w, startY === 0 ? p.y : this.canvas.height);
+                this.ctx.rect(p.x, startY, p.w, pipeHeight);
                 this.ctx.clip(); this._drawStains(p); this.ctx.restore();
-            });
 
-            this.ctx.save();
-            const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
-            this.ctx.translate(p.x + p.w/2, startY === 0 ? p.y / 2 : p.y + p.gap + pipeHeight / 2);
-            this.ctx.rotate(-Math.PI / 2);
-            
-            // Auto-scale font to fit pipe height
-            let fontSize = 18;
-            this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
-            const textWidth = this.ctx.measureText(p.ad.text).width;
-            const maxTextWidth = pipeHeight - 30; // 15px padding each side
-            
-            if (textWidth > maxTextWidth) {
-                fontSize = Math.max(10, Math.floor(fontSize * (maxTextWidth / textWidth)));
+                // Draw Pipe Cap (Arcade Rim)
+                const capHeight = 30;
+                const overhang = 8;
+                this.ctx.fillStyle = "rgba(15, 15, 25, 0.95)";
+                if (startY === 0) {
+                    this.ctx.fillRect(p.x - overhang, p.y - capHeight, p.w + (overhang * 2), capHeight);
+                    this.ctx.strokeRect(p.x - overhang, p.y - capHeight, p.w + (overhang * 2), capHeight);
+                } else {
+                    this.ctx.fillRect(p.x - overhang, p.y + p.gap, p.w + (overhang * 2), capHeight);
+                    this.ctx.strokeRect(p.x - overhang, p.y + p.gap, p.w + (overhang * 2), capHeight);
+                }
+
+                // Draw Ad Text
+                this.ctx.save();
+                this.ctx.translate(p.x + p.w/2, startY === 0 ? p.y / 2 : p.y + p.gap + pipeHeight / 2);
+                this.ctx.rotate(-Math.PI / 2);
+                
+                let fontSize = 18;
                 this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
-            }
+                const textWidth = this.ctx.measureText(p.ad.text).width;
+                const maxTextWidth = pipeHeight - 50; // Conservative 50px buffer
+                
+                if (textWidth > maxTextWidth) {
+                    fontSize = Math.max(10, Math.floor(fontSize * (maxTextWidth / textWidth)));
+                    this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
+                }
 
-            this.ctx.fillStyle = "#fff";
-            this.ctx.textAlign = "center";
-            this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
-            this.ctx.fillText(p.ad.text, 0, 0); 
-            this.ctx.restore();
+                this.ctx.fillStyle = "#fff";
+                this.ctx.textAlign = "center";
+                this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
+                this.ctx.fillText(p.ad.text, 0, 0); 
+                this.ctx.restore();
+            });
         });
     }
 
