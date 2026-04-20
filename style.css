@@ -172,6 +172,13 @@ nav {
     justify-content: center;
 }
 
+.game-viewport:fullscreen canvas,
+.game-viewport:-webkit-full-screen canvas {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
 .game-overlay {
     position: absolute;
     top: 0;
