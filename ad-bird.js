@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
         
         try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/ads?select=text,color&is_paid=eq.true`, {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/ads?select=text,color&is_paid=eq.true&expires_at=gt.now()`, {
                 headers: {
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`
