@@ -142,20 +142,17 @@ class AdBird {
     }
 
     _processInput(x, y, button) {
-        // 1. Mute Button (Top Right)
-        if (x > this.canvas.width - 100 && y < 100) {
+        if (x > this.canvas.width - 120 && y < 100) {
             this.toggleMute();
             return;
         }
 
-        // 2. Fullscreen Button (Bottom Right)
-        if (x > this.canvas.width - 100 && y > this.canvas.height - 100) {
+        if (x > this.canvas.width - 120 && y > this.canvas.height - 120) {
             this.toggleFullscreen();
             return;
         }
 
-        // 3. Bomb Button (Bottom Left)
-        if (x < 140 && y > this.canvas.height - 140) {
+        if (x < 150 && y > this.canvas.height - 150) {
             if (this.state.gameRunning) {
                 if (this.state.bombTimer === 0) {
                     this.state.bombBtnFlash = 5;
@@ -167,7 +164,6 @@ class AdBird {
             return;
         }
 
-        // 4. Default Interaction (Flap or Start)
         if (!this.state.gameRunning) {
             this.start();
         } else {
@@ -446,10 +442,13 @@ class AdBird {
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText(`MARKETING IMPACT: ${this.state.directHits}`, this.canvas.width / 2, 90);
         
-        // Buttons HUD
-        this.ctx.font = "22px serif"; this.ctx.textAlign = "right";
-        this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 45);
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        // Mute Button (Top Right)
+        this.ctx.font = "24px serif"; this.ctx.textAlign = "right";
+        this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 50);
+        
+        // BOLDER Fullscreen Button (Bottom Right)
+        this.ctx.font = "bold 32px serif"; this.ctx.textAlign = "right";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
         this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
 
         // BOMB BUTTON (Bottom Left)
@@ -458,17 +457,24 @@ class AdBird {
         if (this.state.bombBtnFlash > 0) this.ctx.fillStyle = "#fff";
         else this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.2)" : "rgba(6, 182, 212, 0.6)";
         this.ctx.beginPath();
-        this.ctx.roundRect(15, this.canvas.height - 85, 90, 70, 12);
+        this.ctx.roundRect(15, this.canvas.height - 85, 110, 70, 12);
         this.ctx.fill();
+        
         this.ctx.fillStyle = "#fff";
         this.ctx.shadowBlur = this.state.bombTimer === 0 ? 15 : 0;
         this.ctx.shadowColor = "#06b6d4";
-        this.ctx.fillText("BOMB", 32, this.canvas.height - 45);
+        this.ctx.fillText("BOMB", 35, this.canvas.height - 48);
         this.ctx.shadowBlur = 0;
+        
+        // DESKTOP HINT (Fine Print)
+        this.ctx.font = "bold 9px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        this.ctx.fillText("(SHIFT / R-CLICK)", 26, this.canvas.height - 30);
+        
         if (this.state.bombTimer > 0) {
             const pct = this.state.bombTimer / this.config.bombCooldown;
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-            this.ctx.fillRect(15, this.canvas.height - 18, 90 * pct, 4);
+            this.ctx.fillRect(15, this.canvas.height - 18, 110 * pct, 4);
         }
     }
 
@@ -509,7 +515,7 @@ class AdBird {
             this.ctx.fillText("BOMB BUTTON to drop ads", this.canvas.width / 2, this.canvas.height / 2 + 110);
             
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-            this.ctx.font = "20px serif"; this.ctx.textAlign = "right";
+            this.ctx.font = "bold 32px serif"; this.ctx.textAlign = "right";
             this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
         }, 10);
     }
@@ -524,8 +530,9 @@ class AdBird {
         this.ctx.font = "15px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.fillText("TAP ANYWHERE to flap", this.canvas.width / 2, this.canvas.height / 2 + 30);
         this.ctx.fillText("BOMB BUTTON to drop ads", this.canvas.width / 2, this.canvas.height / 2 + 55);
-        this.ctx.font = "20px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 45);
+        this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.canvas.width - 20, 50);
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        this.ctx.font = "bold 32px serif"; this.ctx.textAlign = "right";
         this.ctx.fillText(this.state.isFullscreen ? "⤫" : "⤢", this.canvas.width - 20, this.canvas.height - 20);
     }
 }
