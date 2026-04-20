@@ -532,20 +532,32 @@ class AdBird {
     }
 
     _renderPipes() {
+        if (!this.pipes || this.pipes.length === 0) return;
+        
         this.pipes.forEach(p => {
+            if (!p || !p.ad) return;
+            
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)";
-            this.ctx.strokeStyle = p.ad.color; this.ctx.lineWidth = 4;
+            this.ctx.strokeStyle = p.ad.color || "#fff"; 
+            this.ctx.lineWidth = 4;
+            
             // Main Pipe Bodies
-            this.ctx.fillRect(p.x, 0, p.w, p.y); this.ctx.strokeRect(p.x, -1, p.w, p.y + 1);
-            this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height); this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
+            this.ctx.fillRect(p.x, 0, p.w, p.y); 
+            this.ctx.strokeRect(p.x, -1, p.w, p.y + 1);
+            this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height); 
+            this.ctx.strokeRect(p.x, p.y + p.gap, p.w, this.canvas.height + 1);
 
             [0, p.y + p.gap].forEach(startY => {
                 const pipeHeight = startY === 0 ? p.y : this.canvas.height - (p.y + p.gap);
-                
+                if (pipeHeight <= 0) return;
+
                 // Clipping for stains
-                this.ctx.save(); this.ctx.beginPath();
+                this.ctx.save(); 
+                this.ctx.beginPath();
                 this.ctx.rect(p.x, startY, p.w, pipeHeight);
-                this.ctx.clip(); this._drawStains(p); this.ctx.restore();
+                this.ctx.clip(); 
+                this._drawStains(p); 
+                this.ctx.restore();
 
                 // Draw Pipe Cap (Arcade Rim)
                 const capHeight = 30;
@@ -564,10 +576,13 @@ class AdBird {
                 this.ctx.translate(p.x + p.w/2, startY === 0 ? p.y / 2 : p.y + p.gap + pipeHeight / 2);
                 this.ctx.rotate(-Math.PI / 2);
                 
+                let adText = p.ad.text || "";
                 let fontSize = 18;
                 this.ctx.font = `bold ${fontSize}px 'Outfit', sans-serif`;
-                const textWidth = this.ctx.measureText(p.ad.text).width;
-                const maxTextWidth = pipeHeight - 50; // Conservative 50px buffer
+                
+                const textMetrics = this.ctx.measureText(adText);
+                const textWidth = textMetrics.width;
+                const maxTextWidth = Math.max(10, pipeHeight - 50); 
                 
                 if (textWidth > maxTextWidth) {
                     fontSize = Math.max(10, Math.floor(fontSize * (maxTextWidth / textWidth)));
@@ -576,8 +591,9 @@ class AdBird {
 
                 this.ctx.fillStyle = "#fff";
                 this.ctx.textAlign = "center";
-                this.ctx.shadowColor = p.ad.color; this.ctx.shadowBlur = 10;
-                this.ctx.fillText(p.ad.text, 0, 0); 
+                this.ctx.shadowColor = p.ad.color || "#fff"; 
+                this.ctx.shadowBlur = 10;
+                this.ctx.fillText(adText, 0, 0); 
                 this.ctx.restore();
             });
         });
