@@ -1,7 +1,7 @@
 /**
  * Ad-Bird: Stockout Studio Arcade Engine
  * --------------------------------------
- * V3.2 - Fisher-Yates Entropy Engine (Pass 16)
+ * V3.3 - Backend Integration Ready (Pass 17)
  */
 
 class AdBird {
@@ -29,9 +29,12 @@ class AdBird {
             bubbleCount: 20, worldShiftInterval: 10, bombCooldown: 20,
             playerImg: 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/512/emoji_u1f426.png',
             musicSrc: 'bg-music.mp3', worlds: ['world1.jpg', 'world2.jpg', 'world3.jpg'],
-            paidAds: options.paidAds || [{ text: "STOCKS UP 🚀", color: "#4ade80", isPaid: true }, { text: "BUY GRIDWING", color: "#8b5cf6", isPaid: true }],
+            
+            // --- TIERED AD REPOSITORY (CLEANED) ---
+            paidAds: options.paidAds || [], // Empty by default, populated by backend fetch
             stockAds: options.stockAds || this._getDefaultStockAds(),
             maxStockConsecutive: 3,
+            
             hitMessages: ["WASTED", "REKT", "STAINED", "SPLAT", "GET REKT", "BILLBOARDED", "SIGN SMASHED", "MESSY", "BULLSEYE", "AD-BLASTED", "INKED", "VANDALIZED", "SCORE!", "BIRDPOCALYPSE", "BEAK-TACULAR", "EGG-STERMINATION", "UN-BEAK-ABLE", "FLAPPING SPREE", "WING-SLAUGHTER", "FEATHER-KILL", "DOUBLE BILL", "TRIPLE TWEET", "OVER-FLAP", "BILL-IONAIRE"],
             msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899"],
             gameOverMessages: ["QUARTERLY LOSS", "BRAND DILUTION", "CPC TOO HIGH", "ROAS: ZERO", "CAMPAIGN KILLED", "CLIENT WALKED", "BUDGET BURNED", "IMPRESSIONS LOST", "REACH: DECEASED", "ENGAGEMENT: GRIM", "CTR: DROWNED", "METRICS MASSACRED", "LEAD NOT CONVERTED", "PIPELINE BROKEN", "PERFORMANCE REVIEW", "BIRD DOWN", "FEATHERS EVERYWHERE", "WINGS CLIPPED", "NESTED ETERNAL", "FLEW INTO SIGN", "POOR LIFE CHOICES", "CHICKEN CONFIRMED", "WORM FOOD", "THE SKY WON", "SKILL ISSUE", "GET GUD", "TRY HARDER", "L BOZO", "RATIO'D BY PIPE", "TOUCHED A PIPE", "THE PIPE REMEMBERS", "PIPE: 1, YOU: 0", "PIP INITIATED", "HR INVOLVED", "TERMINATED", "EXIT INTERVIEW", "LINKEDIN UPDATED", "OPEN TO WORK", "SEVERANCE PENDING", "PROJECT CANCELLED", "LIQUIDATED", "BANKRUPTCY", "MARGIN CALLED", "REKT", "STONKS DOWN", "PORTFOLIO: PIPE", "HODL'D TOO LONG", "WHY DID WE FLY", "BIRD WAS A LIE", "NOTHING MATTERS", "THE END", "CERTIFIED DEAD", "LOGGED OFF", "RETURN TO CAVE", "UNSUBSCRIBED FROM LIFE", "404 BIRD", "PRESS F", "GG NO RE", "MAYDAY", "SPLASH", "PIPE DOWN", "OVER-FLAP", "CROP DUSTED", "FLAP DENIED", "WING IT", "PLUMBER'S CRACK", "TALON-TED UNEMPLOYED"]
@@ -143,8 +146,6 @@ class AdBird {
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { const t = this.floatingTexts[i]; t.age++; if (t.age > 30) { t.vy -= 0.3; t.y += t.vy; t.alpha = Math.max(0, 1 - Math.pow((t.age - 30) / 40, 2)); } if (t.alpha <= 0 || t.age > 70) this.floatingTexts.splice(i, 1); }
     }
 
-    /* --- TIERED SPAWNER --- */
-
     _spawnPipe() {
         const ad = this._nextAd();
         const gap = Math.floor(Math.random() * (this.config.maxGap - this.config.minGap)) + this.config.minGap;
@@ -226,36 +227,16 @@ class AdBird {
     }
 
     _createSplat(p, bx, by) { 
-        this.state.screenShake = 10; 
-        this.state.directHits++; 
-        this.player.isFlipping = true; 
-        this.player.flipAngle = 0; 
-        for (let i=0; i<15; i++) this.state.particles.push({ x: bx, y: by, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10-2, color: p.ad.color, life: 1.0 }); 
-        p.stains.push({ relY: by, xOff: bx-p.x, size: Math.random()*8+12, drips: Array.from({length:3},()=>({xOff:(Math.random()-0.5)*20,len:0,maxLen:40+Math.random()*60,speed:1.0+Math.random()*1.5,w:3+Math.random()*4})) }); 
-        let sy = by-40; 
-        this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
-        
-        // Fisher-Yates Hit Message
+        this.state.screenShake = 10; this.state.directHits++; this.player.isFlipping = true; this.player.flipAngle = 0; for (let i=0; i<15; i++) this.state.particles.push({ x: bx, y: by, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10-2, color: p.ad.color, life: 1.0 }); p.stains.push({ relY: by, xOff: bx-p.x, size: Math.random()*8+12, drips: Array.from({length:3},()=>({xOff:(Math.random()-0.5)*20,len:0,maxLen:40+Math.random()*60,speed:1.0+Math.random()*1.5,w:3+Math.random()*4})) }); let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
         const hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
         this.floatingTexts.push({ x: bx, y: sy, age: 0, vy: 0, alpha: 1, scale: 1, text: hitMsg, color: this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)] }); 
         this.playSound('splat'); 
     }
 
     gameOver() { 
-        if (this.state.isGameOver) return; 
-        this.state.isGameOver = true; 
-        this.state.screenShake = 20; 
-        this.state.gameRunning = false; 
-        
-        // Fisher-Yates Game Over Message
+        if (this.state.isGameOver) return; this.state.isGameOver = true; this.state.screenShake = 20; this.state.gameRunning = false; 
         this.state.deathMsg = this._nextFromBag('gameOverMsgBag', 'gameOverMessages');
-        
-        this.playSound('crash'); 
-        setTimeout(() => this.playSound('death'), 300); 
-        if (this.assets.music) this.assets.music.pause(); 
-        if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; localStorage.setItem('adBirdHighScore', this.state.highScore); } 
-        if (this.state.directHits > this.state.highDirectHits) { this.state.directHits = this.state.directHits; localStorage.setItem('adBirdHighDirectHits', this.state.directHits); } 
-        if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
+        this.playSound('crash'); setTimeout(() => this.playSound('death'), 300); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; localStorage.setItem('adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.directHits = this.state.directHits; localStorage.setItem('adBirdHighDirectHits', this.state.directHits); } if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
     }
 
     /* --- HELPERS --- */
@@ -283,6 +264,46 @@ class AdBird {
 // Global Init
 document.addEventListener('DOMContentLoaded', () => {
     const t = document.getElementById('mobileMenuToggle'); const n = document.getElementById('navLinks');
-    if (t && n) { t.onclick=(e)=>{e.stopPropagation(); n.classList.toggle('active'); t.classList.toggle('active');}; document.addEventListener('click',()=>{n.classList.remove('active'); t.classList.remove('active');}); n.onclick=(e)=>e.stopPropagation(); }
-    setTimeout(() => { window.adBirdGame = new AdBird('adBirdCanvas'); }, 100);
+    if (t && n) { 
+        t.onclick=(e)=>{
+            e.stopPropagation(); 
+            n.classList.toggle('active');
+            t.classList.toggle('active');
+        }; 
+        document.addEventListener('click',()=>{
+            n.classList.remove('active');
+            t.classList.remove('active');
+        }); 
+        n.onclick=(e)=>e.stopPropagation(); 
+    }
+    
+    // SUPABASE / BACKEND INTEGRATION HOOK
+    const initGame = async () => {
+        let paidAds = [];
+        
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE'; // e.g. https://xyz.supabase.co
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+        
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/ads?select=text,color&is_paid=eq.true`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                paidAds = data.map(ad => ({ ...ad, isPaid: true }));
+                console.log(`Backend Hook: ${paidAds.length} Paid Ads Loaded.`);
+            }
+        } catch (e) {
+            console.warn("Backend unavailable or not configured, using stock ads only.");
+        }
+        
+        window.adBirdGame = new AdBird('adBirdCanvas', { paidAds });
+    };
+
+    setTimeout(initGame, 100);
 });
