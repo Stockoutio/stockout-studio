@@ -508,7 +508,9 @@ class AdBird {
             const inset = b.radius;
             const maxBarWidth = b.w - (inset * 2);
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.3)"; 
-            this.ctx.fillRect(b.x + inset, b.y + b.h - 4, maxBarWidth * (this.state.bombTimer / this.config.bombCooldown), 4); 
+            this.ctx.beginPath();
+            this.ctx.roundRect(b.x + inset, b.y + b.h - 4, maxBarWidth * (this.state.bombTimer / this.config.bombCooldown), 4, 2); 
+            this.ctx.fill();
         } 
         this.ctx.restore();
     }
