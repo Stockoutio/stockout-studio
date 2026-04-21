@@ -95,12 +95,14 @@ class AdBird {
         it.addEventListener('touchstart', (e) => { if (this.isMobile) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} }); } } }, { passive: false });
         it.addEventListener('contextmenu', (e) => e.preventDefault());
         if (this.overlay) { 
-            this.overlay.addEventListener('mousedown', () => {
+            this.overlay.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
                 if (this.state.isGameOver) this._resetToSplash();
                 else this.start();
             }); 
             this.overlay.addEventListener('touchstart', (e) => { 
                 e.preventDefault(); 
+                e.stopPropagation();
                 if (this.state.isGameOver) this._resetToSplash();
                 else this.start();
             }); 
