@@ -195,7 +195,15 @@ class AdBird {
             if (!p.scored && p.x + p.w < this.player.x) { p.scored = true; this.state.score++; this.playSound('score'); if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld(); }
             if (p.x + p.w < -150) this.pipes.splice(i, 1);
         }
-        for (let i = this.bombs.length - 1; i >= 0; i--) { const b = this.bombs[i]; b.y += b.speed; let hit = false; for (const p of this.pipes) { if (b.x > p.x && b.x < p.x + p.w && (b.y < p.y || b.y > p.y + p.gap)) { this._createSplat(p, b.x, b.y); hit = true; break; } } if (hit || b.y > this.canvas.height) this.bombs.splice(i, 1); }
+        for (let i = this.bombs.length - 1; i >= 0; i--) { 
+            const b = this.bombs[i]; b.y += b.speed; let hit = false; 
+            for (const p of this.pipes) { 
+                if (b.x > p.x && b.x < p.x + p.w && (b.y < p.y || b.y > p.y + p.gap)) { 
+                    this._createSplat(p, b.x, b.y, b.scale); 
+                    hit = true; break; 
+                } 
+            } if (hit || b.y > this.canvas.height) this.bombs.splice(i, 1); 
+        }
         this.bubbles.forEach(b => { b.x -= b.speed; if (b.x < -10) b.x = this.canvas.width + 10; });
         for (let i = this.state.particles.length - 1; i >= 0; i--) { const p = this.state.particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 0.02; if (p.life <= 0) this.state.particles.splice(i, 1); }
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { const t = this.floatingTexts[i]; t.age++; if (t.age > 30) { t.vy -= 0.3; t.y += t.vy; t.alpha = Math.max(0, 1 - Math.pow((t.age - 30) / 40, 2)); } if (t.alpha <= 0 || t.age > 70) this.floatingTexts.splice(i, 1); }
@@ -290,8 +298,20 @@ class AdBird {
         return this.state.stockBag.pop();
     }
 
-    _createSplat(p, bx, by) { 
-        this.state.screenShake = 10; this.state.directHits++; this.player.isFlipping = true; this.player.flipAngle = 0; for (let i=0; i<15; i++) this.state.particles.push({ x: bx, y: by, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10-2, color: p.ad.color, life: 1.0 }); p.stains.push({ relY: by, xOff: bx-p.x, size: Math.random()*8+12, drips: Array.from({length:3},()=>({xOff:(Math.random()-0.5)*20,len:0,maxLen:40+Math.random()*60,speed:1.0+Math.random()*1.5,w:3+Math.random()*4})) }); let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
+    _createSplat(p, bx, by, scale = 1.0) { 
+        this.state.screenShake = 10 * scale; this.state.directHits++; this.player.isFlipping = true; this.player.flipAngle = 0; for (let i=0; i<15; i++) this.state.particles.push({ x: bx, y: by, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10-2, color: p.ad.color, life: 1.0 }); 
+        p.stains.push({ 
+            relY: by, xOff: bx-p.x, 
+            size: (Math.random()*8+12) * scale, 
+            drips: Array.from({length:3},()=>({
+                xOff:(Math.random()-0.5)*20,
+                len:0,
+                maxLen:(40+Math.random()*60) * scale,
+                speed:(1.0+Math.random()*1.5) * scale,
+                w:(3+Math.random()*4) * scale
+            })) 
+        }); 
+        let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
         const hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
         this.floatingTexts.push({ x: bx, y: sy, age: 0, vy: 0, alpha: 1, scale: 1, text: hitMsg, color: this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)] }); 
         this.playSound('splat'); 
@@ -316,7 +336,12 @@ class AdBird {
     toggleFullscreen() { const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); if (!isFS) { const c = this.canvas.parentElement; const r = c.requestFullscreen || c.webkitRequestFullscreen || c.mozRequestFullScreen || c.msRequestFullscreen; if (r) r.call(c); } else { const e = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen; if (e) e.call(document); } }
     _shiftWorld() { this.state.currentWorld = (this.state.currentWorld + 1) % this.assets.worlds.length; this.state.flashOpacity = 1; this.playSound('shift'); }
     flap() { this.player.velocity = this.config.lift; this.playSound('flap'); }
-    dropBomb() { if (this.state.bombTimer > 0) return; this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15, h: 20, speed: 8 }); this.state.bombTimer = 20; }
+    dropBomb() { 
+        if (this.state.bombTimer > 0) return; 
+        const scale = Math.random() * 0.8 + 0.6; // Vary between 0.6x and 1.4x
+        this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15 * scale, h: 20 * scale, speed: 8, scale: scale }); 
+        this.state.bombTimer = 20; 
+    }
     _renderWorld() { 
         const bg = this.assets.worlds[this.state.currentWorld]; 
         if (bg && bg.complete) { 
