@@ -69,7 +69,7 @@ class AdBird {
             gameRunning: false, isGameOver: false, loopActive: false,
             score: 0, directHits: 0, highScore: parseInt(localStorage.getItem('adBirdHighScore')) || 0,
             highDirectHits: parseInt(localStorage.getItem('adBirdHighDirectHits')) || 0,
-            frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
+            frameCount: 0, nextPipeFrame: 40, currentWorld: Math.floor(Math.random() * this.config.worlds.length), flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, 
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: ""
@@ -342,6 +342,7 @@ class AdBird {
         this.bombs = [];
         this.floatingTexts = [];
         this.state.bgX = 0;
+        this.state.currentWorld = Math.floor(Math.random() * this.config.worlds.length);
         
         // --- THE RESET BLAST ---
         this.state.screenShake = 15;
