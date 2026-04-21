@@ -928,7 +928,7 @@ class AdBird {
                 type: 'bubble',
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                size: Math.random() * 2 + 1.5,       // 1.5 - 3.5px
+                size: Math.random() * 4 + 1,         // 1 - 5px
                 speed: Math.random() * 0.8 + 1.5,    // 1.5 - 2.3 (closest)
                 alpha: Math.random() * 0.3 + 0.2,
                 bobPhase: Math.random() * Math.PI * 2,
@@ -942,7 +942,7 @@ class AdBird {
                 type: 'orb',
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                size: Math.random() * 5 + 4,          // 4 - 9px
+                size: Math.random() * 8 + 4,          // 4 - 12px
                 speed: Math.random() * 0.4 + 1.0,     // 1.0 - 1.4 (mid)
                 alpha: Math.random() * 0.25 + 0.15,
                 color: this.config.msgColors[Math.floor(Math.random() * this.config.msgColors.length)],
@@ -957,7 +957,7 @@ class AdBird {
                 type: 'dust',
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                size: Math.random() * 10 + 8,         // 8 - 18px
+                size: Math.random() * 18 + 10,        // 10 - 28px
                 speed: Math.random() * 0.25 + 0.8,    // 0.8 - 1.05 (farthest of mid)
                 alpha: Math.random() * 0.12 + 0.05,
                 bobPhase: Math.random() * Math.PI * 2,
@@ -990,7 +990,7 @@ class AdBird {
             } else if (b.type === 'dust') {
                 // Large soft dust motes (blurry, far away feel)
                 this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-                this.ctx.shadowBlur = 15;
+                this.ctx.shadowBlur = b.size * 1.2;
                 this.ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
                 this.ctx.beginPath();
                 this.ctx.arc(b.x, drawY, b.size, 0, Math.PI * 2);
