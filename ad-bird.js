@@ -318,6 +318,11 @@ class AdBird {
         this.state.isGameOver = false;
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
         
+        // --- CLEAN SLATE ---
+        this.pipes = [];
+        this.bombs = [];
+        this.floatingTexts = [];
+        
         // --- THE RESET BLAST ---
         this.state.screenShake = 15;
         this.state.flashOpacity = 1;
