@@ -162,7 +162,11 @@ class AdBird {
 
         if (isFlap || isBomb || isEnter) { 
             e.preventDefault(); 
-            if (this.state.isGameOver) { this._resetToSplash(); return; }
+            if (this.state.isGameOver) { 
+                this._triggerButtonExplosion();
+                this._resetToSplash(); 
+                return; 
+            }
             if (!this.state.gameRunning) this.start(); 
             else { if (isFlap) this.flap(); if (isBomb) this.dropBomb(); } 
         }
@@ -1351,6 +1355,9 @@ class AdBird {
         this.state.directHits = 0;
         this.state.totalMisses = 0;
         this.state.lastMissFrame = 0;
+        this.state.runItBackHover = false;
+        this.state.runItBackPressed = 0;
+        this.canvas.style.cursor = 'default';
         
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
         this.pipes = [];
