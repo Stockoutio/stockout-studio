@@ -114,21 +114,7 @@ class AdBird {
         it.addEventListener('mousedown', (e) => { if (!this.isMobile) this._handleInput(e); });
         it.addEventListener('touchstart', (e) => { if (this.isMobile) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} }); } } }, { passive: false });
         it.addEventListener('contextmenu', (e) => e.preventDefault());
-        if (this.overlay) { 
-            this.overlay.addEventListener('mousedown', (e) => {
-                if (this.state.waitingForGameOver) return;
-                e.stopPropagation();
-                if (this.state.isGameOver) this._resetToSplash();
-                else this.start();
-            }); 
-            this.overlay.addEventListener('touchstart', (e) => { 
-                if (this.state.waitingForGameOver) return;
-                e.preventDefault(); 
-                e.stopPropagation();
-                if (this.state.isGameOver) this._resetToSplash();
-                else this.start();
-            }); 
-        }
+        if (this.overlay) this.overlay.style.pointerEvents = 'none';
         ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => document.addEventListener(evt, () => { this.state.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); }));
         this._initBubbles();
         this._loop();
