@@ -33,7 +33,7 @@ class AdBird {
 
     _initSettings(options) {
         this.config = {
-            gravity: 0.5, lift: -8, pipeWidth: 110, pipeSpeed: 2.4, bgSpeed: 0.5,
+            gravity: 0.63, lift: -10, pipeWidth: 110, pipeSpeed: 3.0, bgSpeed: 0.63,
             minGap: 250, maxGap: 350,
             minPipeHeightBottom: 250, minPipeHeightTop: 30,
             bubbleCount: 20, worldShiftInterval: 10, bombCooldown: 20,
@@ -282,7 +282,7 @@ class AdBird {
         const maxH_top = this.canvas.height - gap - this.config.minPipeHeightBottom;
         const h = Math.floor(Math.random() * (maxH_top - minH_top)) + minH_top;
         this.pipes.push({ x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: gap, ad: ad, scored: false, highlight: 0, stains: [] });
-        this.state.nextPipeFrame = this.state.frameCount + Math.floor(Math.random() * 100) + 100;
+        this.state.nextPipeFrame = this.state.frameCount + Math.floor(Math.random() * 80) + 80;
     }
 
     /* --- RENDERING --- */
