@@ -547,18 +547,20 @@ class AdBird {
         if (this.state.isGameOver || this.state.waitingForGameOver) return; 
         this.state.waitingForGameOver = true;
         this.state.gameRunning = false; 
-        this.state.screenShake = 30; 
         
-        // BLOODY EXPLOSION (Heavy Spill)
+        const force = Math.random() * 1.6 + 0.2; // Variability from 0.2 to 1.8
+        this.state.screenShake = 10 + (force * 20); 
+        
+        // BLOODY EXPLOSION (Dynamic Force)
         const meats = ["🍗", "🍖"];
         for (let i = 0; i < 65; i++) {
             const isBit = i < 15;
-            const isTurkey = i < 8; // More meat!
+            const isTurkey = i < 8; 
             this.state.particles.push({
                 x: this.player.x + this.player.w/2,
                 y: this.player.y + this.player.h/2,
-                vx: (Math.random() - 0.5) * 8,
-                vy: (Math.random() - 0.7) * 12,
+                vx: (Math.random() - 0.5) * 10 * force,
+                vy: (Math.random() - 0.7) * 14 * force,
                 size: isBit ? Math.random() * 18 + 12 : Math.random() * 6 + 3,
                 color: Math.random() > 0.3 ? "#ff0000" : "#8b0000",
                 life: 1.0,
@@ -567,7 +569,7 @@ class AdBird {
                 emoji: meats[Math.floor(Math.random() * meats.length)],
                 isDeath: true,
                 rotation: Math.random() * Math.PI * 2,
-                rotSpeed: (Math.random() - 0.5) * 0.2
+                rotSpeed: (Math.random() - 0.5) * 0.2 * force
             });
         }
 
