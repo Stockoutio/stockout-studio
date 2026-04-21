@@ -442,7 +442,7 @@ class AdBird {
 
         this.floatingTexts.push({ 
             x: tx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
-            scale: isMega ? 1.8 : 1, 
+            scale: isMega ? 1.4 : 1, 
             text: hitMsg, 
             color: isMega ? "#fff" : this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)],
             glow: isMega ? p.ad.color : null,
@@ -455,6 +455,7 @@ class AdBird {
     gameOver() { 
         if (this.state.isGameOver) return; this.state.isGameOver = true; this.state.screenShake = 20; this.state.gameRunning = false; 
         this.state.deathMsg = this._nextFromBag('gameOverMsgBag', 'gameOverMessages');
+        this.floatingTexts = []; // Clear floating texts so they don't block the score
         this.playSound('crash'); setTimeout(() => this.playSound('death'), 300); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; this._safeStorage('set', 'adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.highDirectHits = this.state.directHits; this._safeStorage('set', 'adBirdHighDirectHits', this.state.highDirectHits); } if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
     }
 
@@ -536,7 +537,7 @@ class AdBird {
             this.ctx.save(); 
             this.ctx.textAlign = t.align || "center"; 
             this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale); 
-            this.ctx.font = t.isMega ? "900 52px 'Outfit', sans-serif" : "bold 36px 'Outfit', sans-serif"; 
+            this.ctx.font = t.isMega ? "900 42px 'Outfit', sans-serif" : "bold 32px 'Outfit', sans-serif"; 
             if (t.glow) { this.ctx.shadowBlur = 25; this.ctx.shadowColor = t.glow; }
             this.ctx.strokeStyle = "#000"; this.ctx.lineWidth = t.isMega ? 3 : 1.5; this.ctx.strokeText(t.text, 0, 0); 
             this.ctx.fillStyle = t.color; this.ctx.fillText(t.text, 0, 0); 
