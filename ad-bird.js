@@ -252,6 +252,9 @@ class AdBird {
             p.life -= (p.isDeath ? 0.005 : this.config.particleLifeDecay); // Death particles last longer
             if (p.life <= 0) this.state.particles.splice(i, 1); 
         }
+        if (this.state.particles.length > 200) {
+            this.state.particles.splice(0, this.state.particles.length - 200);
+        }
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { 
             const t = this.floatingTexts[i]; t.age++; 
             if (t.vx) t.x += t.vx;
@@ -313,7 +316,7 @@ class AdBird {
                         vy: (Math.random() - 1.0) * (isGiga ? 25 : 12),
                         size: Math.random() * 5 + 2,
                         color: Math.random() > 0.5 ? "#60a5fa" : "#fff",
-                        life: 1.0, isDeath: true
+                        life: 1.0
                     });
                 }
 
@@ -341,7 +344,7 @@ class AdBird {
 
     _draw() {
         this.ctx.save(); if (this.state.screenShake > 0.5) this.ctx.translate((Math.random()-0.5)*this.state.screenShake, (Math.random()-0.5)*this.state.screenShake);
-        this.ctx.clearRect(-10, -10, this.canvas.width+20, this.canvas.height+20);
+        this.ctx.clearRect(-40, -40, this.canvas.width+80, this.canvas.height+80);
         this._renderWorld(); this._renderBubbles(); this._renderPipes(); this._renderBombs(); 
         if (this.state.gameRunning || this.state.isGameOver) this._renderPlayer();
         this._renderParticles(); this._renderFloatingTexts(); this._renderOverlay();
@@ -435,8 +438,6 @@ class AdBird {
     }
 
     _renderHUD() {
-        // --- MAIN SCORE: EPIC & GLOWING ---
-        this.ctx.save();
         // --- MAIN SCORE: EPIC & GLOWING ---
         this.ctx.save();
         this.ctx.fillStyle = "#fff";
