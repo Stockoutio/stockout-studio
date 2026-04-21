@@ -100,7 +100,7 @@ class AdBird {
             highDirectHits: parseInt(this._safeStorage('get', 'adBirdHighDirectHits')) || 0,
             highTotalMisses: parseInt(this._safeStorage('get', 'adBirdHighTotalMisses')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
-            bombTimer: 0, assetsLoaded: 0, lastRect: null, waitingForGameOver: false,
+            bombTimer: 0, assetsLoaded: 0, lastRect: null, waitingForGameOver: false, gameOverFrame: 0,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: ""
         };
@@ -238,6 +238,7 @@ class AdBird {
                 this.player.velocity = 0;
             }
             this.player.flipAngle += this.player.flipDirection * 0.2; 
+            this.state.frameCount++;
             return; 
         }
 
@@ -664,6 +665,7 @@ class AdBird {
 
         setTimeout(() => {
             this.state.isGameOver = true; 
+            this.state.gameOverFrame = this.state.frameCount;
             this.state.waitingForGameOver = false;
             this.state.deathMsg = this._nextFromBag('gameOverMsgBag', 'gameOverMessages');
             this.floatingTexts = []; // Clear floating texts so they don't block the score
@@ -840,110 +842,170 @@ class AdBird {
         }); 
     }
     _renderGameOverScreen() { 
-        // Dark overlay
-        this.ctx.fillStyle = "rgba(10, 10, 15, 0.9)"; 
+        // Frames since game-over triggered (for stagger animations)
+        const t = Math.max(0, this.state.frameCount - this.state.gameOverFrame);
+        
+        // Easing helper — ease-out cubic (0 to 1 over given duration in frames)
+        const ease = (elapsed, duration) => {
+            const p = Math.min(1, Math.max(0, elapsed / duration));
+            return 1 - Math.pow(1 - p, 3);
+        };
+
+        // Dark overlay (fades in first)
+        const overlayAlpha = ease(t, 15) * 0.9;
+        this.ctx.fillStyle = `rgba(10, 10, 15, ${overlayAlpha})`;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); 
         
-        // Death message (top)
-        this.ctx.fillStyle = "#fff"; 
-        this.ctx.font = "900 52px 'Outfit', sans-serif"; 
-        this.ctx.textAlign = "center"; 
-        this.ctx.textBaseline = "alphabetic"; 
+        // --- DEATH MESSAGE (slams in from top at frame 10) ---
+        const deathT = Math.max(0, t - 10);
+        const deathProgress = ease(deathT, 20);
+        const deathOffset = (1 - deathProgress) * -80; // Slides down from -80px above
+        const deathAlpha = deathProgress;
         
-        // Subtle glow on death message
-        this.ctx.save();
-        this.ctx.shadowBlur = 20;
-        this.ctx.shadowColor = "rgba(244, 63, 94, 0.6)";
-        this.ctx.strokeStyle = "#000";
-        this.ctx.lineWidth = 4;
-        this.ctx.strokeText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 200); 
-        this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 200); 
-        this.ctx.restore();
+        if (deathProgress > 0) {
+            this.ctx.save();
+            this.ctx.globalAlpha = deathAlpha;
+            this.ctx.fillStyle = "#fff"; 
+            this.ctx.font = "900 52px 'Outfit', sans-serif"; 
+            this.ctx.textAlign = "center"; 
+            this.ctx.textBaseline = "alphabetic"; 
+            this.ctx.shadowBlur = 20;
+            this.ctx.shadowColor = "rgba(244, 63, 94, 0.6)";
+            this.ctx.strokeStyle = "#000";
+            this.ctx.lineWidth = 4;
+            this.ctx.strokeText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 200 + deathOffset); 
+            this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 200 + deathOffset); 
+            this.ctx.restore();
+        }
         
-        // Subtitle under death message
-        this.ctx.font = "bold 14px 'Outfit', sans-serif";
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        this.ctx.fillText("— CAMPAIGN TERMINATED —", this.canvas.width / 2, this.canvas.height / 2 - 160);
+        // Subtitle (fades in with death message)
+        if (deathProgress > 0.3) {
+            this.ctx.save();
+            this.ctx.globalAlpha = (deathProgress - 0.3) / 0.7;
+            this.ctx.font = "bold 14px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+            this.ctx.textAlign = "center";
+            this.ctx.fillText("— CAMPAIGN TERMINATED —", this.canvas.width / 2, this.canvas.height / 2 - 160);
+            this.ctx.restore();
+        }
 
-        // Stats as cards — 3 side-by-side
+        // --- STAT CARDS (stagger in, starting frame 30, 8 frames apart) ---
         const stats = [
             { label: "MARKET REACH", val: this.state.score, high: this.state.highScore, color: "#fbbf24", rgb: "251, 191, 36" },
             { label: "MARKETING IMPACT", val: this.state.directHits, high: this.state.highDirectHits, color: "#06b6d4", rgb: "6, 182, 212" },
             { label: "CAMPAIGN MISSES", val: this.state.totalMisses, high: this.state.highTotalMisses, color: "#f43f5e", rgb: "244, 63, 94" }
         ];
 
-        // Card geometry
         const cardW = 210;
-        const cardH = 180;
+        const cardH = 210;  // Taller now to fit progress bar
         const cardGap = 20;
         const totalW = (cardW * 3) + (cardGap * 2);
         const startX = (this.canvas.width - totalW) / 2;
         const cardY = this.canvas.height / 2 - 80;
 
         stats.forEach((s, i) => {
+            const cardT = Math.max(0, t - 30 - (i * 8));
+            const cardProgress = ease(cardT, 25);
+            
+            if (cardProgress <= 0) return; // Card hasn't started animating yet
+            
+            const cardOffset = (1 - cardProgress) * 40; // Slides up from 40px below
             const cardX = startX + (i * (cardW + cardGap));
+            const cY = cardY + cardOffset;
             const isNewRecord = s.val > 0 && s.val >= s.high;
             
-            // Card background — dark with subtle accent tint
             this.ctx.save();
+            this.ctx.globalAlpha = cardProgress;
+            
+            // Card background
             this.ctx.fillStyle = `rgba(${s.rgb}, 0.08)`;
             this.ctx.beginPath();
-            this.ctx.roundRect(cardX, cardY, cardW, cardH, 16);
+            this.ctx.roundRect(cardX, cY, cardW, cardH, 16);
             this.ctx.fill();
             
-            // Card border — accent color with glow
+            // Card border with glow
             this.ctx.shadowBlur = 20;
             this.ctx.shadowColor = s.color;
             this.ctx.strokeStyle = s.color;
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
-            this.ctx.roundRect(cardX, cardY, cardW, cardH, 16);
+            this.ctx.roundRect(cardX, cY, cardW, cardH, 16);
             this.ctx.stroke();
-            this.ctx.restore();
+            this.ctx.shadowBlur = 0;
 
-            // Label at top of card
-            this.ctx.save();
+            // Label
             this.ctx.font = "bold 14px 'Outfit', sans-serif";
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "alphabetic";
-            this.ctx.fillText(s.label, cardX + cardW / 2, cardY + 30);
-            this.ctx.restore();
+            this.ctx.fillText(s.label, cardX + cardW / 2, cY + 30);
 
-            // Big value in center
-            this.ctx.save();
+            // Big value
             this.ctx.font = "900 64px 'Outfit', sans-serif";
             this.ctx.fillStyle = "#fff";
-            this.ctx.textAlign = "center";
             this.ctx.textBaseline = "middle";
             this.ctx.shadowBlur = 15;
             this.ctx.shadowColor = s.color;
-            this.ctx.fillText(s.val, cardX + cardW / 2, cardY + 90);
-            this.ctx.restore();
+            this.ctx.fillText(s.val, cardX + cardW / 2, cY + 90);
+            this.ctx.shadowBlur = 0;
 
-            // "BEST" line at bottom
-            this.ctx.save();
+            // --- PROGRESS BAR (val vs high) ---
+            // Max for the bar: either the high, or the current val if it's a new record
+            const barMax = Math.max(s.high, s.val, 1);
+            const barFillRatio = Math.min(1, s.val / barMax);
+            const barW = cardW - 40;
+            const barH = 6;
+            const barX = cardX + 20;
+            const barY = cY + 140;
+            
+            // Bar background
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+            this.ctx.beginPath();
+            this.ctx.roundRect(barX, barY, barW, barH, 3);
+            this.ctx.fill();
+            
+            // Bar fill (animated reveal — ties to cardProgress)
+            this.ctx.fillStyle = s.color;
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = s.color;
+            this.ctx.beginPath();
+            this.ctx.roundRect(barX, barY, barW * barFillRatio * cardProgress, barH, 3);
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
+
+            // "BEST" line
             this.ctx.font = "bold 14px 'Outfit', sans-serif";
             this.ctx.fillStyle = s.color;
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "alphabetic";
-            this.ctx.fillText("BEST  " + s.high, cardX + cardW / 2, cardY + cardH - 20);
+            this.ctx.fillText("BEST  " + s.high, cardX + cardW / 2, cY + cardH - 20);
+
             this.ctx.restore();
 
-            // NEW RECORD badge (if applicable)
-            if (isNewRecord && s.val > 0) {
-                this.ctx.save();
-                const badgeY = cardY - 10;
+            // --- NEW RECORD badge (pops in slightly after card settles) ---
+            if (isNewRecord && s.val > 0 && cardProgress > 0.7) {
+                const badgeT = Math.max(0, cardT - 18);
+                const badgeProgress = ease(badgeT, 15);
+                const badgeScale = 0.6 + (badgeProgress * 0.4); // Scales from 0.6 to 1.0
+                const badgePulse = 1 + Math.sin(this.state.frameCount * 0.15) * 0.05; // Subtle pulse
+                const finalScale = badgeScale * badgePulse;
+                
                 const badgeW = 110;
                 const badgeH = 24;
-                const badgeX = cardX + (cardW - badgeW) / 2;
+                const badgeCX = cardX + cardW / 2;
+                const badgeCY = cY - 10 + badgeH / 2;
                 
-                // Badge background
+                this.ctx.save();
+                this.ctx.globalAlpha = badgeProgress;
+                this.ctx.translate(badgeCX, badgeCY);
+                this.ctx.scale(finalScale, finalScale);
+                
+                // Badge bg
                 this.ctx.fillStyle = s.color;
                 this.ctx.shadowBlur = 15;
                 this.ctx.shadowColor = s.color;
                 this.ctx.beginPath();
-                this.ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 12);
+                this.ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 12);
                 this.ctx.fill();
                 
                 // Badge text
@@ -952,15 +1014,6 @@ class AdBird {
                 this.ctx.fillStyle = "#0a0a0c";
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "middle";
-                this.ctx.fillText("NEW RECORD", badgeX + badgeW / 2, badgeY + badgeH / 2);
-                this.ctx.restore();
-            }
-        });
-
-        // --- RUN IT BACK button ---
-        const btnW = 280;
-        const btnH = 64;
-        const btnX = (this.canvas.width - btnW) / 2;
         const btnY = this.canvas.height / 2 + 180;
         const btnRadius = 14;
 
