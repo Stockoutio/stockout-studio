@@ -37,7 +37,21 @@ class AdBird {
             
             hitMessages: ["WASTED", "REKT", "STAINED", "SPLAT", "GET REKT", "BILLBOARDED", "SIGN SMASHED", "MESSY", "BULLSEYE", "AD-BLASTED", "INKED", "VANDALIZED", "SCORE!", "BIRDPOCALYPSE", "BEAK-TACULAR", "EGG-STERMINATION", "UN-BEAK-ABLE", "FLAPPING SPREE", "WING-SLAUGHTER", "FEATHER-KILL", "DOUBLE BILL", "TRIPLE TWEET", "OVER-FLAP", "BILL-IONAIRE"],
             msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899"],
-            gameOverMessages: ["QUARTERLY LOSS", "BRAND DILUTION", "CPC TOO HIGH", "ROAS: ZERO", "CAMPAIGN KILLED", "CLIENT WALKED", "BUDGET BURNED", "IMPRESSIONS LOST", "REACH: DECEASED", "ENGAGEMENT: GRIM", "CTR: DROWNED", "METRICS MASSACRED", "LEAD NOT CONVERTED", "PIPELINE BROKEN", "PERFORMANCE REVIEW", "BIRD DOWN", "FEATHERS EVERYWHERE", "WINGS CLIPPED", "NESTED ETERNAL", "FLEW INTO SIGN", "POOR LIFE CHOICES", "CHICKEN CONFIRMED", "WORM FOOD", "THE SKY WON", "SKILL ISSUE", "GET GUD", "TRY HARDER", "L BOZO", "RATIO'D BY PIPE", "TOUCHED A PIPE", "THE PIPE REMEMBERS", "PIPE: 1, YOU: 0", "PIP INITIATED", "HR INVOLVED", "TERMINATED", "EXIT INTERVIEW", "LINKEDIN UPDATED", "OPEN TO WORK", "SEVERANCE PENDING", "PROJECT CANCELLED", "LIQUIDATED", "BANKRUPTCY", "MARGIN CALLED", "REKT", "STONKS DOWN", "PORTFOLIO: PIPE", "HODL'D TOO LONG", "WHY DID WE FLY", "BIRD WAS A LIE", "NOTHING MATTERS", "THE END", "CERTIFIED DEAD", "LOGGED OFF", "RETURN TO CAVE", "UNSUBSCRIBED FROM LIFE", "404 BIRD", "PRESS F", "GG NO RE", "MAYDAY", "SPLASH", "PIPE DOWN", "OVER-FLAP", "CROP DUSTED", "FLAP DENIED", "WING IT", "PLUMBER'S CRACK", "TALON-TED UNEMPLOYED"]
+            gameOverMessages: ["QUARTERLY LOSS", "BRAND DILUTION", "CPC TOO HIGH", "ROAS: ZERO", "CAMPAIGN KILLED", "CLIENT WALKED", "BUDGET BURNED", "IMPRESSIONS LOST", "REACH: DECEASED", "ENGAGEMENT: GRIM", "CTR: DROWNED", "METRICS MASSACRED", "LEAD NOT CONVERTED", "PIPELINE BROKEN", "PERFORMANCE REVIEW", "BIRD DOWN", "FEATHERS EVERYWHERE", "WINGS CLIPPED", "NESTED ETERNAL", "FLEW INTO SIGN", "POOR LIFE CHOICES", "CHICKEN CONFIRMED", "WORM FOOD", "THE SKY WON", "SKILL ISSUE", "GET GUD", "TRY HARDER", "L BOZO", "RATIO'D BY PIPE", "TOUCHED A PIPE", "THE PIPE REMEMBERS", "PIPE: 1, YOU: 0", "PIP INITIATED", "HR INVOLVED", "TERMINATED", "EXIT INTERVIEW", "LINKEDIN UPDATED", "OPEN TO WORK", "SEVERANCE PENDING", "PROJECT CANCELLED", "LIQUIDATED", "BANKRUPTCY", "MARGIN CALLED", "REKT", "STONKS DOWN", "PORTFOLIO: PIPE", "HODL'D TOO LONG", "WHY DID WE FLY", "BIRD WAS A LIE", "NOTHING MATTERS", "THE END", "CERTIFIED DEAD", "LOGGED OFF", "RETURN TO CAVE", "UNSUBSCRIBED FROM LIFE", "404 BIRD", "PRESS F", "GG NO RE", "MAYDAY", "SPLASH", "PIPE DOWN", "OVER-FLAP", "CROP DUSTED", "FLAP DENIED", "WING IT", "PLUMBER'S CRACK", "TALON-TED UNEMPLOYED"],
+            readyMessages: [
+                "READY TO DROP SOME ADS?", "READY TO RUIN A BRAND?", "READY TO FLAP AROUND?", "READY TO DESTROY COMMERCE?", 
+                "READY TO SPLAT SOME SIGNS?", "READY TO BOMB THE MARKET?", "READY TO DEFACE CAPITALISM?", "READY TO VANDALIZE PIPES?", 
+                "READY TO HIT SOME BILLBOARDS?", "READY TO DISRUPT ADVERTISING?", "READY TO WING IT?", "READY TO GO VIRAL?", 
+                "READY TO MONETIZE CHAOS?", "READY TO MARKET MAYHEM?", "READY TO SCALE HORIZONTALLY?", "READY TO CRUSH YOUR KPIs?", 
+                "READY TO MOVE THE NEEDLE?", "READY TO SYNERGIZE?", "READY TO PIVOT DOWNWARD?", "READY TO TANK YOUR METRICS?", 
+                "READY TO SHART SOME ADS?", "READY TO POOP ON PROFITS?", "READY TO GREMLIN MAXX?", "READY TO UNHINGE?", 
+                "READY TO EMBRACE THE PIPE?", "READY TO BE A BIRD?", "READY TO BIRD THINGS UP?", "READY TO COMMIT CRIMES?", 
+                "READY TO BECOME THE PROBLEM?", "READY TO GIVE UP?", "READY TO EAT DIRT?", "READY TO TOUCH A PIPE?", 
+                "READY TO LOSE EVERYTHING?", "READY TO DISAPPOINT YOUR PARENTS?", "READY TO QUIT YOUR JOB?", "READY TO RUIN THE FUNNEL?", 
+                "READY FOR Q4 LOSSES?", "READY TO GO TO MARKET?", "READY TO LAUNCH?", "READY TO SHIP?", "READY TO TEST IN PROD?", 
+                "READY TO FLY INTO THINGS?", "READY TO IGNORE OSHA?", "READY TO BOMB A MEETING?", "READY TO DROP THE BALL?", 
+                "READY TO DROP THE BEAT?", "READY TO DROP OUT?", "READY TO DROP AND GIVE ME 20?"
+            ]
         };
     }
 
@@ -57,8 +71,8 @@ class AdBird {
             highDirectHits: parseInt(localStorage.getItem('adBirdHighDirectHits')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, 
-            paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0,
-            particles: [], deathMsg: ""
+            paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], stockInARow: 0,
+            particles: [], deathMsg: "", currentReadyMsg: "READY TO DROP SOME ADS?"
         };
         this.player = { x: 250, y: 150, w: 100, h: 100, velocity: 0, flipAngle: 0, isFlipping: false, flipSpeed: 0.25, flipDirection: 1 };
     }
@@ -90,10 +104,16 @@ class AdBird {
     _handleKeydown(e) {
         const flapCodes=['Space','ArrowUp','KeyW','KeyK'], bombCodes=['ShiftLeft','ShiftRight','ArrowDown','KeyS','KeyJ'], flapKeys=[' ','ArrowUp','w','W','k','K'], bombKeys=['Shift','ArrowDown','s','S','j','J'];
         const isFlap = flapCodes.includes(e.code) || flapKeys.includes(e.key), isBomb = bombCodes.includes(e.code) || bombKeys.includes(e.key);
-        if (isFlap || isBomb || e.code === 'KeyF' || e.key === 'f' || e.key === 'F') { e.preventDefault(); if (!this.state.gameRunning) this.start(); else { if (isFlap) this.flap(); if (isBomb) this.dropBomb(); if (e.code==='KeyF'||e.key==='f') this.toggleFullscreen(); } }
+        if (isFlap || isBomb || e.code === 'KeyF' || e.key === 'f' || e.key === 'F') { 
+            e.preventDefault(); 
+            if (this.state.isGameOver) { this._resetToSplash(); return; }
+            if (!this.state.gameRunning) this.start(); 
+            else { if (isFlap) this.flap(); if (isBomb) this.dropBomb(); if (e.code==='KeyF'||e.key==='f') this.toggleFullscreen(); } 
+        }
     }
 
     _handleInput(e) {
+        if (this.state.isGameOver) { this._resetToSplash(); return; }
         const r = this.state.lastRect || this.canvas.getBoundingClientRect(); const cr = this.canvas.width/this.canvas.height; const sr = r.width/r.height;
         let dw, dh, dx, dy; if (sr > cr) { dh = r.height; dw = dh*cr; dx = (r.width-dw)/2; dy = 0; } else { dw = r.width; dh = dw/cr; dx = 0; dy = (r.height-dh)/2; }
         const x = Math.max(0, Math.min(this.canvas.width, (e.clientX-(r.left+dx))*(this.canvas.width/dw))); const y = Math.max(0, Math.min(this.canvas.height, (e.clientY-(r.top+dy))*(this.canvas.height/dh)));
@@ -253,8 +273,24 @@ class AdBird {
     _renderPlayer() { this.ctx.save(); this.ctx.translate(this.player.x+this.player.w/2, this.player.y+this.player.h/2); this.ctx.rotate(Math.min(Math.PI/4, Math.max(-Math.PI/4, this.player.velocity*0.05)) + this.player.flipAngle); this.ctx.scale(-1, 1); this.ctx.drawImage(this.assets.player, -this.player.w/2, -this.player.h/2, this.player.w, this.player.h); this.ctx.restore(); }
     _renderParticles() { this.state.particles.forEach(p => { this.ctx.globalAlpha = p.life; this.ctx.fillStyle = p.color; this.ctx.shadowBlur = 10; this.ctx.shadowColor = p.color; this.ctx.beginPath(); this.ctx.arc(p.x, p.y, 3, 0, Math.PI*2); this.ctx.fill(); }); this.ctx.globalAlpha = 1; this.ctx.shadowBlur = 0; }
     _renderFloatingTexts() { this.ctx.textAlign = "center"; this.floatingTexts.forEach(t => { this.ctx.save(); this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale); this.ctx.font = "bold 36px 'Outfit', sans-serif"; this.ctx.strokeStyle = "#000"; this.ctx.lineWidth = 1.5; this.ctx.strokeText(t.text, 0, 0); this.ctx.fillStyle = t.color; this.ctx.shadowBlur = 15; this.ctx.shadowColor = t.color; this.ctx.fillText(t.text, 0, 0); this.ctx.restore(); }); }
-    _renderGameOverScreen() { this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 36px 'Outfit', sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "alphabetic"; this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 60); this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2); this.ctx.fillStyle = "#fbbf24"; this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2); this.ctx.fillStyle = "#fff"; this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "#06b6d4"; this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif"; this.ctx.fillText(this.isMobile ? "TAP to fly again" : "SPACE or CLICK to fly again", this.canvas.width / 2, this.canvas.height / 2 + 85); }
-    drawStartScreen() { if (this.isMobile && this.overlay) this.overlay.classList.add('active'); this.ctx.fillStyle = "#050510"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); const bg = this.assets.worlds[0]; if (bg && bg.complete) this.ctx.drawImage(bg, 0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)"; this.ctx.fillRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)"; this.ctx.strokeRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 24px 'Outfit', sans-serif"; this.ctx.fillText("READY TO DROP SOME ADS?", this.canvas.width / 2, this.canvas.height / 2 - 10); this.ctx.font = "15px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; this.ctx.fillText(this.isMobile ? "TAP ANYWHERE to flap" : "SPACE or CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 30); this.ctx.fillText(this.isMobile ? "BOMB BUTTON to drop ads" : "SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 55); }
+    _renderGameOverScreen() { this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 36px 'Outfit', sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "alphabetic"; this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 60); this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2); this.ctx.fillStyle = "#fbbf24"; this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2); this.ctx.fillStyle = "#fff"; this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "#06b6d4"; this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif"; this.ctx.fillText(this.isMobile ? "TAP to continue" : "SPACE or CLICK to continue", this.canvas.width / 2, this.canvas.height / 2 + 85); }
+    drawStartScreen() { 
+        if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
+        this.ctx.fillStyle = "#050510"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); 
+        const bg = this.assets.worlds[0]; if (bg && bg.complete) this.ctx.drawImage(bg, 0, 0, this.canvas.width, this.canvas.height); 
+        this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)"; this.ctx.fillRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); 
+        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)"; this.ctx.strokeRect(this.canvas.width / 2 - 200, this.canvas.height / 2 - 60, 400, 135); 
+        this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 24px 'Outfit', sans-serif"; 
+        this.ctx.fillText(this.state.currentReadyMsg, this.canvas.width / 2, this.canvas.height / 2 - 10); 
+        this.ctx.font = "15px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; 
+        this.ctx.fillText(this.isMobile ? "TAP ANYWHERE to flap" : "SPACE or CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 30); 
+        this.ctx.fillText(this.isMobile ? "BOMB BUTTON to drop ads" : "SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 55); 
+    }
+    _resetToSplash() {
+        this.state.isGameOver = false;
+        this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
+        this.drawStartScreen();
+    }
     _setupHiDPI() { const dpr = window.devicePixelRatio || 1; if (dpr > 1) { const lw = this.canvas.width; const lh = this.canvas.height; this.canvas.width = lw * dpr; this.canvas.height = lh * dpr; this.ctx.scale(dpr, dpr); Object.defineProperty(this.canvas, 'width', { get: () => lw, configurable: true }); Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true }); } this.canvas.style.touchAction = 'none'; this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
     _renderOverlay() { this._renderHUD(); if (this.state.isGameOver) this._renderGameOverScreen(); }
     _initBubbles() { this.bubbles = Array.from({ length: 20 }, () => ({ x: Math.random() * this.canvas.width, y: Math.random() * this.canvas.height, size: Math.random() * 3 + 1, speed: Math.random() * 0.5 + 0.2 })); }
