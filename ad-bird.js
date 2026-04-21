@@ -66,6 +66,7 @@ class AdBird {
         };
     }
 
+    // NOTE: Depends on _setupHiDPI() having already run so canvas.width/height return logical dimensions.
     _initHUDGeometry() {
         this.ui = {
             fullscreenBtn: { x: this.canvas.width - 55, y: this.canvas.height - 55, radius: 45 },
@@ -101,7 +102,7 @@ class AdBird {
         this._boundLoop = () => this._loop();
         this.assets.player.src = this.config.playerImg;
         this.assets.player.onload = () => this.state.assetsLoaded++;
-        this.config.worlds.forEach((p) => { const img = new Image(); img.src = p; img.onload = () => { this.state.assetsLoaded++; if (!this.state.gameRunning) this.drawStartScreen(); }; this.assets.worlds.push(img); });
+        this.config.worlds.forEach((p) => { const img = new Image(); img.src = p; img.onload = () => { this.state.assetsLoaded++; }; this.assets.worlds.push(img); });
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         const it = this.canvas.parentElement || this.canvas;
         it.addEventListener('mousedown', (e) => { if (!this.isMobile) this._handleInput(e); });
@@ -235,7 +236,7 @@ class AdBird {
             const p = this.pipes[i]; p.x -= this.config.pipeSpeed;
             p.stains.forEach(s => s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; }));
             const pd = 15; const bx = this.player.x+pd, bw = this.player.w-(pd*2), by = this.player.y+pd, bh = this.player.h-(pd*2);
-            if (bx < p.x+p.w && bx+bw > p.x && (by < p.y || by+bh > p.y+p.gap)) this.gameOver();
+            if (bx < p.x+p.w && bx+bw > p.x && (by < p.y || by+bh > p.y+p.gap)) { this.gameOver(); return; }
             if (!p.scored && p.x + p.w < this.player.x) { p.scored = true; this.state.score++; this.playSound('score'); if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld(); }
             if (p.x + p.w < -150) this.pipes.splice(i, 1);
         }
@@ -367,7 +368,7 @@ class AdBird {
         const b = this.ui.bombBtn; this.ctx.save(); this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4"; this.ctx.beginPath(); this.ctx.roundRect(b.x, b.y, b.w, b.h, b.radius); this.ctx.fill();
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.font = "bold 32px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0; this.ctx.fillText("BOMB", b.x + b.w/2, b.y + b.h/2 - (this.isMobile ? 0 : 8)); 
         if (!this.isMobile) { this.ctx.font = "bold 11px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("(SHIFT / R-CLICK)", b.x + b.w/2, b.y + b.h/2 + 22); } 
-        if (this.state.bombTimer > 0) { this.ctx.fillStyle = "rgba(255, 255, 255, 0.3)"; this.ctx.fillRect(b.x, b.y + b.h - 4, b.w * (this.state.bombTimer / 20), 4); } this.ctx.restore();
+        if (this.state.bombTimer > 0) { this.ctx.fillStyle = "rgba(255, 255, 255, 0.3)"; this.ctx.fillRect(b.x, b.y + b.h - 4, b.w * (this.state.bombTimer / this.config.bombCooldown), 4); } this.ctx.restore();
     }
 
     /* --- ENTROPY & AD ENGINE --- */
@@ -521,7 +522,7 @@ class AdBird {
         if (this.state.bombTimer > 0) return; 
         const scale = 0.5 + Math.pow(Math.random(), 2.5) * 5.5; 
         this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15 * scale, h: 20 * scale, speed: 8, scale: scale }); 
-        this.state.bombTimer = 20; 
+        this.state.bombTimer = this.config.bombCooldown; 
     }
     _renderWorld() { 
         const bg = this.assets.worlds[this.state.currentWorld]; 
@@ -618,7 +619,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 const data = await response.json();
                 const colors = ['#a855f7', '#06b6d4', '#f59e0b', '#22c55e', '#ec4899'];
-                paidAds = data.map(ad => ({ ...ad, isPaid: true, color: colors[Math.floor(Math.random() * colors.length)] }));
+                paidAds = data.map(ad => {
+                    // Hash the ad text to pick a stable color
+                    let hash = 0;
+                    for (let i = 0; i < ad.text.length; i++) {
+                        hash = ((hash << 5) - hash) + ad.text.charCodeAt(i);
+                        hash |= 0;
+                    }
+                    const color = colors[Math.abs(hash) % colors.length];
+                    return { ...ad, isPaid: true, color };
+                });
             }
         } catch (e) {
             console.warn("Backend unavailable or not configured, using stock ads only.");
