@@ -367,7 +367,7 @@ class AdBird {
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "alphabetic";
         this.ctx.font = "900 72px 'Outfit', sans-serif";
-        const scorePulse = Math.sin(this.state.frameCount * 0.1) * 5 + 15;
+        const scorePulse = Math.sin(this.state.frameCount * 0.03) * 3 + 12;
         this.ctx.shadowBlur = scorePulse;
         this.ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
         
@@ -394,8 +394,8 @@ class AdBird {
         this.ctx.textBaseline = "middle";
         this.ctx.textAlign = "left";
         
-        // Breathing Glow Peak
-        const pulse = Math.sin(this.state.frameCount * 0.08) * 5 + 12;
+        // Breathing Glow Peak (Subtler)
+        const pulse = Math.sin(this.state.frameCount * 0.03) * 3 + 8;
         this.ctx.shadowBlur = pulse;
         this.ctx.shadowColor = "#06b6d4";
 
