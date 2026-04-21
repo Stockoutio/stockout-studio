@@ -142,21 +142,21 @@ class AdBird {
         const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
         const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
         
-        const action = this._hitTest(x, y);
         if (this.state.isGameOver) { this._resetToSplash(); return; }
         
-        switch (action) {
-            case 'fullscreen': this.toggleFullscreen(); break;
-            case 'mute': this.toggleMute(); break;
-            case 'bomb': this.dropBomb(); break;
-            default: 
-                if (!this.state.gameRunning) this.start(); 
-                else {
-                    if (e.button === 2) this.dropBomb();
-                    else this.flap();
-                }
-                break;
-        }
+        const action = this._hitTest(x, y);
+        
+        // Fullscreen and mute work regardless of game state
+        if (action === 'fullscreen') { this.toggleFullscreen(); return; }
+        if (action === 'mute') { this.toggleMute(); return; }
+        
+        // If game isn't running, any click (including bomb button) starts it
+        if (!this.state.gameRunning) { this.start(); return; }
+        
+        // Game is running — dispatch normally
+        if (action === 'bomb') { this.dropBomb(); return; }
+        if (e.button === 2) this.dropBomb();
+        else this.flap();
     }
 
     _hitTest(x, y) {
@@ -434,8 +434,8 @@ class AdBird {
             const mega = ["MEGA SPLAT", "GIGA SPLAT", "AD-POCALYPSE", "ULTRA-BILL", "MONSTER SPLAT", "SIGN DESTROYER", "MARKET CRASHED", "KPIs CRUSHED", "BRAND DESTRUCTION", "TOTAL COVERAGE"];
             hitMsg = mega[Math.floor(Math.random()*mega.length)];
             // Smart Alignment Guard
-            if (bx < 200) { align = "left"; tx = 20; }
-            else if (bx > this.canvas.width - 200) { align = "right"; tx = this.canvas.width - 20; }
+            if (bx < 280) { align = "left"; tx = 20; }
+            else if (bx > this.canvas.width - 280) { align = "right"; tx = this.canvas.width - 20; }
         } else {
             hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
         }
@@ -578,7 +578,10 @@ class AdBird {
             });
         }
     }
-    _setupHiDPI() { const dpr = window.devicePixelRatio || 1; if (dpr > 1) { const lw = this.canvas.width; const lh = this.canvas.height; this.canvas.width = lw * dpr; this.canvas.height = lh * dpr; this.ctx.scale(dpr, dpr); Object.defineProperty(this.canvas, 'width', { get: () => lw, configurable: true }); Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true }); } this.canvas.style.touchAction = 'none'; this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
+    _setupHiDPI() { const dpr = window.devicePixelRatio || 1; if (dpr > 1) { const lw = this.canvas.width; const lh = this.canvas.height; this.canvas.width = lw * dpr; this.canvas.height = lh * dpr; this.ctx.scale(dpr, dpr); 
+        // NOTE: Locks canvas.width/height to logical size for DPR scaling.
+        // Any future code that tries to resize the canvas will silently fail.
+        Object.defineProperty(this.canvas, 'width', { get: () => lw, configurable: true }); Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true }); } this.canvas.style.touchAction = 'none'; this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
     _renderOverlay() { 
         this._renderHUD(); 
         if (this.state.isGameOver) this._renderGameOverScreen(); 
@@ -602,9 +605,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 paidAds = data.map(ad => ({ ...ad, isPaid: true, color: colors[Math.floor(Math.random() * colors.length)] }));
             }
         } catch (e) {
-            console.error("Backend Fetch Failed:", e);
+            console.warn("Backend unavailable or not configured, using stock ads only.");
         }
-        window.game = new AdBird('adBirdCanvas', { paidAds });
+        window.adBirdGame = new AdBird('adBirdCanvas', { paidAds });
     };
     initGame();
 });
