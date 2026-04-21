@@ -96,7 +96,7 @@ class AdBird {
         if (this.overlay) { this.overlay.addEventListener('mousedown', () => this.start()); this.overlay.addEventListener('touchstart', (e) => { e.preventDefault(); this.start(); }); }
         ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => document.addEventListener(evt, () => { this.state.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); }));
         this._initBubbles();
-        requestAnimationFrame(() => this.drawStartScreen());
+        this._loop();
     }
 
     /* --- INPUT ENGINE --- */
@@ -136,7 +136,13 @@ class AdBird {
         if (!this.state.loopActive) this._loop();
     }
 
-    _loop() { this.state.loopActive = true; this.state.lastRect = this.canvas.getBoundingClientRect(); this._update(); this._draw(); if (this.state.gameRunning || this.state.isGameOver) requestAnimationFrame(() => this._loop()); else this.state.loopActive = false; }
+    _loop() { 
+        this.state.loopActive = true; 
+        this.state.lastRect = this.canvas.getBoundingClientRect(); 
+        this._update(); 
+        this._draw(); 
+        requestAnimationFrame(() => this._loop()); 
+    }
 
     _update() {
         if (this.state.screenShake > 0) this.state.screenShake *= 0.9;
@@ -262,7 +268,13 @@ class AdBird {
     /* --- HELPERS --- */
 
     playSound(type) { if (this.state.isMuted) return; const n = this.audioCtx.currentTime; if (type === 'splat') { const o = this.audioCtx.createOscillator(); const g = this.audioCtx.createGain(); o.connect(g); g.connect(this.audioCtx.destination); o.type = 'square'; o.frequency.setValueAtTime(400, n); o.frequency.exponentialRampToValueAtTime(800, n+0.1); g.gain.setValueAtTime(0.3, n); g.gain.exponentialRampToValueAtTime(0.01, n+0.15); o.start(n); o.stop(n+0.15); return; } if (type === 'death') { [392, 311, 261].forEach((f, i) => { const o = this.audioCtx.createOscillator(); const g = this.audioCtx.createGain(); o.connect(g); g.connect(this.audioCtx.destination); o.type = 'triangle'; const st = n + (i*0.15); o.frequency.setValueAtTime(f, st); o.frequency.exponentialRampToValueAtTime(f*0.8, st+0.4); g.gain.setValueAtTime(0.3, st); g.gain.exponentialRampToValueAtTime(0.01, st+0.4); o.start(st); o.stop(st+0.4); }); return; } const sounds = { flap: { type: 'square', freq: [150, 400], vol: 0.5, dur: 0.1 }, score: { type: 'sine', freq: [800, 1200], vol: 0.4, dur: 0.1 }, crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 }, shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 } }; const s = sounds[type]; const o = this.audioCtx.createOscillator(); const g = this.audioCtx.createGain(); o.connect(g); g.connect(this.audioCtx.destination); o.type = s.type; o.frequency.setValueAtTime(s.freq[0], n); o.frequency.exponentialRampToValueAtTime(s.freq[1], n+s.dur); g.gain.setValueAtTime(s.vol, n); g.gain.exponentialRampToValueAtTime(0.01, n+s.dur); o.start(n); o.stop(n+s.dur); }
-    toggleMute() { this.state.isMuted = !this.state.isMuted; if (this.assets.music) { if (this.state.isMuted) this.assets.music.pause(); else if (this.state.gameRunning) this.assets.music.play(); } }
+    toggleMute() { 
+        this.state.isMuted = !this.state.isMuted; 
+        if (this.assets.music) { 
+            if (this.state.isMuted) this.assets.music.pause(); 
+            else if (this.state.gameRunning) this.assets.music.play(); 
+        } 
+    }
     toggleFullscreen() { const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); if (!isFS) { const c = this.canvas.parentElement; const r = c.requestFullscreen || c.webkitRequestFullscreen || c.mozRequestFullScreen || c.msRequestFullscreen; if (r) r.call(c); } else { const e = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen; if (e) e.call(document); } }
     _shiftWorld() { this.state.currentWorld = (this.state.currentWorld + 1) % this.assets.worlds.length; this.state.flashOpacity = 1; this.playSound('shift'); }
     flap() { this.player.velocity = this.config.lift; this.playSound('flap'); }
