@@ -245,6 +245,7 @@ class AdBird {
         }
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { 
             const t = this.floatingTexts[i]; t.age++; 
+            if (t.vx) t.x += t.vx;
             if (t.age > this.config.floatingTextRiseDelay) { 
                 t.vy -= 0.3; t.y += t.vy; t.alpha = Math.max(0, 1 - Math.pow((t.age - this.config.floatingTextRiseDelay) / 40, 2)); 
             } 
@@ -288,7 +289,7 @@ class AdBird {
                 
                 this.floatingTexts.push({ 
                     x: b.x, y: targetY, text: msg, 
-                    color: "#9ca3af", age: 0, alpha: 1, vy: 0, 
+                    color: "#9ca3af", age: 0, alpha: 1, vy: -0.5, vx: (Math.random() - 0.5) * 2,
                     scale: isGiga ? 1.4 : 0.8, align: "center", 
                     isMega: isGiga, glow: isGiga ? "#4b5563" : null,
                     isShivering: isGiga
@@ -574,7 +575,7 @@ class AdBird {
 
         this.floatingTexts.push({ 
             x: tx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
-            scale: isMega ? 1.4 : 1, 
+            scale: isMega ? 1.4 : 1, vx: (Math.random()-0.5)*(isMega ? 4 : 2),
             text: hitMsg, 
             color: isMega ? "#fff" : this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)],
             glow: isMega ? p.ad.color : null,
