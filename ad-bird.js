@@ -69,11 +69,12 @@ class AdBird {
             gameRunning: false, isGameOver: false, loopActive: false,
             score: 0, directHits: 0, highScore: parseInt(localStorage.getItem('adBirdHighScore')) || 0,
             highDirectHits: parseInt(localStorage.getItem('adBirdHighDirectHits')) || 0,
-            frameCount: 0, nextPipeFrame: 40, currentWorld: Math.floor(Math.random() * this.config.worlds.length), flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
+            frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, 
-            paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], stockInARow: 0,
+            paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: ""
         };
+        this.state.currentWorld = this._nextWorld();
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
         this.player = { x: 250, y: 150, w: 100, h: 100, velocity: 0, flipAngle: 0, isFlipping: false, flipSpeed: 0.25, flipDirection: 1 };
     }
@@ -256,6 +257,14 @@ class AdBird {
         return arr;
     }
 
+    _nextWorld() {
+        if (this.state.worldBag.length === 0) {
+            const indices = Array.from({ length: this.config.worlds.length }, (_, i) => i);
+            this.state.worldBag = this._shuffle(indices);
+        }
+        return this.state.worldBag.pop();
+    }
+
     _nextFromBag(bagKey, configKey) {
         if (this.state[bagKey].length === 0) {
             this.state[bagKey] = this._shuffle(this.config[configKey]);
@@ -342,7 +351,7 @@ class AdBird {
         this.bombs = [];
         this.floatingTexts = [];
         this.state.bgX = 0;
-        this.state.currentWorld = Math.floor(Math.random() * this.config.worlds.length);
+        this.state.currentWorld = this._nextWorld();
         
         // --- THE RESET BLAST ---
         this.state.screenShake = 15;
