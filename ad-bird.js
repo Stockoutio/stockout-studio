@@ -308,7 +308,13 @@ class AdBird {
     _shiftWorld() { this.state.currentWorld = (this.state.currentWorld + 1) % this.assets.worlds.length; this.state.flashOpacity = 1; this.playSound('shift'); }
     flap() { this.player.velocity = this.config.lift; this.playSound('flap'); }
     dropBomb() { if (this.state.bombTimer > 0) return; this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15, h: 20, speed: 8 }); this.state.bombTimer = 20; }
-    _renderWorld() { const bg = this.assets.worlds[this.state.currentWorld]; if (bg && bg.complete) { const rx = Math.floor(this.state.bgX); this.ctx.drawImage(bg, rx, 0, this.canvas.width+2, this.canvas.height); this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width+2, this.canvas.height); } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
+    _renderWorld() { 
+        const bg = this.assets.worlds[this.state.currentWorld]; 
+        if (bg && bg.complete) { 
+            const rx = Math.floor(this.state.bgX); 
+            this.ctx.drawImage(bg, rx, 0, this.canvas.width, this.canvas.height); 
+            this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width, this.canvas.height); 
+        } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
     _renderBubbles() { this.ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; this.bubbles.forEach(b => { this.ctx.beginPath(); this.ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderBombs() { this.ctx.fillStyle = "#fff"; this.bombs.forEach(b => { this.ctx.beginPath(); this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderPlayer() { this.ctx.save(); this.ctx.translate(this.player.x+this.player.w/2, this.player.y+this.player.h/2); this.ctx.rotate(Math.min(Math.PI/4, Math.max(-Math.PI/4, this.player.velocity*0.05)) + this.player.flipAngle); this.ctx.scale(-1, 1); this.ctx.drawImage(this.assets.player, -this.player.w/2, -this.player.h/2, this.player.w, this.player.h); this.ctx.restore(); }
