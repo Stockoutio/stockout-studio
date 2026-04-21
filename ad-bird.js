@@ -101,6 +101,7 @@ class AdBird {
             highTotalMisses: parseInt(this._safeStorage('get', 'adBirdHighTotalMisses')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, assetsLoaded: 0, lastRect: null, waitingForGameOver: false, gameOverFrame: 0,
+            mouseX: 0, mouseY: 0, runItBackHover: false, runItBackPressed: 0,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: ""
         };
@@ -124,6 +125,7 @@ class AdBird {
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
         const it = this.canvas.parentElement || this.canvas;
         it.addEventListener('mousedown', (e) => { if (!this.isMobile) this._handleInput(e); });
+        it.addEventListener('mousemove', (e) => { if (!this.isMobile) this._handleMouseMove(e); });
         it.addEventListener('touchstart', (e) => { if (this.isMobile) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} }); } } }, { passive: false });
         it.addEventListener('contextmenu', (e) => e.preventDefault());
         if (this.overlay) {
@@ -189,7 +191,14 @@ class AdBird {
 
         if (this.state.waitingForGameOver) return;
         
-        if (this.state.isGameOver) { this._resetToSplash(); return; }
+        if (this.state.isGameOver) {
+            // Mobile: tap anywhere to reset. Desktop: must hit the button.
+            if (this.isMobile || this._isOverRunItBack(x, y)) {
+                this._triggerButtonExplosion();
+                this._resetToSplash();
+            }
+            return;
+        }
         
         // If game isn't running, any click (including bomb button) starts it
         if (!this.state.gameRunning) { this.start(); return; }
@@ -198,6 +207,43 @@ class AdBird {
         if (action === 'bomb') { this.dropBomb(); return; }
         if (e.button === 2) this.dropBomb();
         else this.flap();
+    }
+
+    _handleMouseMove(e) {
+        if (!this.state.assetsLoaded) return;
+        
+        const r = this.state.lastRect || this.canvas.getBoundingClientRect();
+        const canvasAspect = this.canvas.width / this.canvas.height;
+        const rectAspect = r.width / r.height;
+        let dw, dh, dx, dy;
+        if (rectAspect > canvasAspect) {
+            dh = r.height; dw = dh * canvasAspect; dx = (r.width - dw) / 2; dy = 0;
+        } else {
+            dw = r.width; dh = dw / canvasAspect; dx = 0; dy = (r.height - dh) / 2;
+        }
+        const x = Math.max(0, Math.min(this.canvas.width, (e.clientX - (r.left + dx)) * (this.canvas.width / dw)));
+        const y = Math.max(0, Math.min(this.canvas.height, (e.clientY - (r.top + dy)) * (this.canvas.height / dh)));
+        
+        this.state.mouseX = x;
+        this.state.mouseY = y;
+        
+        // Update hover state for cursor change
+        const hovering = this._isOverRunItBack(x, y);
+        if (hovering !== this.state.runItBackHover) {
+            this.state.runItBackHover = hovering;
+            this.canvas.style.cursor = hovering ? 'pointer' : 'default';
+        }
+    }
+
+    _isOverRunItBack(x, y) {
+        if (!this.state.isGameOver) return false;
+        
+        const btnW = 280;
+        const btnH = 64;
+        const btnX = (this.canvas.width - btnW) / 2;
+        const btnY = this.canvas.height / 2 + 180;
+        
+        return x >= btnX && x <= btnX + btnW && y >= btnY && y <= btnY + btnH;
     }
 
     _hitTest(x, y) {
@@ -214,7 +260,8 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], missMsgBag: [], megaMissMsgBag: [], stockInARow: 0, particles: [], gameOverFrame: 0 });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], missMsgBag: [], megaMissMsgBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, runItBackPressed: 0 });
+        this.canvas.style.cursor = 'default';
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
@@ -1017,14 +1064,36 @@ class AdBird {
             const btnW = 280;
             const btnH = 64;
             const btnX = (this.canvas.width - btnW) / 2;
-            const btnY = this.canvas.height / 2 + 180 + ((1 - btnProgress) * 20);
+            const btnYBase = this.canvas.height / 2 + 180 + ((1 - btnProgress) * 20);
             const btnRadius = 14;
             
+            // Hover lift
+            const hoverLift = this.state.runItBackHover ? 4 : 0;
+            const btnY = btnYBase - hoverLift;
+            
+            // Click compression — button briefly squishes down and fades out on click
+            const framesSincePress = this.state.runItBackPressed ? this.state.frameCount - this.state.runItBackPressed : 999;
+            const clickScale = framesSincePress < 10 ? 1 - (0.15 * (1 - framesSincePress / 10)) : 1;
+            const clickAlpha = framesSincePress < 20 ? Math.max(0, 1 - (framesSincePress / 20)) : 1;
+            
+            // Pulse
             const pulse = Math.sin(this.state.frameCount * 0.06) * 0.5 + 0.5;
-            const glowIntensity = 20 + (pulse * 20);
+            const baseGlow = 20 + (pulse * 20);
+            const hoverGlow = this.state.runItBackHover ? 20 : 0;
+            const glowIntensity = baseGlow + hoverGlow;
+            
+            // Flowing shimmer position (for hover effect)
+            const shimmerPos = (this.state.frameCount * 0.015) % 1;
 
             this.ctx.save();
-            this.ctx.globalAlpha = btnProgress;
+            this.ctx.globalAlpha = btnProgress * clickAlpha;
+            
+            // Apply click compression
+            const cx = btnX + btnW / 2;
+            const cy = btnY + btnH / 2;
+            this.ctx.translate(cx, cy);
+            this.ctx.scale(clickScale, clickScale);
+            this.ctx.translate(-cx, -cy);
             
             // Outer glow
             this.ctx.shadowBlur = glowIntensity;
@@ -1034,7 +1103,7 @@ class AdBird {
             this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
             this.ctx.fill();
 
-            // Gradient fill
+            // Base gradient fill
             const gradient = this.ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
             gradient.addColorStop(0, "rgba(6, 182, 212, 0.9)");
             gradient.addColorStop(0.5, "rgba(59, 130, 246, 0.9)");
@@ -1045,9 +1114,28 @@ class AdBird {
             this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
             this.ctx.fill();
 
-            // Border
-            this.ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-            this.ctx.lineWidth = 2;
+            // Flowing shimmer overlay on hover
+            if (this.state.runItBackHover && framesSincePress > 20) {
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
+                this.ctx.clip();
+                
+                const shimmerW = 80;
+                const shimmerX = btnX - shimmerW + (btnW + shimmerW * 2) * shimmerPos;
+                const shimmerGrad = this.ctx.createLinearGradient(shimmerX, 0, shimmerX + shimmerW, 0);
+                shimmerGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+                shimmerGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.35)");
+                shimmerGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+                this.ctx.fillStyle = shimmerGrad;
+                this.ctx.fillRect(btnX, btnY, btnW, btnH);
+                
+                this.ctx.restore();
+            }
+
+            // Border (brighter on hover)
+            this.ctx.strokeStyle = this.state.runItBackHover ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.4)";
+            this.ctx.lineWidth = this.state.runItBackHover ? 3 : 2;
             this.ctx.beginPath();
             this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
             this.ctx.stroke();
@@ -1064,29 +1152,198 @@ class AdBird {
 
             // Hint text
             this.ctx.save();
-            this.ctx.globalAlpha = btnProgress;
+            this.ctx.globalAlpha = btnProgress * clickAlpha;
             this.ctx.font = "13px 'Outfit', sans-serif";
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "alphabetic";
             this.ctx.fillText(
-                this.isMobile ? "tap anywhere" : "space  •  click  •  enter", 
+                this.isMobile ? "tap anywhere" : "click button  •  space  •  enter", 
                 this.canvas.width / 2, 
-                btnY + btnH + 28
+                btnYBase + btnH + 28
             ); 
             this.ctx.restore();
         }
     }
     _renderStartScreen() { 
         if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
-        const boxW = 550;
-        this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)"; this.ctx.fillRect(this.canvas.width / 2 - boxW/2, this.canvas.height / 2 - 60, boxW, 135); 
-        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.1)"; this.ctx.strokeRect(this.canvas.width / 2 - boxW/2, this.canvas.height / 2 - 60, boxW, 135); 
-        this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.font = "bold 24px 'Outfit', sans-serif"; 
-        this.ctx.fillText(this.state.currentReadyMsg, this.canvas.width / 2, this.canvas.height / 2 - 10); 
-        this.ctx.font = "15px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; 
-        this.ctx.fillText(this.isMobile ? "TAP ANYWHERE to flap" : "SPACE or CLICK to flap", this.canvas.width / 2, this.canvas.height / 2 + 30); 
-        this.ctx.fillText(this.isMobile ? "BOMB BUTTON to drop ads" : "SHIFT or R-CLICK to bomb", this.canvas.width / 2, this.canvas.height / 2 + 55); 
+        
+        const f = this.state.frameCount;
+        const breathe = Math.sin(f * 0.04) * 0.5 + 0.5; // 0 to 1
+        const slowPulse = Math.sin(f * 0.02) * 0.5 + 0.5;
+        
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height / 2;
+        
+        // --- TITLE CARD: big brand-matching title with pulsing gradient glow ---
+        this.ctx.save();
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "alphabetic";
+        
+        // Title: "AD-BIRD"
+        this.ctx.font = "900 84px 'Outfit', sans-serif";
+        this.ctx.shadowBlur = 20 + (breathe * 30);
+        this.ctx.shadowColor = "#a855f7";
+        
+        // Gradient text (cyan to purple)
+        const titleGrad = this.ctx.createLinearGradient(cx - 200, 0, cx + 200, 0);
+        titleGrad.addColorStop(0, "#06b6d4");
+        titleGrad.addColorStop(1, "#a855f7");
+        
+        this.ctx.strokeStyle = "#000";
+        this.ctx.lineWidth = 6;
+        this.ctx.strokeText("AD-BIRD", cx, cy - 80);
+        this.ctx.fillStyle = titleGrad;
+        this.ctx.fillText("AD-BIRD", cx, cy - 80);
+        
+        // Subtitle
+        this.ctx.font = "bold 18px 'Outfit', sans-serif";
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = "#06b6d4";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        this.ctx.fillText("A STOCKOUT STUDIO EXPERIENCE", cx, cy - 40);
+        
+        this.ctx.restore();
+        
+        // --- READY MESSAGE (center, large, with dramatic presentation) ---
+        this.ctx.save();
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.font = "900 32px 'Outfit', sans-serif";
+        this.ctx.shadowBlur = 15 + (breathe * 10);
+        this.ctx.shadowColor = "rgba(244, 63, 94, 0.6)";
+        this.ctx.strokeStyle = "#000";
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeText(this.state.currentReadyMsg, cx, cy + 30);
+        this.ctx.fillStyle = "#fff";
+        this.ctx.fillText(this.state.currentReadyMsg, cx, cy + 30);
+        this.ctx.restore();
+        
+        // --- INSTRUCTION CARDS: two side-by-side panels ---
+        const instructions = this.isMobile 
+            ? [
+                { icon: "👆", label: "FLAP", desc: "TAP SCREEN" },
+                { icon: "💣", label: "BOMB", desc: "BOMB BUTTON" }
+              ]
+            : [
+                { icon: "🕹", label: "FLAP", desc: "SPACE / CLICK" },
+                { icon: "💥", label: "BOMB", desc: "SHIFT / R-CLICK" }
+              ];
+        
+        const cardW = 200;
+        const cardH = 100;
+        const cardGap = 20;
+        const totalW = (cardW * 2) + cardGap;
+        const startX = cx - totalW / 2;
+        const instY = cy + 90;
+        
+        instructions.forEach((ins, i) => {
+            const iX = startX + (i * (cardW + cardGap));
+            
+            this.ctx.save();
+            
+            // Card background
+            this.ctx.fillStyle = "rgba(6, 182, 212, 0.05)";
+            this.ctx.beginPath();
+            this.ctx.roundRect(iX, instY, cardW, cardH, 14);
+            this.ctx.fill();
+            
+            // Card border
+            this.ctx.shadowBlur = 10 + (slowPulse * 5);
+            this.ctx.shadowColor = "#06b6d4";
+            this.ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
+            this.ctx.lineWidth = 1.5;
+            this.ctx.beginPath();
+            this.ctx.roundRect(iX, instY, cardW, cardH, 14);
+            this.ctx.stroke();
+            this.ctx.shadowBlur = 0;
+            
+            // Icon
+            this.ctx.font = "32px serif";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 28);
+            
+            // Label
+            this.ctx.font = "900 18px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "#fff";
+            this.ctx.fillText(ins.label, iX + cardW / 2, instY + 58);
+            
+            // Description
+            this.ctx.font = "bold 11px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 78);
+            
+            this.ctx.restore();
+        });
+        
+        // --- CALL TO ACTION (pulsing prompt at bottom) ---
+        const ctaPulse = Math.sin(f * 0.08) * 0.3 + 0.7; // 0.4 to 1.0
+        this.ctx.save();
+        this.ctx.globalAlpha = ctaPulse;
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "alphabetic";
+        this.ctx.font = "900 22px 'Outfit', sans-serif";
+        this.ctx.shadowBlur = 15;
+        this.ctx.shadowColor = "#06b6d4";
+        this.ctx.fillStyle = "#06b6d4";
+        this.ctx.fillText(
+            this.isMobile ? "▶ TAP TO BEGIN" : "▶ PRESS ANY KEY TO BEGIN", 
+            cx, 
+            cy + 240
+        );
+        this.ctx.restore();
+        
+        // --- HIGH SCORE BADGES (top area, show player's current bests) ---
+        if (this.state.highScore > 0 || this.state.highDirectHits > 0) {
+            const badges = [
+                { label: "BEST REACH", val: this.state.highScore, color: "#fbbf24" },
+                { label: "BEST IMPACT", val: this.state.highDirectHits, color: "#06b6d4" },
+                { label: "BEST MISSES", val: this.state.highTotalMisses, color: "#f43f5e" }
+            ];
+            
+            const badgeY = 150;
+            const bW = 140;
+            const bH = 46;
+            const bGap = 12;
+            const bTotal = (bW * 3) + (bGap * 2);
+            const bStartX = cx - bTotal / 2;
+            
+            badges.forEach((b, i) => {
+                const bX = bStartX + (i * (bW + bGap));
+                
+                this.ctx.save();
+                this.ctx.globalAlpha = 0.85;
+                
+                // Badge bg
+                this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
+                this.ctx.beginPath();
+                this.ctx.roundRect(bX, badgeY, bW, bH, 10);
+                this.ctx.fill();
+                
+                // Badge border
+                this.ctx.strokeStyle = b.color;
+                this.ctx.lineWidth = 1.5;
+                this.ctx.beginPath();
+                this.ctx.roundRect(bX, badgeY, bW, bH, 10);
+                this.ctx.stroke();
+                
+                // Label
+                this.ctx.font = "bold 10px 'Outfit', sans-serif";
+                this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+                this.ctx.textAlign = "center";
+                this.ctx.textBaseline = "top";
+                this.ctx.fillText(b.label, bX + bW / 2, badgeY + 7);
+                
+                // Value
+                this.ctx.font = "900 22px 'Outfit', sans-serif";
+                this.ctx.fillStyle = b.color;
+                this.ctx.textBaseline = "middle";
+                this.ctx.fillText(b.val, bX + bW / 2, badgeY + 30);
+                
+                this.ctx.restore();
+            });
+        }
     }
     _resetToSplash() {
         this.state.isGameOver = false;
@@ -1114,6 +1371,36 @@ class AdBird {
                 life: 1.0
             });
         }
+    }
+
+    _triggerButtonExplosion() {
+        this.state.runItBackPressed = this.state.frameCount;
+        this.state.screenShake = 20;
+        
+        const btnW = 280;
+        const btnH = 64;
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height / 2 + 180 + btnH / 2;
+        
+        // Explosive burst of neon particles in cyan/blue
+        const burstColors = ["#06b6d4", "#3b82f6", "#22d3ee", "#fff"];
+        for (let i = 0; i < 60; i++) {
+            const angle = (Math.PI * 2 * i) / 60 + Math.random() * 0.2;
+            const speed = Math.random() * 15 + 8;
+            this.state.particles.push({
+                x: cx + (Math.random() - 0.5) * btnW * 0.8,
+                y: cy + (Math.random() - 0.5) * btnH,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: Math.random() * 5 + 2,
+                color: burstColors[Math.floor(Math.random() * burstColors.length)],
+                life: 1.0,
+                isMega: true
+            });
+        }
+        
+        // Play the shift sound for punch
+        this.playSound('shift');
     }
     _setupHiDPI() { const dpr = window.devicePixelRatio || 1; if (dpr > 1) { const lw = this.canvas.width; const lh = this.canvas.height; this.canvas.width = lw * dpr; this.canvas.height = lh * dpr; this.ctx.scale(dpr, dpr); 
         // NOTE: Locks canvas.width/height to logical size for DPR scaling.
