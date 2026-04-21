@@ -149,7 +149,13 @@ class AdBird {
             case 'fullscreen': this.toggleFullscreen(); break;
             case 'mute': this.toggleMute(); break;
             case 'bomb': this.dropBomb(); break;
-            default: if (this.state.gameRunning) this.flap(); else this.start(); break;
+            default: 
+                if (!this.state.gameRunning) this.start(); 
+                else {
+                    if (e.button === 2) this.dropBomb();
+                    else this.flap();
+                }
+                break;
         }
     }
 
@@ -432,8 +438,9 @@ class AdBird {
         }
 
         this.floatingTexts.push({ 
-            x: bx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
-            scale: isMega ? 2.2 : 1, 
+            x: Math.max(150, Math.min(this.canvas.width - 150, bx)), 
+            y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
+            scale: isMega ? 1.8 : 1, 
             text: hitMsg, 
             color: isMega ? "#fff" : this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)],
             glow: isMega ? p.ad.color : null,
