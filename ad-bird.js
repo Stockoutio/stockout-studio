@@ -842,10 +842,10 @@ class AdBird {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); 
         
         this.ctx.fillStyle = "#fff"; 
-        this.ctx.font = "bold 36px 'Outfit', sans-serif"; 
+        this.ctx.font = "900 52px 'Outfit', sans-serif"; 
         this.ctx.textAlign = "center"; 
         this.ctx.textBaseline = "alphabetic"; 
-        this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 150); 
+        this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 180); 
 
         const stats = [
             { label: "MARKET REACH", val: this.state.score, high: this.state.highScore, color: "#fbbf24" },
@@ -854,23 +854,23 @@ class AdBird {
         ];
 
         stats.forEach((s, i) => {
-            const sy = this.canvas.height / 2 - 90 + (i * 105);
-            this.ctx.font = "bold 14px 'Outfit', sans-serif";
+            const sy = this.canvas.height / 2 - 120 + (i * 130);
+            this.ctx.font = "bold 20px 'Outfit', sans-serif";
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
             this.ctx.fillText(s.label, this.canvas.width / 2, sy);
             
-            this.ctx.font = "900 42px 'Outfit', sans-serif";
+            this.ctx.font = "900 64px 'Outfit', sans-serif";
             this.ctx.fillStyle = "#fff";
-            this.ctx.fillText(s.val, this.canvas.width / 2, sy + 42);
+            this.ctx.fillText(s.val, this.canvas.width / 2, sy + 52);
             
-            this.ctx.font = "bold 12px 'Outfit', sans-serif";
+            this.ctx.font = "bold 16px 'Outfit', sans-serif";
             this.ctx.fillStyle = s.color;
-            this.ctx.fillText("BEST: " + s.high, this.canvas.width / 2, sy + 68);
+            this.ctx.fillText("BEST: " + s.high, this.canvas.width / 2, sy + 85);
         });
 
         this.ctx.fillStyle = "rgba(255,255,255,0.5)"; 
-        this.ctx.font = "14px 'Outfit', sans-serif"; 
-        this.ctx.fillText(this.isMobile ? "TAP to continue" : "SPACE or CLICK to continue", this.canvas.width / 2, this.canvas.height / 2 + 250); 
+        this.ctx.font = "18px 'Outfit', sans-serif"; 
+        this.ctx.fillText(this.isMobile ? "TAP to continue" : "SPACE or CLICK to continue", this.canvas.width / 2, this.canvas.height / 2 + 300); 
     }
     _renderStartScreen() { 
         if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
