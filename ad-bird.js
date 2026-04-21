@@ -446,6 +446,8 @@ class AdBird {
         this.ctx.strokeText(this.state.score, this.ui.scoreCenter, 70);
         
         this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
+        this.ctx.restore();
+
         // --- TOP LEFT DASHBOARD: IMPACT & MISSES ---
         this.ctx.save();
         const padding = 25;
