@@ -233,8 +233,8 @@ class AdBird {
         for (let i = this.state.particles.length - 1; i >= 0; i--) { 
             const p = this.state.particles[i]; p.x += p.vx; p.y += p.vy; 
             if (p.rotation !== undefined) p.rotation += p.rotSpeed;
-            p.vy += this.config.particleGravity * (p.isBit ? 1.5 : 1); 
-            p.life -= this.config.particleLifeDecay; 
+            p.vy += this.config.particleGravity * (p.isBit || p.isTurkey ? 1.5 : 1); 
+            p.life -= (p.isDeath ? 0.005 : this.config.particleLifeDecay); // Death particles last longer
             if (p.life <= 0) this.state.particles.splice(i, 1); 
         }
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { 
@@ -546,17 +546,20 @@ class AdBird {
         this.state.screenShake = 30; 
         
         // BLOODY EXPLOSION (Violent Scatter)
-        for (let i = 0; i < 60; i++) {
-            const isBit = i < 12;
+        for (let i = 0; i < 65; i++) {
+            const isBit = i < 15;
+            const isTurkey = i < 4; // 4 Turkeys!
             this.state.particles.push({
                 x: this.player.x + this.player.w/2,
                 y: this.player.y + this.player.h/2,
-                vx: (Math.random() - 0.5) * 28,
-                vy: (Math.random() - 0.8) * 24,
+                vx: (Math.random() - 0.5) * 32,
+                vy: (Math.random() - 0.8) * 26,
                 size: isBit ? Math.random() * 15 + 10 : Math.random() * 6 + 3,
                 color: Math.random() > 0.3 ? "#ff0000" : "#8b0000",
                 life: 1.0,
                 isBit: isBit,
+                isTurkey: isTurkey,
+                isDeath: true,
                 rotation: Math.random() * Math.PI * 2,
                 rotSpeed: (Math.random() - 0.5) * 0.4
             });
@@ -674,7 +677,16 @@ class AdBird {
         this.state.particles.forEach(p => { 
             this.ctx.globalAlpha = p.life; 
             this.ctx.fillStyle = p.color; 
-            if (p.isBit) {
+            if (p.isTurkey) {
+                this.ctx.save();
+                this.ctx.translate(p.x, p.y);
+                this.ctx.rotate(p.rotation);
+                this.ctx.font = `${p.size + 20}px serif`;
+                this.ctx.textAlign = "center";
+                this.ctx.textBaseline = "middle";
+                this.ctx.fillText("🍗", 0, 0);
+                this.ctx.restore();
+            } else if (p.isBit) {
                 this.ctx.save();
                 this.ctx.translate(p.x, p.y);
                 this.ctx.rotate(p.rotation);
