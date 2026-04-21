@@ -110,11 +110,13 @@ class AdBird {
         it.addEventListener('contextmenu', (e) => e.preventDefault());
         if (this.overlay) { 
             this.overlay.addEventListener('mousedown', (e) => {
+                if (this.state.waitingForGameOver) return;
                 e.stopPropagation();
                 if (this.state.isGameOver) this._resetToSplash();
                 else this.start();
             }); 
             this.overlay.addEventListener('touchstart', (e) => { 
+                if (this.state.waitingForGameOver) return;
                 e.preventDefault(); 
                 e.stopPropagation();
                 if (this.state.isGameOver) this._resetToSplash();
@@ -129,6 +131,7 @@ class AdBird {
     /* --- INPUT ENGINE --- */
 
     _handleKeydown(e) {
+        if (!this.state.assetsLoaded || this.state.waitingForGameOver) return;
         const isFlap = KEYMAP.flapCodes.includes(e.code) || KEYMAP.flapKeys.includes(e.key), isBomb = KEYMAP.bombCodes.includes(e.code) || KEYMAP.bombKeys.includes(e.key);
         if (isFlap || isBomb || e.code === 'KeyF' || e.key === 'f' || e.key === 'F') { 
             e.preventDefault(); 
@@ -139,6 +142,7 @@ class AdBird {
     }
 
     _handleInput(e) {
+        if (!this.state.assetsLoaded || this.state.waitingForGameOver) return;
         const r = this.state.lastRect || this.canvas.getBoundingClientRect();
         const canvasAspect = this.canvas.width / this.canvas.height;
         const rectAspect = r.width / r.height;
