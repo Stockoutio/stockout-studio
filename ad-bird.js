@@ -238,6 +238,13 @@ class AdBird {
         
         if (this.state.isGameOver) {
             // Mobile: tap anywhere to reset. Desktop: must hit the button.
+            if (this.isMobile || this._isOverRunItBack(x, y)) {
+                this._triggerButtonExplosion();
+                this._resetToSplash();
+            }
+            return;
+        }
+        
         // Splash screen — only buttons register, not the whole screen
         if (!this.state.gameRunning) { 
             if (this._isOverPlayBtn(x, y)) {
