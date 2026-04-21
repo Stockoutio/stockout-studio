@@ -146,8 +146,23 @@ class AdBird {
 
     _update() {
         if (this.state.screenShake > 0) this.state.screenShake *= 0.9;
-        this.player.velocity += this.config.gravity; this.player.y += this.player.velocity;
-        if (!this.state.gameRunning) { this.player.flipAngle += this.player.flipDirection * 0.2; return; }
+        
+        if (!this.state.gameRunning) { 
+            if (!this.state.isGameOver) {
+                // Keep bird at start position during splash
+                this.player.y = 150;
+                this.player.velocity = 0;
+            } else {
+                // Apply gravity during death sequence
+                this.player.velocity += this.config.gravity; 
+                this.player.y += this.player.velocity;
+            }
+            this.player.flipAngle += this.player.flipDirection * 0.2; 
+            return; 
+        }
+
+        this.player.velocity += this.config.gravity; 
+        this.player.y += this.player.velocity;
         this.state.bgX = (this.state.bgX - this.config.bgSpeed) % this.canvas.width;
         if (this.state.bombTimer > 0) this.state.bombTimer--;
         if (this.player.isFlipping) { this.player.flipAngle += this.player.flipDirection * this.player.flipSpeed; if (Math.abs(this.player.flipAngle) >= Math.PI * 2) { this.player.flipAngle = 0; this.player.isFlipping = false; } }
