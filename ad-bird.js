@@ -429,22 +429,25 @@ class AdBird {
         }); 
         let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
         
-        let hitMsg;
+        let hitMsg, align = "center", tx = bx;
         if (isMega) {
-            const mega = ["MEGA SPLAT", "GIGA SPLAT", "AD-POCALYPSE", "ULTRA KILL", "MONSTER SPLAT", "SIGN DESTROYER", "MARKET CRASHED", "KPIs CRUSHED", "BRAND DESTRUCTION", "TOTAL COVERAGE"];
+            const mega = ["MEGA SPLAT", "GIGA SPLAT", "AD-POCALYPSE", "ULTRA-BILL", "MONSTER SPLAT", "SIGN DESTROYER", "MARKET CRASHED", "KPIs CRUSHED", "BRAND DESTRUCTION", "TOTAL COVERAGE"];
             hitMsg = mega[Math.floor(Math.random()*mega.length)];
+            // Smart Alignment Guard
+            if (bx < 200) { align = "left"; tx = 20; }
+            else if (bx > this.canvas.width - 200) { align = "right"; tx = this.canvas.width - 20; }
         } else {
             hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
         }
 
         this.floatingTexts.push({ 
-            x: Math.max(150, Math.min(this.canvas.width - 150, bx)), 
-            y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
+            x: tx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
             scale: isMega ? 1.8 : 1, 
             text: hitMsg, 
             color: isMega ? "#fff" : this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)],
             glow: isMega ? p.ad.color : null,
-            isMega: isMega
+            isMega: isMega,
+            align: align
         }); 
         this.playSound('splat'); 
     }
@@ -529,9 +532,10 @@ class AdBird {
         this.ctx.globalAlpha = 1; this.ctx.shadowBlur = 0; 
     }
     _renderFloatingTexts() { 
-        this.ctx.textAlign = "center"; 
         this.floatingTexts.forEach(t => { 
-            this.ctx.save(); this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale); 
+            this.ctx.save(); 
+            this.ctx.textAlign = t.align || "center"; 
+            this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale); 
             this.ctx.font = t.isMega ? "900 52px 'Outfit', sans-serif" : "bold 36px 'Outfit', sans-serif"; 
             if (t.glow) { this.ctx.shadowBlur = 25; this.ctx.shadowColor = t.glow; }
             this.ctx.strokeStyle = "#000"; this.ctx.lineWidth = t.isMega ? 3 : 1.5; this.ctx.strokeText(t.text, 0, 0); 
