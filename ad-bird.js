@@ -205,7 +205,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0, particles: [] });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], missMsgBag: [], megaMissMsgBag: [], stockInARow: 0, particles: [] });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
@@ -285,7 +285,7 @@ class AdBird {
             } if (hit) this.bombs.splice(i, 1);
             else if (b.y > this.canvas.height) {
                 // MISS!
-                const isGiga = b.scale > 3.0;
+                const isGiga = b.scale >= 5.0;
                 const msg = isGiga ? this._nextFromBag('megaMissMsgBag', 'megaMissMessages') : this._nextFromBag('missMsgBag', 'missMessages');
                 
                 // Spatial Stacking (Find the highest text in this specific X-lane)
@@ -437,26 +437,24 @@ class AdBird {
     _renderHUD() {
         // --- MAIN SCORE: EPIC & GLOWING ---
         this.ctx.save();
+        // --- MAIN SCORE: EPIC & GLOWING ---
+        this.ctx.save();
         this.ctx.fillStyle = "#fff";
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "alphabetic";
         this.ctx.font = "900 72px 'Outfit', sans-serif";
-        const scorePulse = Math.sin(this.state.frameCount * 0.03) * 3 + 12;
-        this.ctx.shadowBlur = scorePulse;
-        this.ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
         
-        // 2px Outline
         this.ctx.strokeStyle = "#000";
-        this.ctx.lineWidth = 4; // Higher for the massive 72px font
+        this.ctx.lineWidth = 4; 
         this.ctx.strokeText(this.state.score, this.ui.scoreCenter, 70);
-        
         this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
         this.ctx.restore();
 
         // --- TOP LEFT DASHBOARD: IMPACT & MISSES ---
         this.ctx.save();
         const padding = 25;
-        const pulse = Math.sin(this.state.frameCount * 0.03) * 3 + 8;
         
         // IMPACT
         this.ctx.textAlign = "left";
@@ -470,7 +468,7 @@ class AdBird {
         
         this.ctx.font = "bold 38px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fff";
-        this.ctx.shadowBlur = pulse + 10;
+        this.ctx.shadowBlur = 18;
         this.ctx.shadowColor = "#06b6d4";
         this.ctx.strokeText(this.state.directHits, padding, padding + 20);
         this.ctx.fillText(this.state.directHits, padding, padding + 20);
@@ -490,7 +488,7 @@ class AdBird {
         
         this.ctx.font = "bold 38px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fff";
-        this.ctx.shadowBlur = pulse;
+        this.ctx.shadowBlur = 8;
         this.ctx.shadowColor = "#f43f5e"; 
         this.ctx.strokeText(this.state.totalMisses, 0, 20);
         this.ctx.fillText(this.state.totalMisses, 0, 20);
