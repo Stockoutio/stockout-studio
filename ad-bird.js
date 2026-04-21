@@ -370,6 +370,12 @@ class AdBird {
         const scorePulse = Math.sin(this.state.frameCount * 0.1) * 5 + 15;
         this.ctx.shadowBlur = scorePulse;
         this.ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+        
+        // 2px Outline
+        this.ctx.strokeStyle = "#000";
+        this.ctx.lineWidth = 4; // Higher for the massive 72px font
+        this.ctx.strokeText(this.state.score, this.ui.scoreCenter, 70);
+        
         this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
         this.ctx.restore();
         // --- MARKETING IMPACT: BREATHING GLOW ---
@@ -396,12 +402,17 @@ class AdBird {
         // Draw Label
         this.ctx.font = "bold 18px 'Outfit', sans-serif";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        this.ctx.strokeStyle = "#000";
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeText(impactText, curX, 100);
         this.ctx.fillText(impactText, curX, 100);
 
         // Draw Number
         this.ctx.font = "bold 52px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fff";
         this.ctx.shadowBlur = pulse + 10;
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeText(impactNum, curX + labelW + 5, 100);
         this.ctx.fillText(impactNum, curX + labelW + 5, 100);
         this.ctx.restore();
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
