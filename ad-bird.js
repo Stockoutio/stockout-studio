@@ -202,7 +202,8 @@ class AdBird {
     _draw() {
         this.ctx.save(); if (this.state.screenShake > 0.5) this.ctx.translate((Math.random()-0.5)*this.state.screenShake, (Math.random()-0.5)*this.state.screenShake);
         this.ctx.clearRect(-10, -10, this.canvas.width+20, this.canvas.height+20);
-        this._renderWorld(); this._renderBubbles(); this._renderPipes(); this._renderBombs(); this._renderPlayer();
+        this._renderWorld(); this._renderBubbles(); this._renderPipes(); this._renderBombs(); 
+        if (this.state.gameRunning || this.state.isGameOver) this._renderPlayer();
         this._renderParticles(); this._renderFloatingTexts(); this._renderOverlay();
         this.ctx.restore();
     }
