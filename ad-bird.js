@@ -42,10 +42,13 @@ class AdBird {
             
             // --- Content ---
             paidAds: options.paidAds || [],
-            stockAds: (options.stockAds || window.AdBirdContent.STOCK_ADS).map(text => ({ 
-                text: text.toUpperCase(), 
-                color: "#a855f7" // Default purple for stock
-            })),
+            stockAds: (() => {
+                const colors = ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899", "#f43f5e"];
+                return (options.stockAds || window.AdBirdContent.STOCK_ADS).map((text, i) => ({ 
+                    text: text.toUpperCase(), 
+                    color: colors[i % colors.length]
+                }));
+            })(),
             maxStockConsecutive: 3,
             hitMessages: window.AdBirdContent.HIT_MESSAGES,
             gameOverMessages: window.AdBirdContent.GAME_OVER_MESSAGES,
@@ -115,7 +118,17 @@ class AdBird {
         it.addEventListener('mousedown', (e) => { if (!this.isMobile) this._handleInput(e); });
         it.addEventListener('touchstart', (e) => { if (this.isMobile) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} }); } } }, { passive: false });
         it.addEventListener('contextmenu', (e) => e.preventDefault());
-        if (this.overlay) this.overlay.style.pointerEvents = 'none';
+        if (this.overlay) {
+            // Transparent to pointer events — but capture one gesture for audio unlock on iOS
+            this.overlay.style.pointerEvents = 'none';
+            const unlockAudio = () => {
+                if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+                window.removeEventListener('touchstart', unlockAudio);
+                window.removeEventListener('mousedown', unlockAudio);
+            };
+            window.addEventListener('touchstart', unlockAudio, { once: true });
+            window.addEventListener('mousedown', unlockAudio, { once: true });
+        }
         ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => document.addEventListener(evt, () => { this.state.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); }));
         this._initBubbles();
         this._loop();
@@ -179,7 +192,7 @@ class AdBird {
     }
 
     _hitTest(x, y) {
-        if (Math.hypot(x - this.ui.fullscreenBtn.x, y - this.ui.fullscreenBtn.y) < 70) return 'fullscreen';
+        if (!this.isMobile && Math.hypot(x - this.ui.fullscreenBtn.x, y - this.ui.fullscreenBtn.y) < 70) return 'fullscreen';
         if (x > this.canvas.width - 80 && y < 120) return 'mute';
         const b = this.ui.bombBtn;
         if (x >= b.x - 20 && x <= b.x + b.w + 20 && y >= b.y - 20 && y <= b.y + b.h + 20) return 'bomb';
@@ -252,7 +265,7 @@ class AdBird {
     _updateEntities() {
         for (let i = this.pipes.length - 1; i >= 0; i--) {
             const p = this.pipes[i]; p.x -= this.config.pipeSpeed;
-            if (p.highlight > 0) p.highlight *= 0.92;
+            if (p.highlight > 0) p.highlight *= 0.82;
             p.stains.forEach(s => s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; }));
             const pd = 15; const bx = this.player.x+pd, bw = this.player.w-(pd*2), by = this.player.y+pd, bh = this.player.h-(pd*2);
             if (bx < p.x+p.w && bx+bw > p.x && (by < p.y || by+bh > p.y+p.gap)) { this.gameOver(); return; }
@@ -354,7 +367,7 @@ class AdBird {
     _drawPipeBorders(p, gc, bW) {
         this.ctx.save();
         if (p.highlight > 0.1) {
-            this.ctx.shadowBlur = 30 * p.highlight;
+            this.ctx.shadowBlur = 12 * p.highlight;
             this.ctx.shadowColor = "#fff";
             this.ctx.fillStyle = `rgba(255, 255, 255, ${p.highlight})`;
             this.ctx.fillRect(p.x - bW - 2, 0, bW + 4, p.y);
@@ -486,7 +499,9 @@ class AdBird {
         this.ctx.restore();
 
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
-        const fs = this.ui.fullscreenBtn; this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(fs.x, fs.y, fs.radius, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 54px serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("⤢", fs.x, fs.y + 4); this.ctx.restore();
+        if (!this.isMobile) {
+            const fs = this.ui.fullscreenBtn; this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(fs.x, fs.y, fs.radius, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 54px serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("⤢", fs.x, fs.y + 4); this.ctx.restore();
+        }
         const b = this.ui.bombBtn; this.ctx.save(); this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4"; this.ctx.beginPath(); this.ctx.roundRect(b.x, b.y, b.w, b.h, b.radius); this.ctx.fill();
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.font = "bold 32px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0; this.ctx.fillText("BOMB", b.x + b.w/2, b.y + b.h/2 - (this.isMobile ? 0 : 8)); 
         if (!this.isMobile) { this.ctx.font = "bold 11px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("(SHIFT / R-CLICK)", b.x + b.w/2, b.y + b.h/2 + 22); } 
@@ -750,6 +765,7 @@ class AdBird {
             this.ctx.fillStyle = p.color; 
             if (p.isTurkey) {
                 this.ctx.save();
+                this.ctx.shadowBlur = 0;
                 this.ctx.translate(p.x, p.y);
                 this.ctx.rotate(p.rotation);
                 this.ctx.font = `${p.size + 20}px serif`;
@@ -759,6 +775,7 @@ class AdBird {
                 this.ctx.restore();
             } else if (p.isBit) {
                 this.ctx.save();
+                this.ctx.shadowBlur = 0;
                 this.ctx.translate(p.x, p.y);
                 this.ctx.rotate(p.rotation);
                 // Draw a jagged bit
@@ -771,7 +788,8 @@ class AdBird {
                 this.ctx.fill();
                 this.ctx.restore();
             } else {
-                this.ctx.shadowBlur = p.isMega ? 15 : 10; this.ctx.shadowColor = p.color; 
+                this.ctx.shadowBlur = p.isMega ? 15 : 0; 
+                if (p.isMega) this.ctx.shadowColor = p.color;
                 this.ctx.beginPath(); this.ctx.arc(p.x, p.y, p.size || 3, 0, Math.PI*2); this.ctx.fill(); 
             }
         }); 
