@@ -42,7 +42,10 @@ class AdBird {
             
             // --- Content ---
             paidAds: options.paidAds || [],
-            stockAds: options.stockAds || window.AdBirdContent.STOCK_ADS,
+            stockAds: (options.stockAds || window.AdBirdContent.STOCK_ADS).map(text => ({ 
+                text: text.toUpperCase(), 
+                color: "#a855f7" // Default purple for stock
+            })),
             maxStockConsecutive: 3,
             hitMessages: window.AdBirdContent.HIT_MESSAGES,
             gameOverMessages: window.AdBirdContent.GAME_OVER_MESSAGES,
@@ -443,8 +446,6 @@ class AdBird {
         this.ctx.strokeText(this.state.score, this.ui.scoreCenter, 70);
         
         this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
-        this.ctx.restore();
-
         // --- TOP LEFT DASHBOARD: IMPACT & MISSES ---
         this.ctx.save();
         const padding = 25;
@@ -468,7 +469,7 @@ class AdBird {
         this.ctx.fillText(this.state.directHits, padding, padding + 20);
         
         // MISSES
-        const missY = padding + 75;
+        const missY = padding + 80;
         this.ctx.save();
         this.ctx.translate(padding, missY);
         const mPop = (this.state.lastMissFrame && this.state.frameCount - this.state.lastMissFrame < 15) ? 1.2 : 1.0;
@@ -483,7 +484,7 @@ class AdBird {
         this.ctx.font = "bold 38px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fff";
         this.ctx.shadowBlur = pulse;
-        this.ctx.shadowColor = "#f43f5e"; // Blood Red
+        this.ctx.shadowColor = "#f43f5e"; 
         this.ctx.strokeText(this.state.totalMisses, 0, 20);
         this.ctx.fillText(this.state.totalMisses, 0, 20);
         this.ctx.restore();
