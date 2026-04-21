@@ -1405,9 +1405,9 @@ class AdBird {
                 { icon: "💥", label: "BOMB", desc: "SHIFT or R-CLICK" }
               ];
         
-        const cardW = 330;
-        const cardH = 200;
-        const cardGap = 32;
+        const cardW = 260;
+        const cardH = 150;
+        const cardGap = 28;
         const totalW = (cardW * 2) + cardGap;
         const startX = cx - totalW / 2;
         const instY = cy + 20;
@@ -1441,24 +1441,24 @@ class AdBird {
             this.ctx.stroke();
             this.ctx.shadowBlur = 0;
             
-            // Icon (larger)
-            this.ctx.font = "72px serif";
+            // Icon
+            this.ctx.font = "52px serif";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "middle";
-            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 65);
+            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 48);
             
             // Label
-            this.ctx.font = "900 38px 'Outfit', sans-serif";
+            this.ctx.font = "900 28px 'Outfit', sans-serif";
             this.ctx.fillStyle = "#fff";
             this.ctx.shadowBlur = 8;
             this.ctx.shadowColor = accent;
-            this.ctx.fillText(ins.label, iX + cardW / 2, instY + 135);
+            this.ctx.fillText(ins.label, iX + cardW / 2, instY + 100);
             this.ctx.shadowBlur = 0;
             
             // Description
-            this.ctx.font = "bold 15px 'Outfit', sans-serif";
+            this.ctx.font = "bold 13px 'Outfit', sans-serif";
             this.ctx.fillStyle = accent;
-            this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 170);
+            this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 128);
             
             this.ctx.restore();
         });
@@ -1471,10 +1471,10 @@ class AdBird {
                 { label: "BEST MISSES", val: this.state.highTotalMisses, color: "#f43f5e" }
             ];
             
-            const badgeY = 200;
-            const bW = 150;
-            const bH = 54;
-            const bGap = 14;
+            const badgeY = 175;
+            const bW = 210;
+            const bH = 85;
+            const bGap = 20;
             const bTotal = (bW * 3) + (bGap * 2);
             const bStartX = cx - bTotal / 2;
             
@@ -1486,7 +1486,7 @@ class AdBird {
                 
                 this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
                 this.ctx.beginPath();
-                this.ctx.roundRect(bX, badgeY, bW, bH, 10);
+                this.ctx.roundRect(bX, badgeY, bW, bH, 14);
                 this.ctx.fill();
                 
                 this.ctx.shadowBlur = 8;
@@ -1494,20 +1494,20 @@ class AdBird {
                 this.ctx.strokeStyle = b.color;
                 this.ctx.lineWidth = 2;
                 this.ctx.beginPath();
-                this.ctx.roundRect(bX, badgeY, bW, bH, 10);
+                this.ctx.roundRect(bX, badgeY, bW, bH, 14);
                 this.ctx.stroke();
                 this.ctx.shadowBlur = 0;
                 
-                this.ctx.font = "bold 11px 'Outfit', sans-serif";
-                this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+                this.ctx.font = "bold 13px 'Outfit', sans-serif";
+                this.ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "top";
-                this.ctx.fillText(b.label, bX + bW / 2, badgeY + 8);
+                this.ctx.fillText(b.label, bX + bW / 2, badgeY + 14);
                 
-                this.ctx.font = "900 26px 'Outfit', sans-serif";
+                this.ctx.font = "900 42px 'Outfit', sans-serif";
                 this.ctx.fillStyle = b.color;
                 this.ctx.textBaseline = "middle";
-                this.ctx.fillText(b.val, bX + bW / 2, badgeY + 36);
+                this.ctx.fillText(b.val, bX + bW / 2, badgeY + 56);
                 
                 this.ctx.restore();
             });
