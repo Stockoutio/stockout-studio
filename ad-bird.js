@@ -346,8 +346,8 @@ class AdBird {
     flap() { this.player.velocity = this.config.lift; this.playSound('flap'); }
     dropBomb() { 
         if (this.state.bombTimer > 0) return; 
-        // Nuclear variance: from tiny pellets (0.5x) to massive advertising nukes (6.0x)
-        const scale = Math.random() * 5.5 + 0.5; 
+        // Weighted rarity: Math.pow(r, 2.5) ensures big bombs are rare 'Critical Hits'
+        const scale = 0.5 + Math.pow(Math.random(), 2.5) * 5.5; 
         this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15 * scale, h: 20 * scale, speed: 8, scale: scale }); 
         this.state.bombTimer = 20; 
     }
