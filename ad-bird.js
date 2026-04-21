@@ -86,13 +86,13 @@ class AdBird {
 
     _initState() {
         this.state = {
-            gameRunning: false, isGameOver: false, loopActive: false,
+            gameRunning: false, isGameOver: false,
             score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0,
             highScore: parseInt(this._safeStorage('get', 'adBirdHighScore')) || 0,
             highDirectHits: parseInt(this._safeStorage('get', 'adBirdHighDirectHits')) || 0,
             highTotalMisses: parseInt(this._safeStorage('get', 'adBirdHighTotalMisses')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
-            bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, waitingForGameOver: false,
+            bombTimer: 0, assetsLoaded: 0, lastRect: null, waitingForGameOver: false,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: ""
         };
@@ -129,7 +129,7 @@ class AdBird {
             window.addEventListener('touchstart', unlockAudio, { once: true });
             window.addEventListener('mousedown', unlockAudio, { once: true });
         }
-        ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => document.addEventListener(evt, () => { this.state.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); }));
+        this.state.lastRect = this.canvas.getBoundingClientRect();
         this._initBubbles();
         this._loop();
     }
@@ -209,11 +209,9 @@ class AdBird {
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
-        if (!this.state.loopActive) this._loop();
     }
 
     _loop() { 
-        this.state.loopActive = true; 
         this.state.lastRect = this.canvas.getBoundingClientRect(); 
         this._update(); 
         this._updateParticles(); // Always update particles even when game is paused
@@ -291,7 +289,7 @@ class AdBird {
                 const isGiga = b.scale >= 5.0;
                 const msg = isGiga ? this._nextFromBag('megaMissMsgBag', 'megaMissMessages') : this._nextFromBag('missMsgBag', 'missMessages');
                 
-                // Spatial Stacking (Find the highest text in this specific X-lane)
+                // Stack miss text above any nearby existing floating texts in the same area
                 let targetY = this.canvas.height - 30;
                 this.floatingTexts.forEach(t => {
                     if (Math.abs(t.x - b.x) < 150 && t.y < this.canvas.height && t.y > this.canvas.height - 300) {
