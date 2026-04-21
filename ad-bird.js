@@ -87,7 +87,7 @@ class AdBird {
         };
         this.state.currentWorld = this._nextWorld();
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
-        this.player = { x: 250, y: 150, w: 100, h: 100, velocity: 0, flipAngle: 0, isFlipping: false, flipSpeed: 0.25, flipDirection: 1 };
+        this.player = { x: 320, y: 150, w: 100, h: 100, velocity: 0, flipAngle: 0, isFlipping: false, flipSpeed: 0.25, flipDirection: 1 };
     }
 
     _initBuffers() {
