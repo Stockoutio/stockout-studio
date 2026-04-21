@@ -138,9 +138,25 @@ class AdBird {
     }
 
     _handleInput(e) {
-        const rect = this.state.lastRect || this.canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
-        const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+        const r = this.state.lastRect || this.canvas.getBoundingClientRect();
+        const canvasAspect = this.canvas.width / this.canvas.height;
+        const rectAspect = r.width / r.height;
+        let dw, dh, dx, dy;
+        if (rectAspect > canvasAspect) {
+            // Element is wider than canvas aspect — letterboxed left/right
+            dh = r.height;
+            dw = dh * canvasAspect;
+            dx = (r.width - dw) / 2;
+            dy = 0;
+        } else {
+            // Element is taller than canvas aspect — letterboxed top/bottom
+            dw = r.width;
+            dh = dw / canvasAspect;
+            dx = 0;
+            dy = (r.height - dh) / 2;
+        }
+        const x = Math.max(0, Math.min(this.canvas.width, (e.clientX - (r.left + dx)) * (this.canvas.width / dw)));
+        const y = Math.max(0, Math.min(this.canvas.height, (e.clientY - (r.top + dy)) * (this.canvas.height / dh)));
         
         if (this.state.isGameOver) { this._resetToSplash(); return; }
         
