@@ -311,7 +311,7 @@ class AdBird {
     _renderWorld() { 
         const bg = this.assets.worlds[this.state.currentWorld]; 
         if (bg && bg.complete) { 
-            const rx = Math.floor(this.state.bgX); 
+            const rx = this.state.bgX; 
             this.ctx.drawImage(bg, rx, 0, this.canvas.width, this.canvas.height); 
             this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width, this.canvas.height); 
         } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
