@@ -232,7 +232,9 @@ class AdBird {
     _updateParticles() {
         for (let i = this.state.particles.length - 1; i >= 0; i--) { 
             const p = this.state.particles[i]; p.x += p.vx; p.y += p.vy; 
-            p.vy += this.config.particleGravity; p.life -= this.config.particleLifeDecay; 
+            if (p.rotation !== undefined) p.rotation += p.rotSpeed;
+            p.vy += this.config.particleGravity * (p.isBit ? 1.5 : 1); 
+            p.life -= this.config.particleLifeDecay; 
             if (p.life <= 0) this.state.particles.splice(i, 1); 
         }
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { 
@@ -544,15 +546,19 @@ class AdBird {
         this.state.screenShake = 30; 
         
         // BLOODY EXPLOSION (Violent Scatter)
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 60; i++) {
+            const isBit = i < 12;
             this.state.particles.push({
                 x: this.player.x + this.player.w/2,
                 y: this.player.y + this.player.h/2,
-                vx: (Math.random() - 0.5) * 25,
-                vy: (Math.random() - 0.7) * 20, // Lean upward then fall
-                size: Math.random() * 10 + 5,
+                vx: (Math.random() - 0.5) * 28,
+                vy: (Math.random() - 0.8) * 24,
+                size: isBit ? Math.random() * 15 + 10 : Math.random() * 6 + 3,
                 color: Math.random() > 0.3 ? "#ff0000" : "#8b0000",
-                life: 1.0
+                life: 1.0,
+                isBit: isBit,
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.4
             });
         }
 
@@ -666,9 +672,25 @@ class AdBird {
     }
     _renderParticles() { 
         this.state.particles.forEach(p => { 
-            this.ctx.globalAlpha = p.life; this.ctx.fillStyle = p.color; 
-            this.ctx.shadowBlur = p.isMega ? 15 : 10; this.ctx.shadowColor = p.color; 
-            this.ctx.beginPath(); this.ctx.arc(p.x, p.y, p.size || 3, 0, Math.PI*2); this.ctx.fill(); 
+            this.ctx.globalAlpha = p.life; 
+            this.ctx.fillStyle = p.color; 
+            if (p.isBit) {
+                this.ctx.save();
+                this.ctx.translate(p.x, p.y);
+                this.ctx.rotate(p.rotation);
+                // Draw a jagged bit
+                this.ctx.beginPath();
+                this.ctx.moveTo(-p.size/2, -p.size/2);
+                this.ctx.lineTo(p.size/2, -p.size/4);
+                this.ctx.lineTo(p.size/3, p.size/2);
+                this.ctx.lineTo(-p.size/3, p.size/3);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.restore();
+            } else {
+                this.ctx.shadowBlur = p.isMega ? 15 : 10; this.ctx.shadowColor = p.color; 
+                this.ctx.beginPath(); this.ctx.arc(p.x, p.y, p.size || 3, 0, Math.PI*2); this.ctx.fill(); 
+            }
         }); 
         this.ctx.globalAlpha = 1; this.ctx.shadowBlur = 0; 
     }
