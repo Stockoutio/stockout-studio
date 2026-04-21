@@ -278,12 +278,16 @@ class AdBird {
                 const isGiga = b.scale > 3.0;
                 const msg = isGiga ? this._nextFromBag('megaMissMsgBag', 'megaMissMessages') : this._nextFromBag('missMsgBag', 'missMessages');
                 
-                // Smart Stacking
-                let yOffset = 0;
-                this.floatingTexts.forEach(t => { if (t.y > this.canvas.height - 150) yOffset += 35; });
+                // Spatial Stacking (Find the highest text in this specific X-lane)
+                let targetY = this.canvas.height - 30;
+                this.floatingTexts.forEach(t => {
+                    if (Math.abs(t.x - b.x) < 150 && t.y < this.canvas.height && t.y > this.canvas.height - 300) {
+                        targetY = Math.min(targetY, t.y - (isGiga ? 50 : 35));
+                    }
+                });
                 
                 this.floatingTexts.push({ 
-                    x: b.x, y: this.canvas.height - 20 - yOffset, text: msg, 
+                    x: b.x, y: targetY, text: msg, 
                     color: "#9ca3af", age: 0, alpha: 1, vy: 0, 
                     scale: isGiga ? 1.4 : 0.8, align: "center", 
                     isMega: isGiga, glow: isGiga ? "#4b5563" : null,
@@ -298,7 +302,7 @@ class AdBird {
                         vx: (Math.random() - 0.5) * (isGiga ? 12 : 6),
                         vy: (Math.random() - 1.0) * (isGiga ? 25 : 12),
                         size: Math.random() * 5 + 2,
-                        color: Math.random() > 0.5 ? "#60a5fa" : "#fff", // Blue/White water
+                        color: Math.random() > 0.5 ? "#60a5fa" : "#fff",
                         life: 1.0, isDeath: true
                     });
                 }
