@@ -230,39 +230,33 @@ class AdBird {
         
         const action = this._hitTest(x, y);
         
-        // Fullscreen and mute work regardless of game state
+        // Fullscreen and mute are exclusive — they always do their own thing, never advance
         if (action === 'fullscreen') { this.toggleFullscreen(); return; }
         if (action === 'mute') { this.toggleMute(); return; }
 
         if (this.state.waitingForGameOver) return;
         
+        // Game over — tap anywhere advances, RUN IT BACK button always animates
         if (this.state.isGameOver) {
-            // Mobile: tap anywhere to reset. Desktop: must hit the button.
-            if (this.isMobile || this._isOverRunItBack(x, y)) {
-                this._triggerButtonExplosion();
-                this._resetToSplash();
-            }
+            this._triggerButtonExplosion();
+            this._resetToSplash();
             return;
         }
         
-        // Splash screen — only buttons register, not the whole screen
+        // Splash screen
         if (!this.state.gameRunning) { 
-            if (this._isOverPlayBtn(x, y)) {
-                this._triggerSplashButtonExplosion('play');
-                // Delay start slightly so the player sees the explosion
-                setTimeout(() => this.start(), 300);
-                return;
-            }
+            // RENT button is the ONLY exclusive button on splash — tap advances, rent opens Stripe
             if (this._isOverRentBtn(x, y)) {
                 this._triggerSplashButtonExplosion('rent');
-                // Open Stripe after the animation plays
                 setTimeout(() => {
                     window.open('https://buy.stripe.com/9B6aEX0jdgOV8iq7sDcbC00', '_blank');
                 }, 300);
                 return;
             }
-            // Empty-space clicks do nothing
-            return; 
+            // Tap anywhere else — always animates the PLAY button (not at tap location)
+            this._triggerSplashButtonExplosion('play');
+            setTimeout(() => this.start(), 300);
+            return;
         }
         
         // Game is running — dispatch normally
@@ -1403,17 +1397,17 @@ class AdBird {
         // --- INSTRUCTION CARDS: bigger, bolder ---
         const instructions = this.isMobile 
             ? [
-                { icon: "🪽", label: "FLAP", desc: "TAP SCREEN" },
+                { icon: "🕊️", label: "FLAP", desc: "TAP SCREEN" },
                 { icon: "💣", label: "BOMB", desc: "BOMB BUTTON" }
               ]
             : [
-                { icon: "🪽", label: "FLAP", desc: "SPACE or CLICK" },
+                { icon: "🕊️", label: "FLAP", desc: "SPACE or CLICK" },
                 { icon: "💥", label: "BOMB", desc: "SHIFT or R-CLICK" }
               ];
         
-        const cardW = 290;
-        const cardH = 170;
-        const cardGap = 28;
+        const cardW = 330;
+        const cardH = 200;
+        const cardGap = 32;
         const totalW = (cardW * 2) + cardGap;
         const startX = cx - totalW / 2;
         const instY = cy + 20;
@@ -1448,23 +1442,23 @@ class AdBird {
             this.ctx.shadowBlur = 0;
             
             // Icon (larger)
-            this.ctx.font = "60px serif";
+            this.ctx.font = "72px serif";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "middle";
-            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 55);
+            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 65);
             
             // Label
-            this.ctx.font = "900 32px 'Outfit', sans-serif";
+            this.ctx.font = "900 38px 'Outfit', sans-serif";
             this.ctx.fillStyle = "#fff";
             this.ctx.shadowBlur = 8;
             this.ctx.shadowColor = accent;
-            this.ctx.fillText(ins.label, iX + cardW / 2, instY + 115);
+            this.ctx.fillText(ins.label, iX + cardW / 2, instY + 135);
             this.ctx.shadowBlur = 0;
             
             // Description
-            this.ctx.font = "bold 14px 'Outfit', sans-serif";
+            this.ctx.font = "bold 15px 'Outfit', sans-serif";
             this.ctx.fillStyle = accent;
-            this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 145);
+            this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 170);
             
             this.ctx.restore();
         });
@@ -1723,15 +1717,34 @@ class AdBird {
         
         this.ctx.restore();
         
-        // --- KEYBOARD HINT (subtle, below rent button) ---
+        // --- KEYBOARD HINT (backing pill for legibility on any world) ---
         if (!this.isMobile) {
+            const hintText = "← → ARROWS TO SELECT  •  ENTER TO ACTIVATE";
             this.ctx.save();
-            this.ctx.globalAlpha = 0.4;
-            this.ctx.font = "11px 'Outfit', sans-serif";
-            this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            this.ctx.font = "bold 12px 'Outfit', sans-serif";
+            const hintW = this.ctx.measureText(hintText).width + 28;
+            const hintH = 24;
+            const hintX = cx - hintW / 2;
+            const hintY = rentBaseY + rentBtnH + 18;
+            
+            // Dark backing pill
+            this.ctx.fillStyle = "rgba(10, 10, 15, 0.7)";
+            this.ctx.beginPath();
+            this.ctx.roundRect(hintX, hintY - hintH / 2, hintW, hintH, 12);
+            this.ctx.fill();
+            
+            // Subtle border
+            this.ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.roundRect(hintX, hintY - hintH / 2, hintW, hintH, 12);
+            this.ctx.stroke();
+            
+            // Text
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
             this.ctx.textAlign = "center";
-            this.ctx.textBaseline = "alphabetic";
-            this.ctx.fillText("← → arrow keys to select  •  enter to activate", cx, rentBaseY + rentBtnH + 22);
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText(hintText, cx, hintY);
             this.ctx.restore();
         }
     }
