@@ -48,6 +48,7 @@ class AdBird {
             gameOverMessages: window.AdBirdContent.GAME_OVER_MESSAGES,
             readyMessages: window.AdBirdContent.READY_MESSAGES,
             missMessages: window.AdBirdContent.MISS_MESSAGES,
+            megaMissMessages: window.AdBirdContent.MEGA_MISS_MESSAGES,
             msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899", "#f43f5e"],
 
             // --- Pass 2: Refactor Configs ---
@@ -84,7 +85,7 @@ class AdBird {
             highDirectHits: parseInt(this._safeStorage('get', 'adBirdHighDirectHits')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, waitingForGameOver: false,
-            paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], worldBag: [], stockInARow: 0,
+            paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: ""
         };
         this.state.currentWorld = this._nextWorld();
@@ -274,9 +275,16 @@ class AdBird {
             } if (hit) this.bombs.splice(i, 1);
             else if (b.y > this.canvas.height) {
                 // MISS!
-                const msg = this._nextFromBag('missMsgBag', 'missMessages');
-                this.floatingTexts.push({ x: b.x, y: this.canvas.height - 20, text: msg, color: "#9ca3af", age: 0, alpha: 1, vy: 0, scale: 0.8, align: "center" });
-                this.playSound('miss');
+                const isGiga = b.scale > 3.0;
+                const msg = isGiga ? this._nextFromBag('megaMissMsgBag', 'megaMissMessages') : this._nextFromBag('missMsgBag', 'missMessages');
+                this.floatingTexts.push({ 
+                    x: b.x, y: this.canvas.height - 20, text: msg, 
+                    color: "#9ca3af", age: 0, alpha: 1, vy: 0, 
+                    scale: isGiga ? 1.4 : 0.8, align: "center", 
+                    isMega: isGiga, glow: isGiga ? "#4b5563" : null 
+                });
+                if (isGiga) this.state.screenShake = 15;
+                this.playSound(isGiga ? 'mega_miss' : 'miss');
                 this.bombs.splice(i, 1);
             }
         }
@@ -609,11 +617,16 @@ class AdBird {
         if (type === 'splat') this._playSplat();
         else if (type === 'death') this._playDeath();
         else if (type === 'miss') this._playWhistle();
+        else if (type === 'mega_miss') this._playMegaWhistle();
         else if (this.config._toneConfigs[type]) this._playTone(this.config._toneConfigs[type]);
     }
 
     _playWhistle() {
         this._playTone({ type: 'sine', freq: [1200, 200], vol: 0.3, dur: 0.8 });
+    }
+
+    _playMegaWhistle() {
+        this._playTone({ type: 'sine', freq: [800, 100], vol: 0.5, dur: 1.2 });
     }
 
     _playTone(s, delay = 0) {
