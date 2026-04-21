@@ -33,7 +33,7 @@ class AdBird {
 
     _initSettings(options) {
         this.config = {
-            gravity: 0.63, lift: -10, pipeWidth: 110, pipeSpeed: 3.0, bgSpeed: 0.63,
+            gravity: 0.63, lift: -8, pipeWidth: 110, pipeSpeed: 3.0, bgSpeed: 0.63,
             minGap: 250, maxGap: 350,
             minPipeHeightBottom: 250, minPipeHeightTop: 30,
             bubbleCount: 20, worldShiftInterval: 10, bombCooldown: 20,
