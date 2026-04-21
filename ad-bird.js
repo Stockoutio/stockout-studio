@@ -81,9 +81,9 @@ class AdBird {
     _initState() {
         this.state = {
             gameRunning: false, isGameOver: false, loopActive: false,
-            score: 0, directHits: 0, highScore: parseInt(this._safeStorage('get', 'adBirdHighScore')) || 0,
+            score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0,
+            highScore: parseInt(this._safeStorage('get', 'adBirdHighScore')) || 0,
             highDirectHits: parseInt(this._safeStorage('get', 'adBirdHighDirectHits')) || 0,
-            score: 0, directHits: 0, totalMisses: 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, waitingForGameOver: false,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
@@ -197,7 +197,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0, particles: [] });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0, particles: [] });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
@@ -311,6 +311,7 @@ class AdBird {
 
                 if (isGiga) this.state.screenShake = 30;
                 this.state.totalMisses++;
+                this.state.lastMissFrame = this.state.frameCount;
                 this.playSound(isGiga ? 'mega_miss' : 'miss');
                 this.bombs.splice(i, 1);
             }
@@ -468,18 +469,24 @@ class AdBird {
         
         // MISSES
         const missY = padding + 75;
+        this.ctx.save();
+        this.ctx.translate(padding, missY);
+        const mPop = (this.state.lastMissFrame && this.state.frameCount - this.state.lastMissFrame < 15) ? 1.2 : 1.0;
+        this.ctx.scale(mPop, mPop);
+        
         this.ctx.font = "bold 14px 'Outfit', sans-serif";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.shadowBlur = 0;
-        this.ctx.strokeText("CAMPAIGN MISSES", padding, missY);
-        this.ctx.fillText("CAMPAIGN MISSES", padding, missY);
+        this.ctx.strokeText("CAMPAIGN MISSES", 0, 0);
+        this.ctx.fillText("CAMPAIGN MISSES", 0, 0);
         
         this.ctx.font = "bold 38px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fff";
         this.ctx.shadowBlur = pulse;
         this.ctx.shadowColor = "#f43f5e"; // Blood Red
-        this.ctx.strokeText(this.state.totalMisses, padding, missY + 20);
-        this.ctx.fillText(this.state.totalMisses, padding, missY + 20);
+        this.ctx.strokeText(this.state.totalMisses, 0, 20);
+        this.ctx.fillText(this.state.totalMisses, 0, 20);
+        this.ctx.restore();
         
         this.ctx.restore();
 
