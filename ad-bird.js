@@ -83,7 +83,7 @@ class AdBird {
             highDirectHits: parseInt(this._safeStorage('get', 'adBirdHighDirectHits')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, waitingForGameOver: false,
-            paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], worldBag: [], stockInARow: 0,
+            paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: ""
         };
         this.state.currentWorld = this._nextWorld();
@@ -270,7 +270,14 @@ class AdBird {
                     this._createSplat(p, b.x, b.y, b.scale); 
                     hit = true; break; 
                 } 
-            } if (hit || b.y > this.canvas.height) this.bombs.splice(i, 1); 
+            } if (hit) this.bombs.splice(i, 1);
+            else if (b.y > this.canvas.height) {
+                // MISS!
+                const msg = this._nextFromBag('missMsgBag', 'MISS_MESSAGES', window.AdBirdContent);
+                this.floatingTexts.push({ x: b.x, y: this.canvas.height - 20, text: msg, color: "#9ca3af", age: 0, alpha: 1, vy: 0, scale: 0.8, align: "center" });
+                this.playSound('miss');
+                this.bombs.splice(i, 1);
+            }
         }
         this.bubbles.forEach(b => { b.x -= b.speed; if (b.x < -10) b.x = this.canvas.width + 10; });
     }
@@ -599,7 +606,12 @@ class AdBird {
         if (this.state.isMuted) return; 
         if (type === 'splat') this._playSplat();
         else if (type === 'death') this._playDeath();
+        else if (type === 'miss') this._playWhistle();
         else if (this.config._toneConfigs[type]) this._playTone(this.config._toneConfigs[type]);
+    }
+
+    _playWhistle() {
+        this._playTone({ type: 'sine', freq: [1200, 200], vol: 0.3, dur: 0.8 });
     }
 
     _playTone(s, delay = 0) {
