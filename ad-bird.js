@@ -82,7 +82,7 @@ class AdBird {
             score: 0, directHits: 0, highScore: parseInt(this._safeStorage('get', 'adBirdHighScore')) || 0,
             highDirectHits: parseInt(this._safeStorage('get', 'adBirdHighDirectHits')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
-            bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, 
+            bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, waitingForGameOver: false,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: ""
         };
@@ -190,7 +190,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0, particles: [] });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0, particles: [] });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
@@ -538,7 +538,10 @@ class AdBird {
     }
 
     gameOver() { 
-        if (this.state.isGameOver) return; this.state.isGameOver = true; this.state.screenShake = 30; this.state.gameRunning = false; 
+        if (this.state.isGameOver || this.state.waitingForGameOver) return; 
+        this.state.waitingForGameOver = true;
+        this.state.gameRunning = false; 
+        this.state.screenShake = 30; 
         
         // BLOODY EXPLOSION (Violent Scatter)
         for (let i = 0; i < 50; i++) {
@@ -553,9 +556,24 @@ class AdBird {
             });
         }
 
-        this.state.deathMsg = this._nextFromBag('gameOverMsgBag', 'gameOverMessages');
-        this.floatingTexts = []; // Clear floating texts so they don't block the score
-        this.playSound('death'); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; this._safeStorage('set', 'adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.highDirectHits = this.state.directHits; this._safeStorage('set', 'adBirdHighDirectHits', this.state.highDirectHits); } if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
+        this.playSound('death'); 
+        if (this.assets.music) this.assets.music.pause(); 
+
+        setTimeout(() => {
+            this.state.isGameOver = true; 
+            this.state.waitingForGameOver = false;
+            this.state.deathMsg = this._nextFromBag('gameOverMsgBag', 'gameOverMessages');
+            this.floatingTexts = []; // Clear floating texts so they don't block the score
+            if (this.state.score > this.state.highScore) { 
+                this.state.highScore = this.state.score; 
+                this._safeStorage('set', 'adBirdHighScore', this.state.highScore); 
+            } 
+            if (this.state.directHits > this.state.highDirectHits) { 
+                this.state.highDirectHits = this.state.directHits; 
+                this._safeStorage('set', 'adBirdHighDirectHits', this.state.highDirectHits); 
+            } 
+            if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
+        }, 1000);
     }
 
     /* --- HELPERS --- */
@@ -707,7 +725,7 @@ class AdBird {
     _renderOverlay() { 
         this._renderHUD(); 
         if (this.state.isGameOver) this._renderGameOverScreen(); 
-        else if (!this.state.gameRunning) this._renderStartScreen();
+        else if (!this.state.gameRunning && !this.state.waitingForGameOver) this._renderStartScreen(); 
     }
     _initBubbles() { this.bubbles = Array.from({ length: 20 }, () => ({ x: Math.random() * this.canvas.width, y: Math.random() * this.canvas.height, size: Math.random() * 3 + 1, speed: Math.random() * 0.5 + 0.2 })); }
 }
