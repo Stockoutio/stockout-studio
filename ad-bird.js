@@ -138,7 +138,7 @@ class AdBird {
             window.addEventListener('mousedown', unlockAudio, { once: true });
         }
         this.state.lastRect = this.canvas.getBoundingClientRect();
-        this._initBubbles();
+        this._initMidground();
         this._loop();
     }
 
@@ -333,7 +333,14 @@ class AdBird {
                 this.bombs.splice(i, 1);
             }
         }
-        this.bubbles.forEach(b => { b.x -= b.speed; if (b.x < -10) b.x = this.canvas.width + 10; });
+        this.bubbles.forEach(b => { 
+            b.x -= b.speed; 
+            b.bobPhase += b.bobSpeed;
+            if (b.x < -20) { 
+                b.x = this.canvas.width + 20; 
+                b.y = Math.random() * this.canvas.height;  // Rerandomize y on respawn
+            } 
+        });
     }
 
     _spawnPipe() {
@@ -351,7 +358,7 @@ class AdBird {
     _draw() {
         this.ctx.save(); if (this.state.screenShake > 0.5) this.ctx.translate((Math.random()-0.5)*this.state.screenShake, (Math.random()-0.5)*this.state.screenShake);
         this.ctx.clearRect(-40, -40, this.canvas.width+80, this.canvas.height+80);
-        this._renderWorld(); this._renderBubbles(); this._renderPipes(); this._renderBombs(); 
+        this._renderWorld(); this._renderMidground(); this._renderPipes(); this._renderBombs(); 
         if (this.state.gameRunning || this.state.isGameOver) this._renderPlayer();
         this._renderParticles(); this._renderFloatingTexts(); this._renderOverlay();
         this.ctx.restore();
@@ -912,6 +919,86 @@ class AdBird {
         if (this.state.isGameOver) this._renderGameOverScreen(); 
         else if (!this.state.gameRunning && !this.state.waitingForGameOver) this._renderStartScreen(); 
     }
-    _initBubbles() { this.bubbles = Array.from({ length: 20 }, () => ({ x: Math.random() * this.canvas.width, y: Math.random() * this.canvas.height, size: Math.random() * 3 + 1, speed: Math.random() * 0.5 + 0.2 })); }
+    _initMidground() {
+        this.bubbles = [];
+        
+        // Layer A: Small bubbles (fastest, closest, most numerous)
+        for (let i = 0; i < 15; i++) {
+            this.bubbles.push({
+                type: 'bubble',
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                size: Math.random() * 2 + 1.5,       // 1.5 - 3.5px
+                speed: Math.random() * 0.8 + 1.5,    // 1.5 - 2.3 (closest)
+                alpha: Math.random() * 0.3 + 0.2,
+                bobPhase: Math.random() * Math.PI * 2,
+                bobSpeed: Math.random() * 0.02 + 0.01
+            });
+        }
+        
+        // Layer B: Medium drifting orbs (medium speed, glowy)
+        for (let i = 0; i < 8; i++) {
+            this.bubbles.push({
+                type: 'orb',
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                size: Math.random() * 5 + 4,          // 4 - 9px
+                speed: Math.random() * 0.4 + 1.0,     // 1.0 - 1.4 (mid)
+                alpha: Math.random() * 0.25 + 0.15,
+                color: this.config.msgColors[Math.floor(Math.random() * this.config.msgColors.length)],
+                bobPhase: Math.random() * Math.PI * 2,
+                bobSpeed: Math.random() * 0.015 + 0.005
+            });
+        }
+        
+        // Layer C: Distant large dust motes (slowest of the mid layers, still faster than bg)
+        for (let i = 0; i < 6; i++) {
+            this.bubbles.push({
+                type: 'dust',
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                size: Math.random() * 10 + 8,         // 8 - 18px
+                speed: Math.random() * 0.25 + 0.8,    // 0.8 - 1.05 (farthest of mid)
+                alpha: Math.random() * 0.12 + 0.05,
+                bobPhase: Math.random() * Math.PI * 2,
+                bobSpeed: Math.random() * 0.01 + 0.003
+            });
+        }
+    }
+    _renderMidground() {
+        this.bubbles.forEach(b => {
+            const bobY = Math.sin(b.bobPhase) * 4;
+            const drawY = b.y + bobY;
+            
+            this.ctx.save();
+            this.ctx.globalAlpha = b.alpha;
+            
+            if (b.type === 'bubble') {
+                // Small white bubbles
+                this.ctx.fillStyle = "#fff";
+                this.ctx.beginPath();
+                this.ctx.arc(b.x, drawY, b.size, 0, Math.PI * 2);
+                this.ctx.fill();
+            } else if (b.type === 'orb') {
+                // Glowy neon orbs
+                this.ctx.shadowBlur = 12;
+                this.ctx.shadowColor = b.color;
+                this.ctx.fillStyle = b.color;
+                this.ctx.beginPath();
+                this.ctx.arc(b.x, drawY, b.size, 0, Math.PI * 2);
+                this.ctx.fill();
+            } else if (b.type === 'dust') {
+                // Large soft dust motes (blurry, far away feel)
+                this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+                this.ctx.beginPath();
+                this.ctx.arc(b.x, drawY, b.size, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            
+            this.ctx.restore();
+        });
+    }
 }
 
