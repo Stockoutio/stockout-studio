@@ -317,6 +317,23 @@ class AdBird {
     _resetToSplash() {
         this.state.isGameOver = false;
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
+        
+        // --- THE RESET BLAST ---
+        this.state.screenShake = 15;
+        this.state.flashOpacity = 1;
+        this.playSound('shift');
+        
+        // Explode a burst of neon particles from the center
+        const cx = this.canvas.width / 2, cy = this.canvas.height / 2;
+        const colors = this.config.msgColors;
+        for (let i=0; i<30; i++) {
+            this.state.particles.push({
+                x: cx, y: cy, 
+                vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15,
+                color: colors[Math.floor(Math.random()*colors.length)],
+                life: 1.0
+            });
+        }
     }
     _setupHiDPI() { const dpr = window.devicePixelRatio || 1; if (dpr > 1) { const lw = this.canvas.width; const lh = this.canvas.height; this.canvas.width = lw * dpr; this.canvas.height = lh * dpr; this.ctx.scale(dpr, dpr); Object.defineProperty(this.canvas, 'width', { get: () => lw, configurable: true }); Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true }); } this.canvas.style.touchAction = 'none'; this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
     _renderOverlay() { 
