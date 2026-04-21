@@ -361,7 +361,17 @@ class AdBird {
     }
 
     _renderHUD() {
-        this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "alphabetic"; this.ctx.font = "bold 48px 'Outfit', sans-serif"; this.ctx.fillText(this.state.score, this.ui.scoreCenter, 65);
+        // --- MAIN SCORE: EPIC & GLOWING ---
+        this.ctx.save();
+        this.ctx.fillStyle = "#fff";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "alphabetic";
+        this.ctx.font = "900 72px 'Outfit', sans-serif";
+        const scorePulse = Math.sin(this.state.frameCount * 0.1) * 5 + 15;
+        this.ctx.shadowBlur = scorePulse;
+        this.ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+        this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
+        this.ctx.restore();
         // --- MARKETING IMPACT: BREATHING GLOW ---
         this.ctx.save();
         const impactText = "MARKETING IMPACT: ";
