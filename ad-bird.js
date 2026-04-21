@@ -234,10 +234,14 @@ class AdBird {
     _updateEntities() {
         for (let i = this.pipes.length - 1; i >= 0; i--) {
             const p = this.pipes[i]; p.x -= this.config.pipeSpeed;
+            if (p.highlight > 0) p.highlight *= 0.92;
             p.stains.forEach(s => s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; }));
             const pd = 15; const bx = this.player.x+pd, bw = this.player.w-(pd*2), by = this.player.y+pd, bh = this.player.h-(pd*2);
             if (bx < p.x+p.w && bx+bw > p.x && (by < p.y || by+bh > p.y+p.gap)) { this.gameOver(); return; }
-            if (!p.scored && p.x + p.w < this.player.x) { p.scored = true; this.state.score++; this.playSound('score'); if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld(); }
+            if (!p.scored && p.x + p.w < this.player.x) { 
+                p.scored = true; p.highlight = 1.0; this.state.score++; this.playSound('score'); 
+                if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld(); 
+            }
             if (p.x + p.w < -150) this.pipes.splice(i, 1);
         }
         for (let i = this.bombs.length - 1; i >= 0; i--) { 
@@ -270,7 +274,7 @@ class AdBird {
         const minH_top = this.config.minPipeHeightTop;
         const maxH_top = this.canvas.height - gap - this.config.minPipeHeightBottom;
         const h = Math.floor(Math.random() * (maxH_top - minH_top)) + minH_top;
-        this.pipes.push({ x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: gap, ad: ad, scored: false, stains: [] });
+        this.pipes.push({ x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: gap, ad: ad, scored: false, highlight: 0, stains: [] });
         this.state.nextPipeFrame = this.state.frameCount + Math.floor(Math.random() * 100) + 100;
     }
 
@@ -302,11 +306,22 @@ class AdBird {
     }
 
     _drawPipeBorders(p, gc, bW) {
+        this.ctx.save();
+        if (p.highlight > 0.1) {
+            this.ctx.shadowBlur = 30 * p.highlight;
+            this.ctx.shadowColor = "#fff";
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${p.highlight})`;
+            this.ctx.fillRect(p.x - bW - 2, 0, bW + 4, p.y);
+            this.ctx.fillRect(p.x + p.w - 2, 0, bW + 4, p.y);
+            this.ctx.fillRect(p.x - bW - 2, p.y + p.gap, bW + 4, this.canvas.height);
+            this.ctx.fillRect(p.x + p.w - 2, p.y + p.gap, bW + 4, this.canvas.height);
+        }
         this.ctx.fillStyle = gc;
         this.ctx.fillRect(p.x - bW, 0, bW, p.y);
         this.ctx.fillRect(p.x + p.w, 0, bW, p.y);
         this.ctx.fillRect(p.x - bW, p.y + p.gap, bW, this.canvas.height);
         this.ctx.fillRect(p.x + p.w, p.y + p.gap, bW, this.canvas.height);
+        this.ctx.restore();
     }
 
     _drawPipeCaps(p, gc, bW, capH) {
@@ -522,10 +537,24 @@ class AdBird {
     }
 
     gameOver() { 
-        if (this.state.isGameOver) return; this.state.isGameOver = true; this.state.screenShake = 20; this.state.gameRunning = false; 
+        if (this.state.isGameOver) return; this.state.isGameOver = true; this.state.screenShake = 30; this.state.gameRunning = false; 
+        
+        // BLOODY EXPLOSION
+        for (let i = 0; i < 40; i++) {
+            this.state.particles.push({
+                x: this.player.x + this.player.w/2,
+                y: this.player.y + this.player.h/2,
+                vx: (Math.random() - 0.5) * 18,
+                vy: (Math.random() - 0.5) * 18,
+                size: Math.random() * 8 + 4,
+                color: Math.random() > 0.3 ? "#ff0000" : "#8b0000", // Blood Red
+                life: 1.0
+            });
+        }
+
         this.state.deathMsg = this._nextFromBag('gameOverMsgBag', 'gameOverMessages');
         this.floatingTexts = []; // Clear floating texts so they don't block the score
-        this.playSound('crash'); setTimeout(() => this.playSound('death'), 300); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; this._safeStorage('set', 'adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.highDirectHits = this.state.directHits; this._safeStorage('set', 'adBirdHighDirectHits', this.state.highDirectHits); } if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
+        this.playSound('death'); if (this.assets.music) this.assets.music.pause(); if (this.state.score > this.state.highScore) { this.state.highScore = this.state.score; this._safeStorage('set', 'adBirdHighScore', this.state.highScore); } if (this.state.directHits > this.state.highDirectHits) { this.state.highDirectHits = this.state.directHits; this._safeStorage('set', 'adBirdHighDirectHits', this.state.highDirectHits); } if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
     }
 
     /* --- HELPERS --- */
@@ -555,9 +584,31 @@ class AdBird {
     }
 
     _playDeath() {
-        [392, 311, 261].forEach((f, i) => {
-            this._playTone({ type: 'triangle', freq: [f, f * 0.8], vol: 0.3, dur: 0.4 }, i * 0.15);
-        });
+        // Messy bloody splat sound (Noise + Squelch)
+        try {
+            const dur = 0.5;
+            const buffer = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate * dur, this.audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for(let i=0; i<data.length; i++) data[i] = Math.random() * 2 - 1;
+            
+            const noise = this.audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            
+            const gain = this.audioCtx.createGain();
+            const filter = this.audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1000, this.audioCtx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(40, this.audioCtx.currentTime + dur);
+            
+            gain.gain.setValueAtTime(0.4, this.audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + dur);
+            
+            noise.connect(filter); filter.connect(gain); gain.connect(this.audioCtx.destination);
+            noise.start();
+            
+            // Add a low-end thump
+            this._playTone({ type: 'sawtooth', freq: [150, 40], vol: 0.3, dur: 0.4 });
+        } catch(e) {}
     }
 
     toggleMute() { 
@@ -586,6 +637,7 @@ class AdBird {
     _renderBubbles() { this.ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; this.bubbles.forEach(b => { this.ctx.beginPath(); this.ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderBombs() { this.ctx.fillStyle = "#fff"; this.bombs.forEach(b => { this.ctx.beginPath(); this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderPlayer() { 
+        if (this.state.isGameOver) return; // EXPLODED!
         this.ctx.save(); 
         this.ctx.translate(this.player.x+this.player.w/2, this.player.y+this.player.h/2); 
         this.ctx.rotate(Math.min(Math.PI/4, Math.max(-Math.PI/4, this.player.velocity * this.config.birdRotationFactor)) + this.player.flipAngle); 
