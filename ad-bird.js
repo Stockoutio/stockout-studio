@@ -47,6 +47,7 @@ class AdBird {
             hitMessages: window.AdBirdContent.HIT_MESSAGES,
             gameOverMessages: window.AdBirdContent.GAME_OVER_MESSAGES,
             readyMessages: window.AdBirdContent.READY_MESSAGES,
+            missMessages: window.AdBirdContent.MISS_MESSAGES,
             msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899", "#f43f5e"],
 
             // --- Pass 2: Refactor Configs ---
@@ -273,7 +274,7 @@ class AdBird {
             } if (hit) this.bombs.splice(i, 1);
             else if (b.y > this.canvas.height) {
                 // MISS!
-                const msg = this._nextFromBag('missMsgBag', 'MISS_MESSAGES', window.AdBirdContent);
+                const msg = this._nextFromBag('missMsgBag', 'missMessages');
                 this.floatingTexts.push({ x: b.x, y: this.canvas.height - 20, text: msg, color: "#9ca3af", age: 0, alpha: 1, vy: 0, scale: 0.8, align: "center" });
                 this.playSound('miss');
                 this.bombs.splice(i, 1);
@@ -455,6 +456,7 @@ class AdBird {
     /* --- ENTROPY & AD ENGINE --- */
 
     _shuffle(array) {
+        if (!array || !Array.isArray(array)) return [];
         const arr = [...array];
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
