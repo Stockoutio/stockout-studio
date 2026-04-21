@@ -87,6 +87,7 @@ class AdBird {
             score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0,
             highScore: parseInt(this._safeStorage('get', 'adBirdHighScore')) || 0,
             highDirectHits: parseInt(this._safeStorage('get', 'adBirdHighDirectHits')) || 0,
+            highTotalMisses: parseInt(this._safeStorage('get', 'adBirdHighTotalMisses')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, waitingForGameOver: false,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
@@ -637,6 +638,10 @@ class AdBird {
                 this.state.highDirectHits = this.state.directHits; 
                 this._safeStorage('set', 'adBirdHighDirectHits', this.state.highDirectHits); 
             } 
+            if (this.state.totalMisses > this.state.highTotalMisses) {
+                this.state.highTotalMisses = this.state.totalMisses;
+                this._safeStorage('set', 'adBirdHighTotalMisses', this.state.highTotalMisses);
+            }
             if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
         }, 1000);
     }
@@ -794,7 +799,41 @@ class AdBird {
             this.ctx.restore(); 
         }); 
     }
-    _renderGameOverScreen() { this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 36px 'Outfit', sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "alphabetic"; this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 60); this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2); this.ctx.fillStyle = "#fbbf24"; this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2); this.ctx.fillStyle = "#fff"; this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "#06b6d4"; this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif"; this.ctx.fillText(this.isMobile ? "TAP to continue" : "SPACE or CLICK to continue", this.canvas.width / 2, this.canvas.height / 2 + 85); }
+    _renderGameOverScreen() { 
+        this.ctx.fillStyle = "rgba(10, 10, 15, 0.9)"; 
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); 
+        
+        this.ctx.fillStyle = "#fff"; 
+        this.ctx.font = "bold 36px 'Outfit', sans-serif"; 
+        this.ctx.textAlign = "center"; 
+        this.ctx.textBaseline = "alphabetic"; 
+        this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 110); 
+
+        const stats = [
+            { label: "MARKET REACH", val: this.state.score, high: this.state.highScore, color: "#fbbf24" },
+            { label: "MARKETING IMPACT", val: this.state.directHits, high: this.state.highDirectHits, color: "#06b6d4" },
+            { label: "CAMPAIGN MISSES", val: this.state.totalMisses, high: this.state.highTotalMisses, color: "#f43f5e" }
+        ];
+
+        stats.forEach((s, i) => {
+            const sy = this.canvas.height / 2 - 40 + (i * 75);
+            this.ctx.font = "bold 14px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            this.ctx.fillText(s.label, this.canvas.width / 2, sy);
+            
+            this.ctx.font = "900 42px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "#fff";
+            this.ctx.fillText(s.val, this.canvas.width / 2, sy + 38);
+            
+            this.ctx.font = "bold 12px 'Outfit', sans-serif";
+            this.ctx.fillStyle = s.color;
+            this.ctx.fillText("BEST: " + s.high, this.canvas.width / 2, sy + 58);
+        });
+
+        this.ctx.fillStyle = "rgba(255,255,255,0.5)"; 
+        this.ctx.font = "14px 'Outfit', sans-serif"; 
+        this.ctx.fillText(this.isMobile ? "TAP to continue" : "SPACE or CLICK to continue", this.canvas.width / 2, this.canvas.height / 2 + 200); 
+    }
     _renderStartScreen() { 
         if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
         const boxW = 550;
