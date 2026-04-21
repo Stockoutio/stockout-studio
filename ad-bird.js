@@ -537,7 +537,7 @@ class AdBird {
             this.ctx.save(); 
             this.ctx.textAlign = t.align || "center"; 
             this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale); 
-            this.ctx.font = t.isMega ? "900 42px 'Outfit', sans-serif" : "bold 32px 'Outfit', sans-serif"; 
+            this.ctx.font = t.isMega ? "900 38px 'Outfit', sans-serif" : "bold 32px 'Outfit', sans-serif"; 
             if (t.glow) { this.ctx.shadowBlur = 25; this.ctx.shadowColor = t.glow; }
             this.ctx.strokeStyle = "#000"; this.ctx.lineWidth = t.isMega ? 3 : 1.5; this.ctx.strokeText(t.text, 0, 0); 
             this.ctx.fillStyle = t.color; this.ctx.fillText(t.text, 0, 0); 
