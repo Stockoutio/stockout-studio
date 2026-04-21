@@ -838,39 +838,129 @@ class AdBird {
         }); 
     }
     _renderGameOverScreen() { 
+        // Dark overlay
         this.ctx.fillStyle = "rgba(10, 10, 15, 0.9)"; 
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); 
         
+        // Death message (top)
         this.ctx.fillStyle = "#fff"; 
         this.ctx.font = "900 52px 'Outfit', sans-serif"; 
         this.ctx.textAlign = "center"; 
         this.ctx.textBaseline = "alphabetic"; 
-        this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 180); 
+        
+        // Subtle glow on death message
+        this.ctx.save();
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowColor = "rgba(244, 63, 94, 0.6)";
+        this.ctx.strokeStyle = "#000";
+        this.ctx.lineWidth = 4;
+        this.ctx.strokeText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 200); 
+        this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 200); 
+        this.ctx.restore();
+        
+        // Subtitle under death message
+        this.ctx.font = "bold 14px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        this.ctx.fillText("— CAMPAIGN TERMINATED —", this.canvas.width / 2, this.canvas.height / 2 - 160);
 
+        // Stats as cards — 3 side-by-side
         const stats = [
-            { label: "MARKET REACH", val: this.state.score, high: this.state.highScore, color: "#fbbf24" },
-            { label: "MARKETING IMPACT", val: this.state.directHits, high: this.state.highDirectHits, color: "#06b6d4" },
-            { label: "CAMPAIGN MISSES", val: this.state.totalMisses, high: this.state.highTotalMisses, color: "#f43f5e" }
+            { label: "MARKET REACH", val: this.state.score, high: this.state.highScore, color: "#fbbf24", rgb: "251, 191, 36" },
+            { label: "MARKETING IMPACT", val: this.state.directHits, high: this.state.highDirectHits, color: "#06b6d4", rgb: "6, 182, 212" },
+            { label: "CAMPAIGN MISSES", val: this.state.totalMisses, high: this.state.highTotalMisses, color: "#f43f5e", rgb: "244, 63, 94" }
         ];
 
+        // Card geometry
+        const cardW = 210;
+        const cardH = 180;
+        const cardGap = 20;
+        const totalW = (cardW * 3) + (cardGap * 2);
+        const startX = (this.canvas.width - totalW) / 2;
+        const cardY = this.canvas.height / 2 - 80;
+
         stats.forEach((s, i) => {
-            const sy = this.canvas.height / 2 - 120 + (i * 130);
-            this.ctx.font = "bold 20px 'Outfit', sans-serif";
-            this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-            this.ctx.fillText(s.label, this.canvas.width / 2, sy);
+            const cardX = startX + (i * (cardW + cardGap));
+            const isNewRecord = s.val > 0 && s.val >= s.high;
             
+            // Card background — dark with subtle accent tint
+            this.ctx.save();
+            this.ctx.fillStyle = `rgba(${s.rgb}, 0.08)`;
+            this.ctx.beginPath();
+            this.ctx.roundRect(cardX, cardY, cardW, cardH, 16);
+            this.ctx.fill();
+            
+            // Card border — accent color with glow
+            this.ctx.shadowBlur = 20;
+            this.ctx.shadowColor = s.color;
+            this.ctx.strokeStyle = s.color;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.roundRect(cardX, cardY, cardW, cardH, 16);
+            this.ctx.stroke();
+            this.ctx.restore();
+
+            // Label at top of card
+            this.ctx.save();
+            this.ctx.font = "bold 14px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "alphabetic";
+            this.ctx.fillText(s.label, cardX + cardW / 2, cardY + 30);
+            this.ctx.restore();
+
+            // Big value in center
+            this.ctx.save();
             this.ctx.font = "900 64px 'Outfit', sans-serif";
             this.ctx.fillStyle = "#fff";
-            this.ctx.fillText(s.val, this.canvas.width / 2, sy + 52);
-            
-            this.ctx.font = "bold 16px 'Outfit', sans-serif";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = s.color;
+            this.ctx.fillText(s.val, cardX + cardW / 2, cardY + 90);
+            this.ctx.restore();
+
+            // "BEST" line at bottom
+            this.ctx.save();
+            this.ctx.font = "bold 14px 'Outfit', sans-serif";
             this.ctx.fillStyle = s.color;
-            this.ctx.fillText("BEST: " + s.high, this.canvas.width / 2, sy + 85);
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "alphabetic";
+            this.ctx.fillText("BEST  " + s.high, cardX + cardW / 2, cardY + cardH - 20);
+            this.ctx.restore();
+
+            // NEW RECORD badge (if applicable)
+            if (isNewRecord && s.val > 0) {
+                this.ctx.save();
+                const badgeY = cardY - 10;
+                const badgeW = 110;
+                const badgeH = 24;
+                const badgeX = cardX + (cardW - badgeW) / 2;
+                
+                // Badge background
+                this.ctx.fillStyle = s.color;
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = s.color;
+                this.ctx.beginPath();
+                this.ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 12);
+                this.ctx.fill();
+                
+                // Badge text
+                this.ctx.shadowBlur = 0;
+                this.ctx.font = "900 12px 'Outfit', sans-serif";
+                this.ctx.fillStyle = "#0a0a0c";
+                this.ctx.textAlign = "center";
+                this.ctx.textBaseline = "middle";
+                this.ctx.fillText("NEW RECORD", badgeX + badgeW / 2, badgeY + badgeH / 2);
+                this.ctx.restore();
+            }
         });
 
-        this.ctx.fillStyle = "rgba(255,255,255,0.5)"; 
+        // Continue prompt at bottom
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; 
         this.ctx.font = "18px 'Outfit', sans-serif"; 
-        this.ctx.fillText(this.isMobile ? "TAP to continue" : "SPACE or CLICK to continue", this.canvas.width / 2, this.canvas.height / 2 + 300); 
+        this.ctx.textAlign = "center"; 
+        this.ctx.textBaseline = "alphabetic";
+        this.ctx.fillText(this.isMobile ? "TAP to continue" : "SPACE or CLICK to continue", this.canvas.width / 2, this.canvas.height / 2 + 220); 
     }
     _renderStartScreen() { 
         if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
