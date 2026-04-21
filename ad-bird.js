@@ -71,7 +71,7 @@ class AdBird {
             particleLifeDecay: 0.02,
             birdRotationFactor: 0.05,
             floatingTextRiseDelay: 30,
-            floatingTextMaxAge: 70,
+            floatingTextMaxAge: 73,
 
             _toneConfigs: {
                 flap: { type: 'square', freq: [150, 400], vol: 0.5, dur: 0.1 },
@@ -84,10 +84,14 @@ class AdBird {
 
     // NOTE: Depends on _setupHiDPI() having already run so canvas.width/height return logical dimensions.
     _initHUDGeometry() {
+        // Top-right stack: two small circular buttons side-by-side above bomb
+        const smallBtnR = 25;
+        const smallBtnY = 40;
+        const bombY = 85;
         this.ui = {
-            fullscreenBtn: { x: this.canvas.width - 55, y: this.canvas.height - 55, radius: 45 },
-            bombBtn: { x: this.canvas.width - 180, y: 20, w: 160, h: 100, radius: 15 },
-            muteBtn: { x: 45, y: this.canvas.height - 60 },
+            fullscreenBtn: { x: this.canvas.width - 110, y: smallBtnY, radius: smallBtnR },
+            muteBtn: { x: this.canvas.width - 50, y: smallBtnY, radius: smallBtnR },
+            bombBtn: { x: this.canvas.width - 180, y: bombY, w: 160, h: 100, radius: 15 },
             scoreCenter: this.canvas.width / 2
         };
     }
@@ -204,8 +208,15 @@ class AdBird {
             return;
         }
         
-        // If game isn't running, any click (including bomb button) starts it
-        if (!this.state.gameRunning) { this.start(); return; }
+        // If game isn't running, check for rent button or start
+        if (!this.state.gameRunning) { 
+            if (this._isOverRentBtn(x, y)) {
+                window.open('https://buy.stripe.com/9B6aEX0jdgOV8iq7sDcbC00', '_blank');
+                return;
+            }
+            this.start(); 
+            return; 
+        }
         
         // Game is running — dispatch normally
         if (action === 'bomb') { this.dropBomb(); return; }
@@ -232,11 +243,12 @@ class AdBird {
         this.state.mouseY = y;
         
         // Update hover state for cursor change
-        const hovering = this._isOverRunItBack(x, y);
-        if (hovering !== this.state.runItBackHover) {
-            this.state.runItBackHover = hovering;
-            this.canvas.style.cursor = hovering ? 'pointer' : 'default';
+        const hoveringRunBack = this._isOverRunItBack(x, y);
+        const hoveringRent = this._isOverRentBtn(x, y);
+        if (hoveringRunBack !== this.state.runItBackHover) {
+            this.state.runItBackHover = hoveringRunBack;
         }
+        this.canvas.style.cursor = (hoveringRunBack || hoveringRent) ? 'pointer' : 'default';
     }
 
     _isOverRunItBack(x, y) {
@@ -249,10 +261,18 @@ class AdBird {
         
         return x >= btnX && x <= btnX + btnW && y >= btnY && y <= btnY + btnH;
     }
+    _isOverRentBtn(x, y) {
+        if (this.state.gameRunning || this.state.isGameOver) return false;
+        if (!this._rentBtnRect) return false;
+        const r = this._rentBtnRect;
+        return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    }
 
     _hitTest(x, y) {
-        if (!this.isMobile && Math.hypot(x - this.ui.fullscreenBtn.x, y - this.ui.fullscreenBtn.y) < 70) return 'fullscreen';
-        if (x < 90 && y > this.canvas.height - 90) return 'mute';
+        const fs = this.ui.fullscreenBtn;
+        if (Math.hypot(x - fs.x, y - fs.y) < fs.radius + 8) return 'fullscreen';
+        const m = this.ui.muteBtn;
+        if (Math.hypot(x - m.x, y - m.y) < m.radius + 8) return 'mute';
         const b = this.ui.bombBtn;
         if (x >= b.x - 20 && x <= b.x + b.w + 20 && y >= b.y - 20 && y <= b.y + b.h + 20) return 'bomb';
         return null;
@@ -562,11 +582,35 @@ class AdBird {
         this.ctx.restore();
         
         this.ctx.restore();
+        
+        // Mute button — circular, top right
+        const m = this.ui.muteBtn;
+        this.ctx.save();
+        this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
+        this.ctx.beginPath();
+        this.ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.font = "22px serif";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+        this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", m.x, m.y + 1);
+        this.ctx.restore();
 
-        this.ctx.font = "24px serif"; this.ctx.textAlign = "left"; this.ctx.textBaseline = "middle"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
-        if (!this.isMobile) {
-            const fs = this.ui.fullscreenBtn; this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(fs.x, fs.y, fs.radius, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 54px serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("⤢", fs.x, fs.y + 4); this.ctx.restore();
-        }
+        // Fullscreen button — circular, top right
+        const fs = this.ui.fullscreenBtn;
+        this.ctx.save();
+        this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
+        this.ctx.beginPath();
+        this.ctx.arc(fs.x, fs.y, fs.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.font = "bold 28px serif";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+        this.ctx.fillText("⤢", fs.x, fs.y + 2);
+        this.ctx.restore();
+
         const b = this.ui.bombBtn; this.ctx.save(); this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4"; this.ctx.beginPath(); this.ctx.roundRect(b.x, b.y, b.w, b.h, b.radius); this.ctx.fill();
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.font = "bold 32px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0; this.ctx.fillText("BOMB", b.x + b.w/2, b.y + b.h/2 - (this.isMobile ? 0 : 8)); 
         if (!this.isMobile) { this.ctx.font = "bold 11px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("(SHIFT / R-CLICK)", b.x + b.w/2, b.y + b.h/2 + 22); } 
@@ -881,9 +925,19 @@ class AdBird {
             }
             this.ctx.translate(tx, ty); 
             
-            const pulseScale = t.isMega ? t.scale * (1 + Math.sin(t.age * 0.2) * 0.1) : t.scale;
-            this.ctx.scale(pulseScale, pulseScale); 
+            // Pulse scale (for mega texts)
+            let pulseScale = t.isMega ? t.scale * (1 + Math.sin(t.age * 0.2) * 0.1) : t.scale;
+            
+            // Width guard — shrink mega texts to fit 90% of canvas width
             this.ctx.font = t.isMega ? "900 38px 'Outfit', sans-serif" : "bold 32px 'Outfit', sans-serif"; 
+            const textW = this.ctx.measureText(t.text).width;
+            const maxW = this.canvas.width * 0.9;
+            const scaledW = textW * pulseScale;
+            if (scaledW > maxW) {
+                pulseScale *= maxW / scaledW;
+            }
+            
+            this.ctx.scale(pulseScale, pulseScale); 
             if (t.glow) { this.ctx.shadowBlur = 25; this.ctx.shadowColor = t.glow; }
             this.ctx.strokeStyle = "#000"; this.ctx.lineWidth = t.isMega ? 3 : 1.5; this.ctx.strokeText(t.text, 0, 0); 
             this.ctx.fillStyle = t.color; this.ctx.fillText(t.text, 0, 0); 
@@ -1173,132 +1227,114 @@ class AdBird {
         if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
         
         const f = this.state.frameCount;
-        const breathe = Math.sin(f * 0.04) * 0.5 + 0.5; // 0 to 1
+        const breathe = Math.sin(f * 0.04) * 0.5 + 0.5;
         const slowPulse = Math.sin(f * 0.02) * 0.5 + 0.5;
         
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
         
-        // --- TITLE CARD: big brand-matching title with pulsing gradient glow ---
-        this.ctx.save();
-        this.ctx.textAlign = "center";
-        this.ctx.textBaseline = "alphabetic";
-        
-        // Title: "AD-BIRD"
-        this.ctx.font = "900 84px 'Outfit', sans-serif";
-        this.ctx.shadowBlur = 20 + (breathe * 30);
-        this.ctx.shadowColor = "#a855f7";
-        
-        // Gradient text (cyan to purple)
-        const titleGrad = this.ctx.createLinearGradient(cx - 200, 0, cx + 200, 0);
-        titleGrad.addColorStop(0, "#06b6d4");
-        titleGrad.addColorStop(1, "#a855f7");
-        
-        this.ctx.strokeStyle = "#000";
-        this.ctx.lineWidth = 6;
-        this.ctx.strokeText("AD-BIRD", cx, cy - 80);
-        this.ctx.fillStyle = titleGrad;
-        this.ctx.fillText("AD-BIRD", cx, cy - 80);
-        
-        // Subtitle
-        this.ctx.font = "bold 18px 'Outfit', sans-serif";
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowColor = "#06b6d4";
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-        this.ctx.fillText("A STOCKOUT STUDIO EXPERIENCE", cx, cy - 40);
-        
-        this.ctx.restore();
-        
-        // --- READY MESSAGE (center, large, with dramatic presentation) ---
+        // --- HERO: The ready message is THE focus ---
         this.ctx.save();
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
-        this.ctx.font = "900 32px 'Outfit', sans-serif";
-        this.ctx.shadowBlur = 15 + (breathe * 10);
-        this.ctx.shadowColor = "rgba(244, 63, 94, 0.6)";
+        
+        // Dynamic font sizing — shrink to fit if message is long
+        let heroFontSize = 64;
+        this.ctx.font = `900 ${heroFontSize}px 'Outfit', sans-serif`;
+        let measuredW = this.ctx.measureText(this.state.currentReadyMsg).width;
+        const maxW = this.canvas.width * 0.85;
+        if (measuredW > maxW) {
+            heroFontSize = Math.floor(heroFontSize * (maxW / measuredW));
+            this.ctx.font = `900 ${heroFontSize}px 'Outfit', sans-serif`;
+        }
+        
+        // Heavy stroke for drama
+        this.ctx.shadowBlur = 30 + (breathe * 20);
+        this.ctx.shadowColor = "#a855f7";
         this.ctx.strokeStyle = "#000";
-        this.ctx.lineWidth = 3;
-        this.ctx.strokeText(this.state.currentReadyMsg, cx, cy + 30);
-        this.ctx.fillStyle = "#fff";
-        this.ctx.fillText(this.state.currentReadyMsg, cx, cy + 30);
+        this.ctx.lineWidth = 8;
+        this.ctx.strokeText(this.state.currentReadyMsg, cx, cy - 60);
+        
+        // Gradient fill (cyan → purple → cyan)
+        const heroGrad = this.ctx.createLinearGradient(cx - 300, 0, cx + 300, 0);
+        heroGrad.addColorStop(0, "#06b6d4");
+        heroGrad.addColorStop(0.5, "#a855f7");
+        heroGrad.addColorStop(1, "#06b6d4");
+        this.ctx.fillStyle = heroGrad;
+        this.ctx.fillText(this.state.currentReadyMsg, cx, cy - 60);
+        
         this.ctx.restore();
         
-        // --- INSTRUCTION CARDS: two side-by-side panels ---
+        // --- INSTRUCTION CARDS: bigger, bolder, more prominent ---
         const instructions = this.isMobile 
             ? [
                 { icon: "👆", label: "FLAP", desc: "TAP SCREEN" },
                 { icon: "💣", label: "BOMB", desc: "BOMB BUTTON" }
               ]
             : [
-                { icon: "🕹", label: "FLAP", desc: "SPACE / CLICK" },
-                { icon: "💥", label: "BOMB", desc: "SHIFT / R-CLICK" }
+                { icon: "🕹", label: "FLAP", desc: "SPACE or CLICK" },
+                { icon: "💥", label: "BOMB", desc: "SHIFT or R-CLICK" }
               ];
         
-        const cardW = 200;
-        const cardH = 100;
-        const cardGap = 20;
+        const cardW = 260;
+        const cardH = 150;
+        const cardGap = 24;
         const totalW = (cardW * 2) + cardGap;
         const startX = cx - totalW / 2;
-        const instY = cy + 90;
+        const instY = cy + 30;
         
         instructions.forEach((ins, i) => {
             const iX = startX + (i * (cardW + cardGap));
+            const accent = i === 0 ? "#06b6d4" : "#a855f7";
+            const accentRgb = i === 0 ? "6, 182, 212" : "168, 85, 247";
             
             this.ctx.save();
             
-            // Card background
-            this.ctx.fillStyle = "rgba(6, 182, 212, 0.05)";
+            // Solid card background with accent tint
+            this.ctx.fillStyle = `rgba(${accentRgb}, 0.12)`;
             this.ctx.beginPath();
-            this.ctx.roundRect(iX, instY, cardW, cardH, 14);
+            this.ctx.roundRect(iX, instY, cardW, cardH, 18);
             this.ctx.fill();
             
-            // Card border
-            this.ctx.shadowBlur = 10 + (slowPulse * 5);
-            this.ctx.shadowColor = "#06b6d4";
-            this.ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
-            this.ctx.lineWidth = 1.5;
+            // Backing dark layer for legibility
+            this.ctx.fillStyle = "rgba(10, 10, 15, 0.55)";
             this.ctx.beginPath();
-            this.ctx.roundRect(iX, instY, cardW, cardH, 14);
+            this.ctx.roundRect(iX, instY, cardW, cardH, 18);
+            this.ctx.fill();
+            
+            // Glowing border
+            this.ctx.shadowBlur = 18 + (slowPulse * 10);
+            this.ctx.shadowColor = accent;
+            this.ctx.strokeStyle = accent;
+            this.ctx.lineWidth = 2.5;
+            this.ctx.beginPath();
+            this.ctx.roundRect(iX, instY, cardW, cardH, 18);
             this.ctx.stroke();
             this.ctx.shadowBlur = 0;
             
-            // Icon
-            this.ctx.font = "32px serif";
+            // Big icon
+            this.ctx.font = "54px serif";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "middle";
-            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 28);
+            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 48);
             
-            // Label
-            this.ctx.font = "900 18px 'Outfit', sans-serif";
+            // Big label
+            this.ctx.font = "900 28px 'Outfit', sans-serif";
             this.ctx.fillStyle = "#fff";
-            this.ctx.fillText(ins.label, iX + cardW / 2, instY + 58);
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = accent;
+            this.ctx.fillText(ins.label, iX + cardW / 2, instY + 100);
+            this.ctx.shadowBlur = 0;
             
             // Description
-            this.ctx.font = "bold 11px 'Outfit', sans-serif";
-            this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-            this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 78);
+            this.ctx.font = "bold 14px 'Outfit', sans-serif";
+            this.ctx.fillStyle = accent;
+            this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 128);
             
             this.ctx.restore();
         });
         
-        // --- CALL TO ACTION (pulsing prompt at bottom) ---
-        const ctaPulse = Math.sin(f * 0.08) * 0.3 + 0.7; // 0.4 to 1.0
-        this.ctx.save();
-        this.ctx.globalAlpha = ctaPulse;
-        this.ctx.textAlign = "center";
-        this.ctx.textBaseline = "alphabetic";
-        this.ctx.font = "900 22px 'Outfit', sans-serif";
-        this.ctx.shadowBlur = 15;
-        this.ctx.shadowColor = "#06b6d4";
-        this.ctx.fillStyle = "#06b6d4";
-        this.ctx.fillText(
-            this.isMobile ? "▶ TAP TO BEGIN" : "▶ PRESS ANY KEY TO BEGIN", 
-            cx, 
-            cy + 240
-        );
-        this.ctx.restore();
-        
-        // --- HIGH SCORE BADGES (top area, show player's current bests) ---
+        // --- HIGH SCORE BADGES (top area, compact) ---
         if (this.state.highScore > 0 || this.state.highDirectHits > 0) {
             const badges = [
                 { label: "BEST REACH", val: this.state.highScore, color: "#fbbf24" },
@@ -1306,10 +1342,10 @@ class AdBird {
                 { label: "BEST MISSES", val: this.state.highTotalMisses, color: "#f43f5e" }
             ];
             
-            const badgeY = 150;
-            const bW = 140;
-            const bH = 46;
-            const bGap = 12;
+            const badgeY = 200;
+            const bW = 150;
+            const bH = 54;
+            const bGap = 14;
             const bTotal = (bW * 3) + (bGap * 2);
             const bStartX = cx - bTotal / 2;
             
@@ -1317,37 +1353,124 @@ class AdBird {
                 const bX = bStartX + (i * (bW + bGap));
                 
                 this.ctx.save();
-                this.ctx.globalAlpha = 0.85;
+                this.ctx.globalAlpha = 0.9;
                 
                 // Badge bg
-                this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
+                this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
                 this.ctx.beginPath();
                 this.ctx.roundRect(bX, badgeY, bW, bH, 10);
                 this.ctx.fill();
                 
-                // Badge border
+                // Border
+                this.ctx.shadowBlur = 8;
+                this.ctx.shadowColor = b.color;
                 this.ctx.strokeStyle = b.color;
-                this.ctx.lineWidth = 1.5;
+                this.ctx.lineWidth = 2;
                 this.ctx.beginPath();
                 this.ctx.roundRect(bX, badgeY, bW, bH, 10);
                 this.ctx.stroke();
+                this.ctx.shadowBlur = 0;
                 
                 // Label
-                this.ctx.font = "bold 10px 'Outfit', sans-serif";
-                this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+                this.ctx.font = "bold 11px 'Outfit', sans-serif";
+                this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "top";
-                this.ctx.fillText(b.label, bX + bW / 2, badgeY + 7);
+                this.ctx.fillText(b.label, bX + bW / 2, badgeY + 8);
                 
                 // Value
-                this.ctx.font = "900 22px 'Outfit', sans-serif";
+                this.ctx.font = "900 26px 'Outfit', sans-serif";
                 this.ctx.fillStyle = b.color;
                 this.ctx.textBaseline = "middle";
-                this.ctx.fillText(b.val, bX + bW / 2, badgeY + 30);
+                this.ctx.fillText(b.val, bX + bW / 2, badgeY + 36);
                 
                 this.ctx.restore();
             });
         }
+        
+        // --- PRESS ANY KEY CTA (legible with backing panel) ---
+        const ctaPulse = Math.sin(f * 0.08) * 0.2 + 0.8;
+        const ctaY = cy + 220;
+        const ctaText = this.isMobile ? "▶ TAP TO BEGIN" : "▶ PRESS ANY KEY TO BEGIN";
+        
+        this.ctx.save();
+        this.ctx.font = "900 24px 'Outfit', sans-serif";
+        const ctaW = this.ctx.measureText(ctaText).width + 60;
+        const ctaH = 48;
+        const ctaX = cx - ctaW / 2;
+        
+        // Backing panel for readability
+        this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
+        this.ctx.beginPath();
+        this.ctx.roundRect(ctaX, ctaY - ctaH / 2, ctaW, ctaH, 12);
+        this.ctx.fill();
+        
+        // Glowing border
+        this.ctx.globalAlpha = ctaPulse;
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowColor = "#06b6d4";
+        this.ctx.strokeStyle = "#06b6d4";
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.roundRect(ctaX, ctaY - ctaH / 2, ctaW, ctaH, 12);
+        this.ctx.stroke();
+        this.ctx.shadowBlur = 0;
+        
+        // Text
+        this.ctx.fillStyle = "#06b6d4";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText(ctaText, cx, ctaY);
+        this.ctx.restore();
+        
+        // --- RENT A PIPE button (Stripe link, bottom right-ish) ---
+        const rentBtnW = 220;
+        const rentBtnH = 54;
+        const rentX = cx - rentBtnW / 2;
+        const rentY = ctaY + 80;
+        const rentPulse = Math.sin(f * 0.05) * 0.5 + 0.5;
+        
+        // Cache button rect so _handleInput can hit-test it
+        this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
+        
+        this.ctx.save();
+        
+        // Outer glow
+        this.ctx.shadowBlur = 15 + (rentPulse * 15);
+        this.ctx.shadowColor = "#f59e0b";
+        this.ctx.fillStyle = "rgba(245, 158, 11, 0.15)";
+        this.ctx.beginPath();
+        this.ctx.roundRect(rentX, rentY, rentBtnW, rentBtnH, 12);
+        this.ctx.fill();
+        
+        // Gradient
+        const rentGrad = this.ctx.createLinearGradient(rentX, rentY, rentX + rentBtnW, rentY);
+        rentGrad.addColorStop(0, "rgba(245, 158, 11, 0.95)");
+        rentGrad.addColorStop(0.5, "rgba(236, 72, 153, 0.95)");
+        rentGrad.addColorStop(1, "rgba(245, 158, 11, 0.95)");
+        this.ctx.fillStyle = rentGrad;
+        this.ctx.shadowBlur = 0;
+        this.ctx.beginPath();
+        this.ctx.roundRect(rentX, rentY, rentBtnW, rentBtnH, 12);
+        this.ctx.fill();
+        
+        // Border
+        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.roundRect(rentX, rentY, rentBtnW, rentBtnH, 12);
+        this.ctx.stroke();
+        
+        // Text
+        this.ctx.font = "900 18px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "#fff";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.shadowBlur = 6;
+        this.ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
+        this.ctx.fillText("💰  RENT A PIPE  $5", rentX + rentBtnW / 2, rentY + rentBtnH / 2);
+        
+        this.ctx.restore();
     }
     _resetToSplash() {
         this.state.isGameOver = false;
