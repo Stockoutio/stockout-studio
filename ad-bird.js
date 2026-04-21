@@ -201,6 +201,7 @@ class AdBird {
         this.state.loopActive = true; 
         this.state.lastRect = this.canvas.getBoundingClientRect(); 
         this._update(); 
+        this._updateParticles(); // Always update particles even when game is paused
         this._draw(); 
         requestAnimationFrame(this._boundLoop); 
     }
@@ -212,9 +213,6 @@ class AdBird {
             if (!this.state.isGameOver) {
                 this.player.y = 150;
                 this.player.velocity = 0;
-            } else {
-                this.player.velocity += this.config.gravity; 
-                this.player.y += this.player.velocity;
             }
             this.player.flipAngle += this.player.flipDirection * 0.2; 
             return; 
@@ -229,6 +227,21 @@ class AdBird {
         this._updateEntities();
         if (this.player.y + this.player.h > this.canvas.height || this.player.y < 0) this.gameOver();
         this.state.frameCount++;
+    }
+
+    _updateParticles() {
+        for (let i = this.state.particles.length - 1; i >= 0; i--) { 
+            const p = this.state.particles[i]; p.x += p.vx; p.y += p.vy; 
+            p.vy += this.config.particleGravity; p.life -= this.config.particleLifeDecay; 
+            if (p.life <= 0) this.state.particles.splice(i, 1); 
+        }
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) { 
+            const t = this.floatingTexts[i]; t.age++; 
+            if (t.age > this.config.floatingTextRiseDelay) { 
+                t.vy -= 0.3; t.y += t.vy; t.alpha = Math.max(0, 1 - Math.pow((t.age - this.config.floatingTextRiseDelay) / 40, 2)); 
+            } 
+            if (t.alpha <= 0 || t.age > this.config.floatingTextMaxAge) this.floatingTexts.splice(i, 1); 
+        }
     }
 
     _updateEntities() {
@@ -254,18 +267,6 @@ class AdBird {
             } if (hit || b.y > this.canvas.height) this.bombs.splice(i, 1); 
         }
         this.bubbles.forEach(b => { b.x -= b.speed; if (b.x < -10) b.x = this.canvas.width + 10; });
-        for (let i = this.state.particles.length - 1; i >= 0; i--) { 
-            const p = this.state.particles[i]; p.x += p.vx; p.y += p.vy; 
-            p.vy += this.config.particleGravity; p.life -= this.config.particleLifeDecay; 
-            if (p.life <= 0) this.state.particles.splice(i, 1); 
-        }
-        for (let i = this.floatingTexts.length - 1; i >= 0; i--) { 
-            const t = this.floatingTexts[i]; t.age++; 
-            if (t.age > this.config.floatingTextRiseDelay) { 
-                t.vy -= 0.3; t.y += t.vy; t.alpha = Math.max(0, 1 - Math.pow((t.age - this.config.floatingTextRiseDelay) / 40, 2)); 
-            } 
-            if (t.alpha <= 0 || t.age > this.config.floatingTextMaxAge) this.floatingTexts.splice(i, 1); 
-        }
     }
 
     _spawnPipe() {
@@ -539,15 +540,15 @@ class AdBird {
     gameOver() { 
         if (this.state.isGameOver) return; this.state.isGameOver = true; this.state.screenShake = 30; this.state.gameRunning = false; 
         
-        // BLOODY EXPLOSION
-        for (let i = 0; i < 40; i++) {
+        // BLOODY EXPLOSION (Violent Scatter)
+        for (let i = 0; i < 50; i++) {
             this.state.particles.push({
                 x: this.player.x + this.player.w/2,
                 y: this.player.y + this.player.h/2,
-                vx: (Math.random() - 0.5) * 18,
-                vy: (Math.random() - 0.5) * 18,
-                size: Math.random() * 8 + 4,
-                color: Math.random() > 0.3 ? "#ff0000" : "#8b0000", // Blood Red
+                vx: (Math.random() - 0.5) * 25,
+                vy: (Math.random() - 0.7) * 20, // Lean upward then fall
+                size: Math.random() * 10 + 5,
+                color: Math.random() > 0.3 ? "#ff0000" : "#8b0000",
                 life: 1.0
             });
         }
