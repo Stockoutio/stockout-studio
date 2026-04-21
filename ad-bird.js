@@ -545,23 +545,25 @@ class AdBird {
         this.state.gameRunning = false; 
         this.state.screenShake = 30; 
         
-        // BLOODY EXPLOSION (Violent Scatter)
+        // BLOODY EXPLOSION (More realistic arc)
+        const meats = ["🍗", "🦃", "🍖"];
         for (let i = 0; i < 65; i++) {
             const isBit = i < 15;
-            const isTurkey = i < 4; // 4 Turkeys!
+            const isTurkey = i < 6; // More food!
             this.state.particles.push({
                 x: this.player.x + this.player.w/2,
                 y: this.player.y + this.player.h/2,
-                vx: (Math.random() - 0.5) * 32,
-                vy: (Math.random() - 0.8) * 26,
-                size: isBit ? Math.random() * 15 + 10 : Math.random() * 6 + 3,
+                vx: (Math.random() - 0.5) * 14,
+                vy: (Math.random() - 0.7) * 18,
+                size: isBit ? Math.random() * 12 + 8 : Math.random() * 6 + 3,
                 color: Math.random() > 0.3 ? "#ff0000" : "#8b0000",
                 life: 1.0,
                 isBit: isBit,
                 isTurkey: isTurkey,
+                emoji: meats[Math.floor(Math.random() * meats.length)],
                 isDeath: true,
                 rotation: Math.random() * Math.PI * 2,
-                rotSpeed: (Math.random() - 0.5) * 0.4
+                rotSpeed: (Math.random() - 0.5) * 0.3
             });
         }
 
@@ -684,7 +686,7 @@ class AdBird {
                 this.ctx.font = `${p.size + 20}px serif`;
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "middle";
-                this.ctx.fillText("🍗", 0, 0);
+                this.ctx.fillText(p.emoji || "🍗", 0, 0);
                 this.ctx.restore();
             } else if (p.isBit) {
                 this.ctx.save();
