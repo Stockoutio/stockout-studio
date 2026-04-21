@@ -83,6 +83,7 @@ class AdBird {
             gameRunning: false, isGameOver: false, loopActive: false,
             score: 0, directHits: 0, highScore: parseInt(this._safeStorage('get', 'adBirdHighScore')) || 0,
             highDirectHits: parseInt(this._safeStorage('get', 'adBirdHighDirectHits')) || 0,
+            score: 0, directHits: 0, totalMisses: 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, isFullscreen: false, assetsLoaded: 0, lastRect: null, waitingForGameOver: false,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
@@ -196,7 +197,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0, particles: [] });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], stockInARow: 0, particles: [] });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
@@ -309,6 +310,7 @@ class AdBird {
                 }
 
                 if (isGiga) this.state.screenShake = 30;
+                this.state.totalMisses++;
                 this.playSound(isGiga ? 'mega_miss' : 'miss');
                 this.bombs.splice(i, 1);
             }
@@ -441,43 +443,46 @@ class AdBird {
         
         this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
         this.ctx.restore();
-        // --- MARKETING IMPACT: BREATHING GLOW ---
+
+        // --- TOP LEFT DASHBOARD: IMPACT & MISSES ---
         this.ctx.save();
-        const impactText = "MARKETING IMPACT: ";
-        const impactNum = this.state.directHits.toString();
-        
-        this.ctx.font = "bold 18px 'Outfit', sans-serif";
-        const labelW = this.ctx.measureText(impactText).width;
-        this.ctx.font = "bold 52px 'Outfit', sans-serif";
-        const numW = this.ctx.measureText(impactNum).width;
-        
-        const sway = Math.sin(this.state.frameCount * 0.03) * 4;
-        let curX = this.ui.scoreCenter - (labelW + numW) / 2 + sway;
-
-        this.ctx.textBaseline = "middle";
-        this.ctx.textAlign = "left";
-        
-        // Breathing Glow Peak (Subtler)
+        const padding = 25;
         const pulse = Math.sin(this.state.frameCount * 0.03) * 3 + 8;
-        this.ctx.shadowBlur = pulse;
-        this.ctx.shadowColor = "#06b6d4";
-
-        // Draw Label
-        this.ctx.font = "bold 18px 'Outfit', sans-serif";
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        
+        // IMPACT
+        this.ctx.textAlign = "left";
+        this.ctx.textBaseline = "top";
+        this.ctx.font = "bold 14px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
         this.ctx.strokeStyle = "#000";
         this.ctx.lineWidth = 2;
-        this.ctx.strokeText(impactText, curX, 100);
-        this.ctx.fillText(impactText, curX, 100);
-
-        // Draw Number
-        this.ctx.font = "bold 52px 'Outfit', sans-serif";
+        this.ctx.strokeText("MARKETING IMPACT", padding, padding);
+        this.ctx.fillText("MARKETING IMPACT", padding, padding);
+        
+        this.ctx.font = "bold 38px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fff";
         this.ctx.shadowBlur = pulse + 10;
-        this.ctx.lineWidth = 3;
-        this.ctx.strokeText(impactNum, curX + labelW + 5, 100);
-        this.ctx.fillText(impactNum, curX + labelW + 5, 100);
+        this.ctx.shadowColor = "#06b6d4";
+        this.ctx.strokeText(this.state.directHits, padding, padding + 20);
+        this.ctx.fillText(this.state.directHits, padding, padding + 20);
+        
+        // MISSES
+        const missY = padding + 75;
+        this.ctx.font = "bold 14px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        this.ctx.shadowBlur = 0;
+        this.ctx.strokeText("CAMPAIGN MISSES", padding, missY);
+        this.ctx.fillText("CAMPAIGN MISSES", padding, missY);
+        
+        this.ctx.font = "bold 38px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "#fff";
+        this.ctx.shadowBlur = pulse;
+        this.ctx.shadowColor = "#f43f5e"; // Blood Red
+        this.ctx.strokeText(this.state.totalMisses, padding, missY + 20);
+        this.ctx.fillText(this.state.totalMisses, padding, missY + 20);
+        
         this.ctx.restore();
+
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
         const fs = this.ui.fullscreenBtn; this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(fs.x, fs.y, fs.radius, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 54px serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("⤢", fs.x, fs.y + 4); this.ctx.restore();
         const b = this.ui.bombBtn; this.ctx.save(); this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4"; this.ctx.beginPath(); this.ctx.roundRect(b.x, b.y, b.w, b.h, b.radius); this.ctx.fill();
