@@ -808,6 +808,11 @@ class AdBird {
     }
     _resetToSplash() {
         this.state.isGameOver = false;
+        this.state.score = 0;
+        this.state.directHits = 0;
+        this.state.totalMisses = 0;
+        this.state.lastMissFrame = 0;
+        
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
         this.pipes = [];
         this.bombs = [];
