@@ -78,8 +78,8 @@ class AdBird {
     _initHUDGeometry() {
         this.ui = {
             fullscreenBtn: { x: this.canvas.width - 55, y: this.canvas.height - 55, radius: 45 },
-            bombBtn: { x: 20, y: this.canvas.height - 120, w: 160, h: 100, radius: 15 },
-            muteBtn: { x: this.canvas.width - 20, y: 50 },
+            bombBtn: { x: this.canvas.width - 180, y: 20, w: 160, h: 100, radius: 15 },
+            muteBtn: { x: 45, y: this.canvas.height - 60 },
             scoreCenter: this.canvas.width / 2
         };
     }
@@ -193,7 +193,7 @@ class AdBird {
 
     _hitTest(x, y) {
         if (!this.isMobile && Math.hypot(x - this.ui.fullscreenBtn.x, y - this.ui.fullscreenBtn.y) < 70) return 'fullscreen';
-        if (x > this.canvas.width - 80 && y < 120) return 'mute';
+        if (x < 90 && y > this.canvas.height - 90) return 'mute';
         const b = this.ui.bombBtn;
         if (x >= b.x - 20 && x <= b.x + b.w + 20 && y >= b.y - 20 && y <= b.y + b.h + 20) return 'bomb';
         return null;
@@ -496,7 +496,7 @@ class AdBird {
         
         this.ctx.restore();
 
-        this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
+        this.ctx.font = "24px serif"; this.ctx.textAlign = "left"; this.ctx.textBaseline = "middle"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
         if (!this.isMobile) {
             const fs = this.ui.fullscreenBtn; this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(fs.x, fs.y, fs.radius, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 54px serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("⤢", fs.x, fs.y + 4); this.ctx.restore();
         }
