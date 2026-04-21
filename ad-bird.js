@@ -504,7 +504,13 @@ class AdBird {
         const b = this.ui.bombBtn; this.ctx.save(); this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4"; this.ctx.beginPath(); this.ctx.roundRect(b.x, b.y, b.w, b.h, b.radius); this.ctx.fill();
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.font = "bold 32px 'Outfit', sans-serif"; this.ctx.shadowBlur = 0; this.ctx.fillText("BOMB", b.x + b.w/2, b.y + b.h/2 - (this.isMobile ? 0 : 8)); 
         if (!this.isMobile) { this.ctx.font = "bold 11px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("(SHIFT / R-CLICK)", b.x + b.w/2, b.y + b.h/2 + 22); } 
-        if (this.state.bombTimer > 0) { this.ctx.fillStyle = "rgba(255, 255, 255, 0.3)"; this.ctx.fillRect(b.x, b.y + b.h - 4, b.w * (this.state.bombTimer / this.config.bombCooldown), 4); } this.ctx.restore();
+        if (this.state.bombTimer > 0) { 
+            const inset = b.radius;
+            const maxBarWidth = b.w - (inset * 2);
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.3)"; 
+            this.ctx.fillRect(b.x + inset, b.y + b.h - 4, maxBarWidth * (this.state.bombTimer / this.config.bombCooldown), 4); 
+        } 
+        this.ctx.restore();
     }
 
     /* --- ENTROPY & AD ENGINE --- */
