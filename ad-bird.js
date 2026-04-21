@@ -362,7 +362,37 @@ class AdBird {
 
     _renderHUD() {
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "alphabetic"; this.ctx.font = "bold 48px 'Outfit', sans-serif"; this.ctx.fillText(this.state.score, this.ui.scoreCenter, 65);
-        this.ctx.font = "bold 14px 'Outfit', sans-serif"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)"; this.ctx.fillText(`MARKETING IMPACT: ${this.state.directHits}`, this.ui.scoreCenter, 90);
+        // --- MARKETING IMPACT: THE WAVE & GLOW ---
+        this.ctx.save();
+        const impactText = "MARKETING IMPACT: ";
+        const impactNum = this.state.directHits.toString();
+        this.ctx.font = "bold 18px 'Outfit', sans-serif";
+        const labelW = this.ctx.measureText(impactText).width;
+        this.ctx.font = "bold 48px 'Outfit', sans-serif";
+        const numW = this.ctx.measureText(impactNum).width;
+        const totalW = labelW + numW;
+        let curX = this.ui.scoreCenter - totalW / 2;
+
+        // Draw Label with Wave
+        this.ctx.font = "bold 18px 'Outfit', sans-serif";
+        this.ctx.textAlign = "left";
+        this.ctx.textBaseline = "middle";
+        for (let i = 0; i < impactText.length; i++) {
+            const char = impactText[i];
+            const yOff = Math.sin(this.state.frameCount * 0.15 + i * 0.4) * 5;
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            this.ctx.fillText(char, curX, 100 + yOff);
+            curX += this.ctx.measureText(char).width;
+        }
+
+        // Draw Number (BIGGER & GLOWING)
+        this.ctx.font = "bold 52px 'Outfit', sans-serif";
+        const pulse = Math.sin(this.state.frameCount * 0.1) * 5;
+        this.ctx.shadowBlur = 15 + pulse * 2;
+        this.ctx.shadowColor = "#06b6d4";
+        this.ctx.fillStyle = "#06b6d4";
+        this.ctx.fillText(impactNum, curX + 5, 100 + (pulse * 0.5));
+        this.ctx.restore();
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
         const fs = this.ui.fullscreenBtn; this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(fs.x, fs.y, fs.radius, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 54px serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("⤢", fs.x, fs.y + 4); this.ctx.restore();
         const b = this.ui.bombBtn; this.ctx.save(); this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4"; this.ctx.beginPath(); this.ctx.roundRect(b.x, b.y, b.w, b.h, b.radius); this.ctx.fill();
