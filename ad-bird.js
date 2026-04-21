@@ -299,7 +299,23 @@ class AdBird {
     }
 
     _createSplat(p, bx, by, scale = 1.0) { 
-        this.state.screenShake = 10 * scale; this.state.directHits++; this.player.isFlipping = true; this.player.flipAngle = 0; for (let i=0; i<15; i++) this.state.particles.push({ x: bx, y: by, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10-2, color: p.ad.color, life: 1.0 }); 
+        const isMega = scale >= 5.0;
+        this.state.screenShake = isMega ? 30 : 10 * scale; 
+        if (isMega) this.state.flashOpacity = 0.4;
+        this.state.directHits++; this.player.isFlipping = true; this.player.flipAngle = 0; 
+        
+        const pCount = isMega ? 60 : 15;
+        for (let i=0; i<pCount; i++) {
+            this.state.particles.push({ 
+                x: bx, y: by, 
+                vx: (Math.random()-0.5)*(isMega ? 25 : 10), 
+                vy: (Math.random()-0.5)*(isMega ? 25 : 10)-2, 
+                color: p.ad.color, life: 1.0 + (isMega ? Math.random() : 0),
+                size: isMega ? Math.random()*6+2 : 3,
+                isMega: isMega
+            }); 
+        }
+        
         p.stains.push({ 
             relY: by, xOff: bx-p.x, 
             size: (Math.random()*8+12) * scale, 
@@ -314,14 +330,21 @@ class AdBird {
         let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
         
         let hitMsg;
-        if (scale >= 5.0) {
+        if (isMega) {
             const mega = ["MEGA SPLAT", "GIGA SPLAT", "AD-POCALYPSE", "ULTRA KILL", "MONSTER SPLAT", "SIGN DESTROYER", "MARKET CRASHED", "KPIs CRUSHED", "BRAND DESTRUCTION", "TOTAL COVERAGE"];
             hitMsg = mega[Math.floor(Math.random()*mega.length)];
         } else {
             hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
         }
 
-        this.floatingTexts.push({ x: bx, y: sy, age: 0, vy: 0, alpha: 1, scale: scale >= 5.0 ? 1.5 : 1, text: hitMsg, color: this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)] }); 
+        this.floatingTexts.push({ 
+            x: bx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
+            scale: isMega ? 2.2 : 1, 
+            text: hitMsg, 
+            color: isMega ? "#fff" : this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)],
+            glow: isMega ? p.ad.color : null,
+            isMega: isMega
+        }); 
         this.playSound('splat'); 
     }
 
@@ -362,8 +385,25 @@ class AdBird {
     _renderBubbles() { this.ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; this.bubbles.forEach(b => { this.ctx.beginPath(); this.ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderBombs() { this.ctx.fillStyle = "#fff"; this.bombs.forEach(b => { this.ctx.beginPath(); this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderPlayer() { this.ctx.save(); this.ctx.translate(this.player.x+this.player.w/2, this.player.y+this.player.h/2); this.ctx.rotate(Math.min(Math.PI/4, Math.max(-Math.PI/4, this.player.velocity*0.05)) + this.player.flipAngle); this.ctx.scale(-1, 1); this.ctx.drawImage(this.assets.player, -this.player.w/2, -this.player.h/2, this.player.w, this.player.h); this.ctx.restore(); }
-    _renderParticles() { this.state.particles.forEach(p => { this.ctx.globalAlpha = p.life; this.ctx.fillStyle = p.color; this.ctx.shadowBlur = 10; this.ctx.shadowColor = p.color; this.ctx.beginPath(); this.ctx.arc(p.x, p.y, 3, 0, Math.PI*2); this.ctx.fill(); }); this.ctx.globalAlpha = 1; this.ctx.shadowBlur = 0; }
-    _renderFloatingTexts() { this.ctx.textAlign = "center"; this.floatingTexts.forEach(t => { this.ctx.save(); this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale); this.ctx.font = "bold 36px 'Outfit', sans-serif"; this.ctx.strokeStyle = "#000"; this.ctx.lineWidth = 1.5; this.ctx.strokeText(t.text, 0, 0); this.ctx.fillStyle = t.color; this.ctx.shadowBlur = 15; this.ctx.shadowColor = t.color; this.ctx.fillText(t.text, 0, 0); this.ctx.restore(); }); }
+    _renderParticles() { 
+        this.state.particles.forEach(p => { 
+            this.ctx.globalAlpha = p.life; this.ctx.fillStyle = p.color; 
+            this.ctx.shadowBlur = p.isMega ? 15 : 10; this.ctx.shadowColor = p.color; 
+            this.ctx.beginPath(); this.ctx.arc(p.x, p.y, p.size || 3, 0, Math.PI*2); this.ctx.fill(); 
+        }); 
+        this.ctx.globalAlpha = 1; this.ctx.shadowBlur = 0; 
+    }
+    _renderFloatingTexts() { 
+        this.ctx.textAlign = "center"; 
+        this.floatingTexts.forEach(t => { 
+            this.ctx.save(); this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale); 
+            this.ctx.font = t.isMega ? "black 52px 'Outfit', sans-serif" : "bold 36px 'Outfit', sans-serif"; 
+            if (t.glow) { this.ctx.shadowBlur = 25; this.ctx.shadowColor = t.glow; }
+            this.ctx.strokeStyle = "#000"; this.ctx.lineWidth = t.isMega ? 3 : 1.5; this.ctx.strokeText(t.text, 0, 0); 
+            this.ctx.fillStyle = t.color; this.ctx.fillText(t.text, 0, 0); 
+            this.ctx.restore(); 
+        }); 
+    }
     _renderGameOverScreen() { this.ctx.fillStyle = "rgba(10, 10, 15, 0.85)"; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.ctx.fillStyle = "#fff"; this.ctx.font = "bold 36px 'Outfit', sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "alphabetic"; this.ctx.fillText(this.state.deathMsg, this.canvas.width / 2, this.canvas.height / 2 - 60); this.ctx.font = "bold 20px 'Outfit', sans-serif"; this.ctx.fillText(`Score: ${this.state.score}`, this.canvas.width / 2 - 80, this.canvas.height / 2); this.ctx.fillStyle = "#fbbf24"; this.ctx.fillText(`Best: ${this.state.highScore}`, this.canvas.width / 2 + 80, this.canvas.height / 2); this.ctx.fillStyle = "#fff"; this.ctx.fillText(`Impact: ${this.state.directHits}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "#06b6d4"; this.ctx.fillText(`Best: ${this.state.highDirectHits}`, this.canvas.width / 2 + 80, this.canvas.height / 2 + 35); this.ctx.fillStyle = "rgba(255,255,255,0.5)"; this.ctx.font = "14px 'Outfit', sans-serif"; this.ctx.fillText(this.isMobile ? "TAP to continue" : "SPACE or CLICK to continue", this.canvas.width / 2, this.canvas.height / 2 + 85); }
     _renderStartScreen() { 
         if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
