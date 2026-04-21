@@ -154,7 +154,6 @@ class AdBird {
             return;
         }
 
-        const KEYMAP = this.config.keys;
         const isFlap = KEYMAP.flapCodes.includes(e.code) || KEYMAP.flapKeys.includes(e.key);
         const isBomb = KEYMAP.bombCodes.includes(e.code) || KEYMAP.bombKeys.includes(e.key);
         const isEnter = e.code === 'Enter' || e.key === 'Enter';
@@ -215,7 +214,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], missMsgBag: [], megaMissMsgBag: [], stockInARow: 0, particles: [] });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], missMsgBag: [], megaMissMsgBag: [], stockInARow: 0, particles: [], gameOverFrame: 0 });
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
@@ -772,7 +771,6 @@ class AdBird {
             this.ctx.drawImage(bg, rx, 0, this.canvas.width + 2, this.canvas.height); 
             this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width, this.canvas.height); 
         } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
-    _renderBubbles() { this.ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; this.bubbles.forEach(b => { this.ctx.beginPath(); this.ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderBombs() { this.ctx.fillStyle = "#fff"; this.bombs.forEach(b => { this.ctx.beginPath(); this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2); this.ctx.fill(); }); }
     _renderPlayer() { 
         if (this.state.isGameOver) return; // EXPLODED!
@@ -842,29 +840,26 @@ class AdBird {
         }); 
     }
     _renderGameOverScreen() { 
-        // Frames since game-over triggered (for stagger animations)
         const t = Math.max(0, this.state.frameCount - this.state.gameOverFrame);
         
-        // Easing helper — ease-out cubic (0 to 1 over given duration in frames)
         const ease = (elapsed, duration) => {
             const p = Math.min(1, Math.max(0, elapsed / duration));
             return 1 - Math.pow(1 - p, 3);
         };
 
-        // Dark overlay (fades in first)
+        // Dark overlay
         const overlayAlpha = ease(t, 15) * 0.9;
         this.ctx.fillStyle = `rgba(10, 10, 15, ${overlayAlpha})`;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); 
         
-        // --- DEATH MESSAGE (slams in from top at frame 10) ---
+        // Death message
         const deathT = Math.max(0, t - 10);
         const deathProgress = ease(deathT, 20);
-        const deathOffset = (1 - deathProgress) * -80; // Slides down from -80px above
-        const deathAlpha = deathProgress;
+        const deathOffset = (1 - deathProgress) * -80;
         
         if (deathProgress > 0) {
             this.ctx.save();
-            this.ctx.globalAlpha = deathAlpha;
+            this.ctx.globalAlpha = deathProgress;
             this.ctx.fillStyle = "#fff"; 
             this.ctx.font = "900 52px 'Outfit', sans-serif"; 
             this.ctx.textAlign = "center"; 
@@ -878,7 +873,7 @@ class AdBird {
             this.ctx.restore();
         }
         
-        // Subtitle (fades in with death message)
+        // Subtitle
         if (deathProgress > 0.3) {
             this.ctx.save();
             this.ctx.globalAlpha = (deathProgress - 0.3) / 0.7;
@@ -889,7 +884,7 @@ class AdBird {
             this.ctx.restore();
         }
 
-        // --- STAT CARDS (stagger in, starting frame 30, 8 frames apart) ---
+        // Stats cards
         const stats = [
             { label: "MARKET REACH", val: this.state.score, high: this.state.highScore, color: "#fbbf24", rgb: "251, 191, 36" },
             { label: "MARKETING IMPACT", val: this.state.directHits, high: this.state.highDirectHits, color: "#06b6d4", rgb: "6, 182, 212" },
@@ -897,7 +892,7 @@ class AdBird {
         ];
 
         const cardW = 210;
-        const cardH = 210;  // Taller now to fit progress bar
+        const cardH = 210;
         const cardGap = 20;
         const totalW = (cardW * 3) + (cardGap * 2);
         const startX = (this.canvas.width - totalW) / 2;
@@ -907,9 +902,9 @@ class AdBird {
             const cardT = Math.max(0, t - 30 - (i * 8));
             const cardProgress = ease(cardT, 25);
             
-            if (cardProgress <= 0) return; // Card hasn't started animating yet
+            if (cardProgress <= 0) return;
             
-            const cardOffset = (1 - cardProgress) * 40; // Slides up from 40px below
+            const cardOffset = (1 - cardProgress) * 40;
             const cardX = startX + (i * (cardW + cardGap));
             const cY = cardY + cardOffset;
             const isNewRecord = s.val > 0 && s.val >= s.high;
@@ -949,8 +944,7 @@ class AdBird {
             this.ctx.fillText(s.val, cardX + cardW / 2, cY + 90);
             this.ctx.shadowBlur = 0;
 
-            // --- PROGRESS BAR (val vs high) ---
-            // Max for the bar: either the high, or the current val if it's a new record
+            // Progress bar
             const barMax = Math.max(s.high, s.val, 1);
             const barFillRatio = Math.min(1, s.val / barMax);
             const barW = cardW - 40;
@@ -958,13 +952,11 @@ class AdBird {
             const barX = cardX + 20;
             const barY = cY + 140;
             
-            // Bar background
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
             this.ctx.beginPath();
             this.ctx.roundRect(barX, barY, barW, barH, 3);
             this.ctx.fill();
             
-            // Bar fill (animated reveal — ties to cardProgress)
             this.ctx.fillStyle = s.color;
             this.ctx.shadowBlur = 8;
             this.ctx.shadowColor = s.color;
@@ -973,7 +965,7 @@ class AdBird {
             this.ctx.fill();
             this.ctx.shadowBlur = 0;
 
-            // "BEST" line
+            // BEST line
             this.ctx.font = "bold 14px 'Outfit', sans-serif";
             this.ctx.fillStyle = s.color;
             this.ctx.textAlign = "center";
@@ -982,12 +974,12 @@ class AdBird {
 
             this.ctx.restore();
 
-            // --- NEW RECORD badge (pops in slightly after card settles) ---
+            // NEW RECORD badge
             if (isNewRecord && s.val > 0 && cardProgress > 0.7) {
                 const badgeT = Math.max(0, cardT - 18);
                 const badgeProgress = ease(badgeT, 15);
-                const badgeScale = 0.6 + (badgeProgress * 0.4); // Scales from 0.6 to 1.0
-                const badgePulse = 1 + Math.sin(this.state.frameCount * 0.15) * 0.05; // Subtle pulse
+                const badgeScale = 0.6 + (badgeProgress * 0.4);
+                const badgePulse = 1 + Math.sin(this.state.frameCount * 0.15) * 0.05;
                 const finalScale = badgeScale * badgePulse;
                 
                 const badgeW = 110;
@@ -1000,7 +992,6 @@ class AdBird {
                 this.ctx.translate(badgeCX, badgeCY);
                 this.ctx.scale(finalScale, finalScale);
                 
-                // Badge bg
                 this.ctx.fillStyle = s.color;
                 this.ctx.shadowBlur = 15;
                 this.ctx.shadowColor = s.color;
@@ -1008,70 +999,83 @@ class AdBird {
                 this.ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 12);
                 this.ctx.fill();
                 
-                // Badge text
                 this.ctx.shadowBlur = 0;
                 this.ctx.font = "900 12px 'Outfit', sans-serif";
                 this.ctx.fillStyle = "#0a0a0c";
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "middle";
-        const btnY = this.canvas.height / 2 + 180;
-        const btnRadius = 14;
+                this.ctx.fillText("NEW RECORD", 0, 0);
+                this.ctx.restore();
+            }
+        });
 
-        // Pulsing glow (sin-wave pulse)
-        const pulse = Math.sin(this.state.frameCount * 0.06) * 0.5 + 0.5; // 0 to 1
-        const glowIntensity = 20 + (pulse * 20); // 20-40px glow
+        // RUN IT BACK button with entrance animation
+        const btnT = Math.max(0, t - 70);
+        const btnProgress = ease(btnT, 20);
+        
+        if (btnProgress > 0) {
+            const btnW = 280;
+            const btnH = 64;
+            const btnX = (this.canvas.width - btnW) / 2;
+            const btnY = this.canvas.height / 2 + 180 + ((1 - btnProgress) * 20);
+            const btnRadius = 14;
+            
+            const pulse = Math.sin(this.state.frameCount * 0.06) * 0.5 + 0.5;
+            const glowIntensity = 20 + (pulse * 20);
 
-        this.ctx.save();
+            this.ctx.save();
+            this.ctx.globalAlpha = btnProgress;
+            
+            // Outer glow
+            this.ctx.shadowBlur = glowIntensity;
+            this.ctx.shadowColor = "#06b6d4";
+            this.ctx.fillStyle = "rgba(6, 182, 212, 0.15)";
+            this.ctx.beginPath();
+            this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
+            this.ctx.fill();
 
-        // Outer glow layer
-        this.ctx.shadowBlur = glowIntensity;
-        this.ctx.shadowColor = "#06b6d4";
-        this.ctx.fillStyle = "rgba(6, 182, 212, 0.15)";
-        this.ctx.beginPath();
-        this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
-        this.ctx.fill();
+            // Gradient fill
+            const gradient = this.ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
+            gradient.addColorStop(0, "rgba(6, 182, 212, 0.9)");
+            gradient.addColorStop(0.5, "rgba(59, 130, 246, 0.9)");
+            gradient.addColorStop(1, "rgba(6, 182, 212, 0.9)");
+            this.ctx.fillStyle = gradient;
+            this.ctx.shadowBlur = 0;
+            this.ctx.beginPath();
+            this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
+            this.ctx.fill();
 
-        // Gradient fill
-        const gradient = this.ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
-        gradient.addColorStop(0, "rgba(6, 182, 212, 0.9)");
-        gradient.addColorStop(0.5, "rgba(59, 130, 246, 0.9)");
-        gradient.addColorStop(1, "rgba(6, 182, 212, 0.9)");
-        this.ctx.fillStyle = gradient;
-        this.ctx.shadowBlur = 0;
-        this.ctx.beginPath();
-        this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
-        this.ctx.fill();
+            // Border
+            this.ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
+            this.ctx.stroke();
 
-        // Border stroke for definition
-        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
-        this.ctx.stroke();
+            // Button text
+            this.ctx.font = "900 26px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "#fff";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+            this.ctx.fillText("RUN IT BACK  →", btnX + btnW / 2, btnY + btnH / 2);
+            this.ctx.restore();
 
-        // Button text
-        this.ctx.font = "900 26px 'Outfit', sans-serif";
-        this.ctx.fillStyle = "#fff";
-        this.ctx.textAlign = "center";
-        this.ctx.textBaseline = "middle";
-        this.ctx.shadowBlur = 8;
-        this.ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-        this.ctx.fillText("RUN IT BACK  →", btnX + btnW / 2, btnY + btnH / 2);
-
-        this.ctx.restore();
-
-        // Secondary hint text below button
-        this.ctx.save();
-        this.ctx.font = "13px 'Outfit', sans-serif";
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-        this.ctx.textAlign = "center";
-        this.ctx.textBaseline = "alphabetic";
-        this.ctx.fillText(
-            this.isMobile ? "tap anywhere" : "space  •  click  •  enter", 
-            this.canvas.width / 2, 
-            btnY + btnH + 28
-        ); 
-        this.ctx.restore();
+            // Hint text
+            this.ctx.save();
+            this.ctx.globalAlpha = btnProgress;
+            this.ctx.font = "13px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "alphabetic";
+            this.ctx.fillText(
+                this.isMobile ? "tap anywhere" : "space  •  click  •  enter", 
+                this.canvas.width / 2, 
+                btnY + btnH + 28
+            ); 
+            this.ctx.restore();
+        }
     }
     _renderStartScreen() { 
         if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
