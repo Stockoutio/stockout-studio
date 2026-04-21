@@ -277,13 +277,33 @@ class AdBird {
                 // MISS!
                 const isGiga = b.scale > 3.0;
                 const msg = isGiga ? this._nextFromBag('megaMissMsgBag', 'megaMissMessages') : this._nextFromBag('missMsgBag', 'missMessages');
+                
+                // Smart Stacking
+                let yOffset = 0;
+                this.floatingTexts.forEach(t => { if (t.y > this.canvas.height - 150) yOffset += 35; });
+                
                 this.floatingTexts.push({ 
-                    x: b.x, y: this.canvas.height - 20, text: msg, 
+                    x: b.x, y: this.canvas.height - 20 - yOffset, text: msg, 
                     color: "#9ca3af", age: 0, alpha: 1, vy: 0, 
                     scale: isGiga ? 1.4 : 0.8, align: "center", 
-                    isMega: isGiga, glow: isGiga ? "#4b5563" : null 
+                    isMega: isGiga, glow: isGiga ? "#4b5563" : null,
+                    isShivering: isGiga
                 });
-                if (isGiga) this.state.screenShake = 15;
+
+                // SPLASH PARTICLES
+                const pCount = isGiga ? 45 : 12;
+                for (let j = 0; j < pCount; j++) {
+                    this.state.particles.push({
+                        x: b.x, y: this.canvas.height,
+                        vx: (Math.random() - 0.5) * (isGiga ? 12 : 6),
+                        vy: (Math.random() - 1.0) * (isGiga ? 25 : 12),
+                        size: Math.random() * 5 + 2,
+                        color: Math.random() > 0.5 ? "#60a5fa" : "#fff", // Blue/White water
+                        life: 1.0, isDeath: true
+                    });
+                }
+
+                if (isGiga) this.state.screenShake = 30;
                 this.playSound(isGiga ? 'mega_miss' : 'miss');
                 this.bombs.splice(i, 1);
             }
@@ -745,7 +765,17 @@ class AdBird {
         this.floatingTexts.forEach(t => { 
             this.ctx.save(); 
             this.ctx.textAlign = t.align || "center"; 
-            this.ctx.globalAlpha = t.alpha; this.ctx.translate(t.x, t.y); this.ctx.scale(t.scale, t.scale); 
+            this.ctx.globalAlpha = t.alpha; 
+            
+            let tx = t.x, ty = t.y;
+            if (t.isShivering) {
+                tx += (Math.random() - 0.5) * 4;
+                ty += (Math.random() - 0.5) * 4;
+            }
+            this.ctx.translate(tx, ty); 
+            
+            const pulseScale = t.isMega ? t.scale * (1 + Math.sin(t.age * 0.2) * 0.1) : t.scale;
+            this.ctx.scale(pulseScale, pulseScale); 
             this.ctx.font = t.isMega ? "900 38px 'Outfit', sans-serif" : "bold 32px 'Outfit', sans-serif"; 
             if (t.glow) { this.ctx.shadowBlur = 25; this.ctx.shadowColor = t.glow; }
             this.ctx.strokeStyle = "#000"; this.ctx.lineWidth = t.isMega ? 3 : 1.5; this.ctx.strokeText(t.text, 0, 0); 
