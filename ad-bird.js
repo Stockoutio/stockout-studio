@@ -373,8 +373,8 @@ class AdBird {
         this.ctx.font = "bold 52px 'Outfit', sans-serif";
         const numW = this.ctx.measureText(impactNum).width;
         
-        // Gentle Horizontal Sway
-        const sway = Math.sin(this.state.frameCount * 0.05) * 10;
+        // Gentle Horizontal Sway (Subtler)
+        const sway = Math.sin(this.state.frameCount * 0.03) * 4;
         let curX = this.ui.scoreCenter - (labelW + numW) / 2 + sway;
 
         this.ctx.textBaseline = "middle";
