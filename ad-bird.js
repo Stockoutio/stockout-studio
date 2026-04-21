@@ -362,43 +362,37 @@ class AdBird {
 
     _renderHUD() {
         this.ctx.fillStyle = "#fff"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "alphabetic"; this.ctx.font = "bold 48px 'Outfit', sans-serif"; this.ctx.fillText(this.state.score, this.ui.scoreCenter, 65);
-        // --- MARKETING IMPACT: ROLLING HIGHLIGHT ---
+        // --- MARKETING IMPACT: BREATHING GLOW ---
         this.ctx.save();
         const impactText = "MARKETING IMPACT: ";
         const impactNum = this.state.directHits.toString();
-        const fullStr = impactText + impactNum;
         
         this.ctx.font = "bold 18px 'Outfit', sans-serif";
         const labelW = this.ctx.measureText(impactText).width;
         this.ctx.font = "bold 52px 'Outfit', sans-serif";
         const numW = this.ctx.measureText(impactNum).width;
         
-        // Gentle Horizontal Sway (Subtler)
         const sway = Math.sin(this.state.frameCount * 0.03) * 4;
         let curX = this.ui.scoreCenter - (labelW + numW) / 2 + sway;
 
         this.ctx.textBaseline = "middle";
         this.ctx.textAlign = "left";
-        this.ctx.shadowBlur = 10;
+        
+        // Breathing Glow Peak
+        const pulse = Math.sin(this.state.frameCount * 0.08) * 5 + 12;
+        this.ctx.shadowBlur = pulse;
         this.ctx.shadowColor = "#06b6d4";
 
-        // Draw Label with Rolling Highlight
+        // Draw Label
         this.ctx.font = "bold 18px 'Outfit', sans-serif";
-        for (let i = 0; i < impactText.length; i++) {
-            const char = impactText[i];
-            const peak = (Math.sin(this.state.frameCount * 0.08) + 1) / 2 * impactText.length;
-            const dist = Math.abs(i - peak);
-            const alpha = Math.max(0.4, 1 - (dist / 8));
-            this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            this.ctx.fillText(char, curX, 100);
-            curX += this.ctx.measureText(char).width;
-        }
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        this.ctx.fillText(impactText, curX, 100);
 
-        // Draw Number (WHITE & PULSING GLOW)
+        // Draw Number
         this.ctx.font = "bold 52px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fff";
-        this.ctx.shadowBlur = 15 + Math.sin(this.state.frameCount * 0.1) * 10;
-        this.ctx.fillText(impactNum, curX + 5, 100);
+        this.ctx.shadowBlur = pulse + 10;
+        this.ctx.fillText(impactNum, curX + labelW + 5, 100);
         this.ctx.restore();
         this.ctx.font = "24px serif"; this.ctx.textAlign = "right"; this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", this.ui.muteBtn.x, this.ui.muteBtn.y);
         const fs = this.ui.fullscreenBtn; this.ctx.save(); this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)"; this.ctx.beginPath(); this.ctx.arc(fs.x, fs.y, fs.radius, 0, Math.PI * 2); this.ctx.fill(); this.ctx.font = "bold 54px serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle"; this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; this.ctx.fillText("⤢", fs.x, fs.y + 4); this.ctx.restore();
