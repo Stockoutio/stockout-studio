@@ -154,10 +154,12 @@ class AdBird {
             return;
         }
 
-        if (this.state.waitingForGameOver) return;
+        const KEYMAP = this.config.keys;
+        const isFlap = KEYMAP.flapCodes.includes(e.code) || KEYMAP.flapKeys.includes(e.key);
+        const isBomb = KEYMAP.bombCodes.includes(e.code) || KEYMAP.bombKeys.includes(e.key);
+        const isEnter = e.code === 'Enter' || e.key === 'Enter';
 
-        const isFlap = KEYMAP.flapCodes.includes(e.code) || KEYMAP.flapKeys.includes(e.key), isBomb = KEYMAP.bombCodes.includes(e.code) || KEYMAP.bombKeys.includes(e.key);
-        if (isFlap || isBomb) { 
+        if (isFlap || isBomb || isEnter) { 
             e.preventDefault(); 
             if (this.state.isGameOver) { this._resetToSplash(); return; }
             if (!this.state.gameRunning) this.start(); 
@@ -955,12 +957,68 @@ class AdBird {
             }
         });
 
-        // Continue prompt at bottom
-        this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; 
-        this.ctx.font = "18px 'Outfit', sans-serif"; 
-        this.ctx.textAlign = "center"; 
+        // --- RUN IT BACK button ---
+        const btnW = 280;
+        const btnH = 64;
+        const btnX = (this.canvas.width - btnW) / 2;
+        const btnY = this.canvas.height / 2 + 180;
+        const btnRadius = 14;
+
+        // Pulsing glow (sin-wave pulse)
+        const pulse = Math.sin(this.state.frameCount * 0.06) * 0.5 + 0.5; // 0 to 1
+        const glowIntensity = 20 + (pulse * 20); // 20-40px glow
+
+        this.ctx.save();
+
+        // Outer glow layer
+        this.ctx.shadowBlur = glowIntensity;
+        this.ctx.shadowColor = "#06b6d4";
+        this.ctx.fillStyle = "rgba(6, 182, 212, 0.15)";
+        this.ctx.beginPath();
+        this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
+        this.ctx.fill();
+
+        // Gradient fill
+        const gradient = this.ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY);
+        gradient.addColorStop(0, "rgba(6, 182, 212, 0.9)");
+        gradient.addColorStop(0.5, "rgba(59, 130, 246, 0.9)");
+        gradient.addColorStop(1, "rgba(6, 182, 212, 0.9)");
+        this.ctx.fillStyle = gradient;
+        this.ctx.shadowBlur = 0;
+        this.ctx.beginPath();
+        this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
+        this.ctx.fill();
+
+        // Border stroke for definition
+        this.ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
+        this.ctx.stroke();
+
+        // Button text
+        this.ctx.font = "900 26px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "#fff";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.shadowBlur = 8;
+        this.ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+        this.ctx.fillText("RUN IT BACK  →", btnX + btnW / 2, btnY + btnH / 2);
+
+        this.ctx.restore();
+
+        // Secondary hint text below button
+        this.ctx.save();
+        this.ctx.font = "13px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+        this.ctx.textAlign = "center";
         this.ctx.textBaseline = "alphabetic";
-        this.ctx.fillText(this.isMobile ? "TAP to continue" : "SPACE or CLICK to continue", this.canvas.width / 2, this.canvas.height / 2 + 220); 
+        this.ctx.fillText(
+            this.isMobile ? "tap anywhere" : "space  •  click  •  enter", 
+            this.canvas.width / 2, 
+            btnY + btnH + 28
+        ); 
+        this.ctx.restore();
     }
     _renderStartScreen() { 
         if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
