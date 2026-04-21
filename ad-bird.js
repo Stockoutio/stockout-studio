@@ -312,7 +312,8 @@ class AdBird {
         const bg = this.assets.worlds[this.state.currentWorld]; 
         if (bg && bg.complete) { 
             const rx = this.state.bgX; 
-            this.ctx.drawImage(bg, rx, 0, this.canvas.width, this.canvas.height); 
+            // Add +2 to width to create a seamless overlap and prevent shearing
+            this.ctx.drawImage(bg, rx, 0, this.canvas.width + 2, this.canvas.height); 
             this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width, this.canvas.height); 
         } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
     _renderBubbles() { this.ctx.fillStyle = "rgba(255, 255, 255, 0.2)"; this.bubbles.forEach(b => { this.ctx.beginPath(); this.ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); this.ctx.fill(); }); }
