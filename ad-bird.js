@@ -137,45 +137,50 @@ class AdBird {
     /* --- INPUT ENGINE --- */
 
     _handleKeydown(e) {
-        if (!this.state.assetsLoaded || this.state.waitingForGameOver) return;
+        if (!this.state.assetsLoaded) return;
+        
+        // Fullscreen toggle always works
+        if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
+            e.preventDefault();
+            this.toggleFullscreen();
+            return;
+        }
+
+        if (this.state.waitingForGameOver) return;
+
         const isFlap = KEYMAP.flapCodes.includes(e.code) || KEYMAP.flapKeys.includes(e.key), isBomb = KEYMAP.bombCodes.includes(e.code) || KEYMAP.bombKeys.includes(e.key);
-        if (isFlap || isBomb || e.code === 'KeyF' || e.key === 'f' || e.key === 'F') { 
+        if (isFlap || isBomb) { 
             e.preventDefault(); 
             if (this.state.isGameOver) { this._resetToSplash(); return; }
             if (!this.state.gameRunning) this.start(); 
-            else { if (isFlap) this.flap(); if (isBomb) this.dropBomb(); if (e.code==='KeyF'||e.key==='f') this.toggleFullscreen(); } 
+            else { if (isFlap) this.flap(); if (isBomb) this.dropBomb(); } 
         }
     }
 
     _handleInput(e) {
-        if (!this.state.assetsLoaded || this.state.waitingForGameOver) return;
+        if (!this.state.assetsLoaded) return;
+        
         const r = this.state.lastRect || this.canvas.getBoundingClientRect();
         const canvasAspect = this.canvas.width / this.canvas.height;
         const rectAspect = r.width / r.height;
         let dw, dh, dx, dy;
         if (rectAspect > canvasAspect) {
-            // Element is wider than canvas aspect — letterboxed left/right
-            dh = r.height;
-            dw = dh * canvasAspect;
-            dx = (r.width - dw) / 2;
-            dy = 0;
+            dh = r.height; dw = dh * canvasAspect; dx = (r.width - dw) / 2; dy = 0;
         } else {
-            // Element is taller than canvas aspect — letterboxed top/bottom
-            dw = r.width;
-            dh = dw / canvasAspect;
-            dx = 0;
-            dy = (r.height - dh) / 2;
+            dw = r.width; dh = dw / canvasAspect; dx = 0; dy = (r.height - dh) / 2;
         }
         const x = Math.max(0, Math.min(this.canvas.width, (e.clientX - (r.left + dx)) * (this.canvas.width / dw)));
         const y = Math.max(0, Math.min(this.canvas.height, (e.clientY - (r.top + dy)) * (this.canvas.height / dh)));
-        
-        if (this.state.isGameOver) { this._resetToSplash(); return; }
         
         const action = this._hitTest(x, y);
         
         // Fullscreen and mute work regardless of game state
         if (action === 'fullscreen') { this.toggleFullscreen(); return; }
         if (action === 'mute') { this.toggleMute(); return; }
+
+        if (this.state.waitingForGameOver) return;
+        
+        if (this.state.isGameOver) { this._resetToSplash(); return; }
         
         // If game isn't running, any click (including bomb button) starts it
         if (!this.state.gameRunning) { this.start(); return; }
