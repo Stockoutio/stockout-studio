@@ -47,7 +47,7 @@ class AdBird {
             hitMessages: window.AdBirdContent.HIT_MESSAGES,
             gameOverMessages: window.AdBirdContent.GAME_OVER_MESSAGES,
             readyMessages: window.AdBirdContent.READY_MESSAGES,
-            msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899"],
+            msgColors: ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899", "#f43f5e"],
 
             // --- Pass 2: Refactor Configs ---
             screenShakeDecay: 0.9,
@@ -778,12 +778,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const SUPABASE_URL = 'https://agbtvbymknayxrebochn.supabase.co'; 
         const SUPABASE_KEY = 'sb_publishable_8yipwhYLiM19LVR8qLXT6A_MOD1YTl1';
         try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/ads?select=text&is_paid=eq.true&status=eq.approved&expires_at=gt.now()`, {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/ads?select=text,color&is_paid=eq.true&status=eq.approved&expires_at=gt.now()`, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
             });
             if (response.ok) {
                 const data = await response.json();
-                const colors = ['#a855f7', '#06b6d4', '#f59e0b', '#22c55e', '#ec4899'];
+                const colors = ['#a855f7', '#06b6d4', '#f59e0b', '#22c55e', '#ec4899', '#f43f5e'];
                 paidAds = data.map(ad => {
                     // Hash the ad text to pick a stable color
                     let hash = 0;
@@ -791,7 +791,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         hash = ((hash << 5) - hash) + ad.text.charCodeAt(i);
                         hash |= 0;
                     }
-                    const color = colors[Math.abs(hash) % colors.length];
+                    const color = ad.color || colors[Math.abs(hash) % colors.length];
                     return { ...ad, isPaid: true, color };
                 });
             }
