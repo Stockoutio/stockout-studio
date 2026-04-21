@@ -340,6 +340,7 @@ class AdBird {
         this.pipes = [];
         this.bombs = [];
         this.floatingTexts = [];
+        this.state.bgX = 0;
         
         // --- THE RESET BLAST ---
         this.state.screenShake = 15;
