@@ -312,8 +312,16 @@ class AdBird {
             })) 
         }); 
         let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
-        const hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
-        this.floatingTexts.push({ x: bx, y: sy, age: 0, vy: 0, alpha: 1, scale: 1, text: hitMsg, color: this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)] }); 
+        
+        let hitMsg;
+        if (scale >= 5.0) {
+            const mega = ["MEGA SPLAT", "GIGA SPLAT", "AD-POCALYPSE", "ULTRA KILL", "MONSTER SPLAT", "SIGN DESTROYER", "MARKET CRASHED", "KPIs CRUSHED", "BRAND DESTRUCTION", "TOTAL COVERAGE"];
+            hitMsg = mega[Math.floor(Math.random()*mega.length)];
+        } else {
+            hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
+        }
+
+        this.floatingTexts.push({ x: bx, y: sy, age: 0, vy: 0, alpha: 1, scale: scale >= 5.0 ? 1.5 : 1, text: hitMsg, color: this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)] }); 
         this.playSound('splat'); 
     }
 
@@ -338,8 +346,8 @@ class AdBird {
     flap() { this.player.velocity = this.config.lift; this.playSound('flap'); }
     dropBomb() { 
         if (this.state.bombTimer > 0) return; 
-        // Extreme variance: from tiny pellets (0.5x) to massive globusters (3.0x)
-        const scale = Math.random() * 2.5 + 0.5; 
+        // Nuclear variance: from tiny pellets (0.5x) to massive advertising nukes (6.0x)
+        const scale = Math.random() * 5.5 + 0.5; 
         this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15 * scale, h: 20 * scale, speed: 8, scale: scale }); 
         this.state.bombTimer = 20; 
     }
