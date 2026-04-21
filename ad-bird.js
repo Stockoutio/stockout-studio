@@ -44,10 +44,18 @@ class AdBird {
             paidAds: options.paidAds || [],
             stockAds: (() => {
                 const colors = ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899", "#f43f5e"];
-                return (options.stockAds || window.AdBirdContent.STOCK_ADS).map((text, i) => ({ 
-                    text: text.toUpperCase(), 
-                    color: colors[i % colors.length]
-                }));
+                return (options.stockAds || window.AdBirdContent.STOCK_ADS).map(text => {
+                    // Hash the ad text for stable color across sessions
+                    let hash = 0;
+                    for (let i = 0; i < text.length; i++) {
+                        hash = ((hash << 5) - hash) + text.charCodeAt(i);
+                        hash |= 0;
+                    }
+                    return { 
+                        text: text.toUpperCase(), 
+                        color: colors[Math.abs(hash) % colors.length]
+                    };
+                });
             })(),
             maxStockConsecutive: 3,
             hitMessages: window.AdBirdContent.HIT_MESSAGES,
@@ -907,33 +915,3 @@ class AdBird {
     _initBubbles() { this.bubbles = Array.from({ length: 20 }, () => ({ x: Math.random() * this.canvas.width, y: Math.random() * this.canvas.height, size: Math.random() * 3 + 1, speed: Math.random() * 0.5 + 0.2 })); }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const initGame = async () => {
-        let paidAds = [];
-        const SUPABASE_URL = 'https://agbtvbymknayxrebochn.supabase.co'; 
-        const SUPABASE_KEY = 'sb_publishable_8yipwhYLiM19LVR8qLXT6A_MOD1YTl1';
-        try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/ads?select=text,color&is_paid=eq.true&status=eq.approved&expires_at=gt.now()`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                const colors = ['#a855f7', '#06b6d4', '#f59e0b', '#22c55e', '#ec4899', '#f43f5e'];
-                paidAds = data.map(ad => {
-                    // Hash the ad text to pick a stable color
-                    let hash = 0;
-                    for (let i = 0; i < ad.text.length; i++) {
-                        hash = ((hash << 5) - hash) + ad.text.charCodeAt(i);
-                        hash |= 0;
-                    }
-                    const color = ad.color || colors[Math.abs(hash) % colors.length];
-                    return { ...ad, isPaid: true, color };
-                });
-            }
-        } catch (e) {
-            console.warn("Backend unavailable or not configured, using stock ads only.");
-        }
-        window.adBirdGame = new AdBird('adBirdCanvas', { paidAds });
-    };
-    initGame();
-});
