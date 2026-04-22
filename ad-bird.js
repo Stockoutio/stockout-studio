@@ -1704,7 +1704,7 @@ class AdBird {
         // Hover lift
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
         const rentFocused = this.state.splashFocus === 1;
-        const rentY = rent.y;
+        const rentY = rent.y - rentHoverLift;
         const showShimmerRent = (this.state.rentBtnHover || rentFocused) && rentClickAlpha > 0.3;
         
         this.ctx.save();
