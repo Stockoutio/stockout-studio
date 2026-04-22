@@ -132,6 +132,7 @@ class AdBird {
         this._handleInput = this._handleInput.bind(this);
         this._handleMouseMove = this._handleMouseMove.bind(this);
         this._handleResize = this._handleResize.bind(this);
+        this._handleTouchStart = this._handleTouchStart.bind(this);
 
         this.assets.player.src = this.config.playerImg;
         this.assets.player.onload = () => this.state.assetsLoaded++;
@@ -153,15 +154,7 @@ class AdBird {
         const it = this.canvas.parentElement || this.canvas;
         it.addEventListener('mousedown', this._handleInput);
         it.addEventListener('mousemove', this._handleMouseMove);
-        it.addEventListener('touchstart', (e) => { 
-            if (this.isMobile) { 
-                e.preventDefault(); 
-                for (let i = 0; i < e.changedTouches.length; i++) { 
-                    const t = e.changedTouches[i]; 
-                    this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} }); 
-                } 
-            } 
-        }, { passive: false });
+        it.addEventListener('touchstart', this._handleTouchStart, { passive: false });
         
         it.addEventListener('contextmenu', (e) => e.preventDefault());
         if (this.overlay) {
@@ -243,6 +236,16 @@ class AdBird {
             e.preventDefault();
             if (isFlap) this.flap();
             if (isBomb) this.dropBomb();
+        }
+    }
+
+    _handleTouchStart(e) {
+        if (this.isMobile) { 
+            e.preventDefault(); 
+            for (let i = 0; i < e.changedTouches.length; i++) { 
+                const t = e.changedTouches[i]; 
+                this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} }); 
+            } 
         }
     }
 
@@ -1649,6 +1652,9 @@ class AdBird {
         this.ctx.fillText(ctaText, cx, ctaY);
         this.ctx.restore();
         
+        this._recalculateSplashRects();
+    }
+        
         // --- RENT-A-PIPE™ BUTTON ---
         const rentBtnW = 260;
         const rentBtnH = 58;
@@ -1957,10 +1963,34 @@ class AdBird {
     _handleResize() {
         this.state.lastRect = this.canvas.getBoundingClientRect();
         this._initHUDGeometry();
-        // Force-recalculate splash buttons by running the layout logic once
-        if (!this.state.gameRunning && !this.state.isGameOver) {
-            this._renderStartScreen();
-        }
+        this._recalculateSplashRects();
+    }
+
+    _recalculateSplashRects() {
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height / 2;
+        
+        // PLAY
+        const ctaText = this.isMobile ? "▶ TAP TO PLAY" : "▶ PRESS ENTER TO PLAY";
+        this.ctx.save();
+        this.ctx.font = "900 24px 'Outfit', sans-serif";
+        const ctaW = this.ctx.measureText(ctaText).width + 60;
+        const ctaH = 52;
+        const ctaX = cx - ctaW / 2;
+        const ctaBaseY = cy + 220;
+        const playHoverLift = this.state.playBtnHover ? 4 : 0;
+        const ctaY = ctaBaseY - playHoverLift;
+        this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
+        this.ctx.restore();
+
+        // RENT
+        const rentBtnW = 260;
+        const rentBtnH = 58;
+        const rentX = cx - rentBtnW / 2;
+        const rentBaseY = ctaBaseY + 84;
+        const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
+        const rentY = rentBaseY - rentHoverLift;
+        this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
     }
 
     // NEW:
@@ -1971,7 +2001,7 @@ class AdBird {
         const it = this.canvas.parentElement || this.canvas;
         it.removeEventListener('mousedown', this._handleInput);
         it.removeEventListener('mousemove', this._handleMouseMove);
-        // Clean up any internal touch handlers if necessary
+        it.removeEventListener('touchstart', this._handleTouchStart);
         if (this.assets && this.assets.music) this.assets.music.pause();
     }
 }
