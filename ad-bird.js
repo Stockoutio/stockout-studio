@@ -260,11 +260,8 @@ class AdBird {
 
         // Game-over screen handling
         if (this.state.isGameOver) {
-            // Shop open — swallow game keys so Enter/Space doesn't reset past the shop
-            if (this.state.shopOpen) {
-                if (isFlap || isBomb || isEnter) e.preventDefault();
-                return;
-            }
+            // Shop open — delegate to shop keyboard handler (nav, select, close)
+            if (this._handleShopKey(e)) return;
             if (isFlap || isBomb || isEnter) {
                 e.preventDefault();
                 this._triggerButtonExplosion();
@@ -275,11 +272,8 @@ class AdBird {
 
         // Splash screen — Option A keyboard nav
         if (!this.state.gameRunning) {
-            // Shop open — swallow game keys so Space/Enter doesn't start the game
-            if (this.state.shopOpen) {
-                if (isFlap || isBomb || isEnter || isFocusCycle) e.preventDefault();
-                return;
-            }
+            // Shop open — delegate to shop keyboard handler (nav, select, close)
+            if (this._handleShopKey(e)) return;
             // Any direction/WASD cycles focus across PLAY (0), RENT (1), SHOP (2)
             if (isFocusCycle) {
                 e.preventDefault();
@@ -466,6 +460,25 @@ class AdBird {
         if (hoveringPlay) this.state.splashFocus = 0;
         else if (hoveringRent) this.state.splashFocus = 1;
         else if (hoveringSplashShop) this.state.splashFocus = 2;
+
+        // Sync shopHoverIndex to mouse position whenever shop is open.
+        // This unifies mouse + keyboard — whichever input was touched most recently drives the highlight.
+        if (this.state.shopOpen) {
+            const modalW = Math.min(this.canvas.width * 0.75, 640);
+            const modalX = this.canvas.width / 2 - modalW / 2;
+            const modalY = this.canvas.height / 2 - 290;  // modal h = 580
+            const rowH = 58;
+            const rowStartY = modalY + 140;
+            const rowX = modalX + 20;
+            const rowW = modalW - 40;
+
+            if (y >= rowStartY && x >= rowX && x <= rowX + rowW) {
+                const idx = Math.floor((y - rowStartY) / rowH);
+                if (idx >= 0 && idx < this.config.shopColors.length) {
+                    this.state.shopHoverIndex = idx;
+                }
+            }
+        }
 
         this.canvas.style.cursor = (hoveringRunBack || hoveringPlay || hoveringRent || hoveringFS || hoveringMute || hoveringSplashShop || hoveringGameOverShop) ? 'pointer' : 'default';
     }
@@ -2361,7 +2374,7 @@ class AdBird {
 
         // Translate origin to draw point, then scale — text draws at local (0,0)
         // so textAlign=center guarantees horizontal centering on cx
-        this.ctx.translate(cx, cy + 105);
+        this.ctx.translate(cx, cy + 110);
         this.ctx.scale(heroBreathe, heroBreathe);
 
         this.ctx.shadowBlur = 30 + (breathe * 20);
@@ -2777,6 +2790,7 @@ class AdBird {
         this.state.rentBtnPressed = 0;
         this.state.splashFocus = 0;
         this.state.shopOpen = false;
+        this.state.shopHoverIndex = -1;
         this.state.combo = 0;
         this.state.lastHitFrame = 0;
         this.state.missCombo = 0;
@@ -2957,7 +2971,7 @@ class AdBird {
         const ctaW = this.ctx.measureText(ctaText).width + 60;
         const ctaH = 52;
         const ctaX = cx - ctaW / 2;
-        const ctaBaseY = cy + 170;
+        const ctaBaseY = cy + 200;
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
         const ctaY = ctaBaseY - playHoverLift;
         this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
@@ -2967,7 +2981,7 @@ class AdBird {
         const rentBtnW = 260;
         const rentBtnH = 54;
         const rentX = cx - rentBtnW / 2;
-        const rentBaseY = ctaBaseY + 70;
+        const rentBaseY = ctaBaseY + 48;
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
         const rentY = rentBaseY - rentHoverLift;
         this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
@@ -2977,7 +2991,7 @@ class AdBird {
         const shopBtnW = 200;
         const shopBtnH = 36;
         const shopX = cx - shopBtnW / 2;
-        const shopY = rentBaseY + rentBtnH + 18;
+        const shopY = rentBaseY + rentBtnH + 22;
         this._shopBtnRect = { x: shopX, y: shopY, w: shopBtnW, h: shopBtnH };
     }
 
@@ -3185,8 +3199,8 @@ class AdBird {
             const isSelected = this.state.selectedColor === c.id;
             const canAfford = this.state.adCoins >= c.cost;
 
-            const isHover = this.state.mouseY >= rowY && this.state.mouseY <= rowY + rowH - 4 &&
-                           this.state.mouseX >= rowX && this.state.mouseX <= rowX + rowW;
+            // Single source of truth — shopHoverIndex is driven by BOTH mouse move and keyboard nav
+            const isHover = this.state.shopHoverIndex === i;
 
             const rowPhase = f * 0.05 + i * 0.3;
             const tintHex = c.tint || "#ffffff";
@@ -3328,6 +3342,69 @@ class AdBird {
         this.ctx.fillText("CLICK OUTSIDE OR THE SHOP BUTTON TO CLOSE", cx, y + h - 25);
 
         this.ctx.restore();
+    }
+
+    _handleShopKey(e) {
+        if (!this.state.shopOpen) return false;
+
+        const isEnter = e.code === 'Enter' || e.key === 'Enter';
+        const isEscape = e.code === 'Escape' || e.key === 'Escape';
+        const isSpace = e.code === 'Space' || e.key === ' ';
+        const isUp = ['ArrowUp', 'KeyW'].includes(e.code) || ['w', 'W'].includes(e.key);
+        const isDown = ['ArrowDown', 'KeyS'].includes(e.code) || ['s', 'S'].includes(e.key);
+
+        if (isEscape) {
+            e.preventDefault();
+            this.state.shopOpen = false;
+            this.state.shopHoverIndex = -1;
+            this.playSound('score');
+            return true;
+        }
+
+        if (isUp || isDown) {
+            e.preventDefault();
+            const len = this.config.shopColors.length;
+            if (this.state.shopHoverIndex < 0) {
+                // First nav key seeds selection to the currently-equipped color's row
+                const idx = this.config.shopColors.findIndex(c => c.id === this.state.selectedColor);
+                this.state.shopHoverIndex = idx >= 0 ? idx : 0;
+            } else {
+                const delta = isUp ? -1 : 1;
+                this.state.shopHoverIndex = (this.state.shopHoverIndex + delta + len) % len;
+            }
+            this.playSound('score');
+            return true;
+        }
+
+        if (isEnter || isSpace) {
+            e.preventDefault();
+            if (this.state.shopHoverIndex < 0) {
+                // No row picked yet — seed to currently-equipped, require a second press to act
+                const idx = this.config.shopColors.findIndex(c => c.id === this.state.selectedColor);
+                this.state.shopHoverIndex = idx >= 0 ? idx : 0;
+                return true;
+            }
+            const color = this.config.shopColors[this.state.shopHoverIndex];
+            const isOwned = this.state.ownedColors.includes(color.id);
+            if (isOwned) {
+                this.state.selectedColor = color.id;
+                this._safeStorage('set', 'adBirdSelectedColor', color.id);
+                this.playSound('score');
+            } else if (this.state.adCoins >= color.cost) {
+                this.state.adCoins -= color.cost;
+                this.state.ownedColors.push(color.id);
+                this.state.selectedColor = color.id;
+                this._safeStorage('set', 'adBirdCoins', this.state.adCoins);
+                this._safeStorage('set', 'adBirdOwnedColors', JSON.stringify(this.state.ownedColors));
+                this._safeStorage('set', 'adBirdSelectedColor', color.id);
+                this.playSound('shift');
+            }
+            return true;
+        }
+
+        // Swallow any other keys (flap/bomb/left/right) so they don't leak to game logic
+        e.preventDefault();
+        return true;
     }
 
     _handleShopClick(x, y) {
