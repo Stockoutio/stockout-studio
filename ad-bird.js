@@ -108,7 +108,8 @@ class AdBird {
             mouseX: 0, mouseY: 0, runItBackHover: false, runItBackPressed: 0,
             splashFocus: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
-            particles: [], deathMsg: "", currentReadyMsg: ""
+            particles: [], deathMsg: "", currentReadyMsg: "",
+            fullscreenHover: false, muteHover: false, fullscreenPressed: 0, mutePressed: 0
         };
         this.state.currentWorld = this._nextWorld();
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
@@ -267,8 +268,16 @@ class AdBird {
         const action = this._hitTest(x, y);
         
         // Fullscreen and mute are exclusive — they always do their own thing, never advance
-        if (action === 'fullscreen') { this.toggleFullscreen(); return; }
-        if (action === 'mute') { this.toggleMute(); return; }
+        if (action === 'fullscreen') { 
+            this.state.fullscreenPressed = this.state.frameCount;
+            this.toggleFullscreen(); 
+            return; 
+        }
+        if (action === 'mute') { 
+            this.state.mutePressed = this.state.frameCount;
+            this.toggleMute(); 
+            return; 
+        }
 
         if (this.state.waitingForGameOver) return;
         
@@ -323,16 +332,21 @@ class AdBird {
         const hoveringRunBack = this._isOverRunItBack(x, y);
         const hoveringPlay = this._isOverPlayBtn(x, y);
         const hoveringRent = this._isOverRentBtn(x, y);
+        const action = this._hitTest(x, y);
+        const hoveringFS = action === 'fullscreen';
+        const hoveringMute = action === 'mute';
 
         this.state.runItBackHover = hoveringRunBack;
         this.state.playBtnHover = hoveringPlay;
         this.state.rentBtnHover = hoveringRent;
+        this.state.fullscreenHover = hoveringFS;
+        this.state.muteHover = hoveringMute;
 
         // If hovering a splash button, shift focus to it
         if (hoveringPlay) this.state.splashFocus = 0;
         else if (hoveringRent) this.state.splashFocus = 1;
 
-        this.canvas.style.cursor = (hoveringRunBack || hoveringPlay || hoveringRent) ? 'pointer' : 'default';
+        this.canvas.style.cursor = (hoveringRunBack || hoveringPlay || hoveringRent || hoveringFS || hoveringMute) ? 'pointer' : 'default';
     }
 
     _isOverRunItBack(x, y) {
@@ -746,29 +760,59 @@ class AdBird {
         // Mute button — circular, top right
         const m = this.ui.muteBtn;
         this.ctx.save();
+        
+        // Hover and Press animations
+        const mHoverScale = this.state.muteHover ? 1.1 : 1.0;
+        const mFramesSincePress = f - this.state.mutePressed;
+        const mPressScale = (mFramesSincePress < 10) ? 1 - (0.15 * (1 - mFramesSincePress / 10)) : 1;
+        const mFinalScale = mHoverScale * mPressScale;
+        
+        this.ctx.translate(m.x, m.y);
+        this.ctx.scale(mFinalScale, mFinalScale);
+        
+        if (this.state.muteHover) {
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = "#fff";
+        }
+        
         this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
         this.ctx.beginPath();
-        this.ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+        this.ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
         this.ctx.fill();
         this.ctx.font = "22px serif";
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-        this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", m.x, m.y + 1);
+        this.ctx.fillText(this.state.isMuted ? "🔇" : "🔊", 0, 1);
         this.ctx.restore();
 
         // Fullscreen button — circular, top right
         const fs = this.ui.fullscreenBtn;
         this.ctx.save();
+        
+        // Hover and Press animations
+        const fsHoverScale = this.state.fullscreenHover ? 1.1 : 1.0;
+        const fsFramesSincePress = f - this.state.fullscreenPressed;
+        const fsPressScale = (fsFramesSincePress < 10) ? 1 - (0.15 * (1 - fsFramesSincePress / 10)) : 1;
+        const fsFinalScale = fsHoverScale * fsPressScale;
+        
+        this.ctx.translate(fs.x, fs.y);
+        this.ctx.scale(fsFinalScale, fsFinalScale);
+        
+        if (this.state.fullscreenHover) {
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = "#fff";
+        }
+        
         this.ctx.fillStyle = "rgba(10, 10, 15, 0.6)";
         this.ctx.beginPath();
-        this.ctx.arc(fs.x, fs.y, fs.radius, 0, Math.PI * 2);
+        this.ctx.arc(0, 0, fs.radius, 0, Math.PI * 2);
         this.ctx.fill();
         this.ctx.font = "bold 28px serif";
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-        this.ctx.fillText("⤢", fs.x, fs.y + 2);
+        this.ctx.fillText("⤢", 0, 2);
         this.ctx.restore();
 
         const b = this.ui.bombBtn; this.ctx.save(); this.ctx.fillStyle = this.state.bombTimer > 0 ? "rgba(255, 255, 255, 0.15)" : "rgba(6, 182, 212, 0.6)"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4"; this.ctx.beginPath(); this.ctx.roundRect(b.x, b.y, b.w, b.h, b.radius); this.ctx.fill();
@@ -1556,7 +1600,6 @@ class AdBird {
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "top";
                 this.ctx.fillText(b.label, bX + bW / 2, badgeY + 14);
-                
                 this.ctx.font = "900 42px 'Outfit', sans-serif";
                 this.ctx.fillStyle = b.color;
                 this.ctx.textBaseline = "middle";
@@ -1566,45 +1609,42 @@ class AdBird {
             });
         }
         
-        // --- PLAY BUTTON (formerly "PRESS ANY KEY TO BEGIN") ---
+        // --- SPLASH LAYOUT ---
+        this._recalculateSplashRects();
+        const f = this.state.frameCount;
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height / 2;
+        const slowPulse = Math.sin(f * 0.05) * 0.5 + 0.5;
+
+        // --- PLAY BUTTON ---
+        const play = this._playBtnRect;
         const ctaText = this.isMobile ? "▶ TAP TO PLAY" : "▶ PRESS ENTER TO PLAY";
         
         this.ctx.save();
-        this.ctx.font = "900 24px 'Outfit', sans-serif";
-        const ctaW = this.ctx.measureText(ctaText).width + 60;
-        const ctaH = 52;
-        const ctaX = cx - ctaW / 2;
-        const ctaBaseY = cy + 220;
         
-        // Click compression for play button
-        const playFramesSincePress = this.state.playBtnPressed ? f - this.state.playBtnPressed : 999;
+        // Press animation logic
+        const playFramesSincePress = f - this.state.playBtnPressed;
         const playClickScale = playFramesSincePress < 15 ? 1 - (0.2 * (1 - playFramesSincePress / 15)) : 1;
         const playClickAlpha = playFramesSincePress < 30 ? Math.max(0, 1 - (playFramesSincePress / 30)) : 1;
         
-        // Hover lift
+        // Hover and Focus logic
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
-        // Focus state (keyboard selected)
         const playFocused = this.state.splashFocus === 0;
-        const ctaY = ctaBaseY - playHoverLift;
-        
-        // Cache rect for hit-testing
-        this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
+        const ctaY = play.y + play.h/2 - playHoverLift;
         
         // Click compression transform
-        const playBtnCx = ctaX + ctaW / 2;
-        const playBtnCy = ctaY;
-        this.ctx.translate(playBtnCx, playBtnCy);
+        this.ctx.translate(play.x + play.w/2, ctaY);
         this.ctx.scale(playClickScale, playClickScale);
-        this.ctx.translate(-playBtnCx, -playBtnCy);
+        this.ctx.translate(-(play.x + play.w/2), -ctaY);
         this.ctx.globalAlpha = playClickAlpha;
         
         // Backing panel
         this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
         this.ctx.beginPath();
-        this.ctx.roundRect(ctaX, ctaY - ctaH / 2, ctaW, ctaH, 12);
+        this.ctx.roundRect(play.x, ctaY - play.h / 2, play.w, play.h, 12);
         this.ctx.fill();
         
-        // Pulsing border — brighter when focused/hovered
+        // Pulsing border
         const ctaPulse = Math.sin(f * 0.08) * 0.2 + 0.8;
         const ctaGlow = (playFocused || this.state.playBtnHover) ? 35 : 20;
         this.ctx.shadowBlur = ctaGlow;
@@ -1613,97 +1653,93 @@ class AdBird {
         this.ctx.lineWidth = (playFocused || this.state.playBtnHover) ? 3 : 2;
         this.ctx.globalAlpha = playClickAlpha * ctaPulse;
         this.ctx.beginPath();
-        this.ctx.roundRect(ctaX, ctaY - ctaH / 2, ctaW, ctaH, 12);
+        this.ctx.roundRect(play.x, ctaY - play.h / 2, play.w, play.h, 12);
         this.ctx.stroke();
         this.ctx.shadowBlur = 0;
         
-        // Focus ring (extra outer stroke when keyboard-focused)
+        // Focus ring
         if (playFocused) {
             this.ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
-            this.ctx.roundRect(ctaX - 5, ctaY - ctaH / 2 - 5, ctaW + 10, ctaH + 10, 15);
+            this.ctx.roundRect(play.x - 5, ctaY - play.h / 2 - 5, play.w + 10, play.h + 10, 15);
             this.ctx.stroke();
         }
         
-        // Shimmer on hover/focus
+        // Shimmer
         if ((this.state.playBtnHover || playFocused) && playFramesSincePress > 30) {
             this.ctx.save();
             this.ctx.beginPath();
-            this.ctx.roundRect(ctaX, ctaY - ctaH / 2, ctaW, ctaH, 12);
+            this.ctx.roundRect(play.x, ctaY - play.h / 2, play.w, play.h, 12);
             this.ctx.clip();
             const sPos = (f * 0.015) % 1;
             const sW = 60;
-            const sX = ctaX - sW + (ctaW + sW * 2) * sPos;
+            const sX = play.x - sW + (play.w + sW * 2) * sPos;
             const sGrad = this.ctx.createLinearGradient(sX, 0, sX + sW, 0);
             sGrad.addColorStop(0, "rgba(6, 182, 212, 0)");
             sGrad.addColorStop(0.5, "rgba(6, 182, 212, 0.3)");
             sGrad.addColorStop(1, "rgba(6, 182, 212, 0)");
             this.ctx.fillStyle = sGrad;
-            this.ctx.fillRect(ctaX, ctaY - ctaH / 2, ctaW, ctaH);
+            this.ctx.fillRect(play.x, ctaY - play.h / 2, play.w, play.h);
             this.ctx.restore();
         }
         
         // Text
         this.ctx.globalAlpha = playClickAlpha;
+        this.ctx.font = "900 24px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#06b6d4";
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
-        this.ctx.fillText(ctaText, cx, ctaY);
+        this.ctx.fillText(ctaText, play.x + play.w/2, ctaY);
         this.ctx.restore();
         
         // --- RENT-A-PIPE™ BUTTON ---
-        const rentBtnW = 260;
-        const rentBtnH = 58;
-        const rentX = cx - rentBtnW / 2;
-        const rentBaseY = ctaBaseY + 84;
+        const rent = this._rentBtnRect;
         const rentPulse = Math.sin(f * 0.05) * 0.5 + 0.5;
         
         // Click compression for rent button
-        const rentFramesSincePress = this.state.rentBtnPressed ? f - this.state.rentBtnPressed : 999;
+        const rentFramesSincePress = f - this.state.rentBtnPressed;
         const rentClickScale = rentFramesSincePress < 15 ? 1 - (0.2 * (1 - rentFramesSincePress / 15)) : 1;
         const rentClickAlpha = rentFramesSincePress < 30 ? Math.max(0, 1 - (rentFramesSincePress / 30)) : 1;
         
         // Hover lift
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
         const rentFocused = this.state.splashFocus === 1;
-        const rentY = rentBaseY - rentHoverLift;
-        
-        this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
+        const rentY = rent.y - rentHoverLift;
         
         this.ctx.save();
-        const rentBtnCx = rentX + rentBtnW / 2;
-        const rentBtnCy = rentY + rentBtnH / 2;
+        const rentBtnCx = rent.x + rent.w / 2;
+        const rentBtnCy = rentY + rent.h / 2;
         this.ctx.translate(rentBtnCx, rentBtnCy);
         this.ctx.scale(rentClickScale, rentClickScale);
         this.ctx.translate(-rentBtnCx, -rentBtnCy);
         this.ctx.globalAlpha = rentClickAlpha;
         
-        // Outer glow (brighter when hovered/focused)
+        // Outer glow
         const rentGlow = 15 + (rentPulse * 15) + ((this.state.rentBtnHover || rentFocused) ? 20 : 0);
         this.ctx.shadowBlur = rentGlow;
         this.ctx.shadowColor = "#f59e0b";
         this.ctx.fillStyle = "rgba(245, 158, 11, 0.15)";
         this.ctx.beginPath();
-        this.ctx.roundRect(rentX, rentY, rentBtnW, rentBtnH, 12);
+        this.ctx.roundRect(rent.x, rentY, rent.w, rent.h, 12);
         this.ctx.fill();
         
         // Gradient fill
-        const rentGrad = this.ctx.createLinearGradient(rentX, rentY, rentX + rentBtnW, rentY);
+        const rentGrad = this.ctx.createLinearGradient(rent.x, rentY, rent.x + rent.w, rentY);
         rentGrad.addColorStop(0, "rgba(245, 158, 11, 0.95)");
         rentGrad.addColorStop(0.5, "rgba(236, 72, 153, 0.95)");
         rentGrad.addColorStop(1, "rgba(245, 158, 11, 0.95)");
         this.ctx.fillStyle = rentGrad;
         this.ctx.shadowBlur = 0;
         this.ctx.beginPath();
-        this.ctx.roundRect(rentX, rentY, rentBtnW, rentBtnH, 12);
+        this.ctx.roundRect(rent.x, rentY, rent.w, rent.h, 12);
         this.ctx.fill();
         
-        // Border (thicker when hovered/focused)
+        // Border
         this.ctx.strokeStyle = (this.state.rentBtnHover || rentFocused) ? "rgba(255, 255, 255, 0.8)" : "rgba(255, 255, 255, 0.4)";
         this.ctx.lineWidth = (this.state.rentBtnHover || rentFocused) ? 3 : 2;
         this.ctx.beginPath();
-        this.ctx.roundRect(rentX, rentY, rentBtnW, rentBtnH, 12);
+        this.ctx.roundRect(rent.x, rentY, rent.w, rent.h, 12);
         this.ctx.stroke();
         
         // Focus ring
@@ -1711,7 +1747,7 @@ class AdBird {
             this.ctx.strokeStyle = "rgba(245, 158, 11, 0.4)";
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
-            this.ctx.roundRect(rentX - 5, rentY - 5, rentBtnW + 10, rentBtnH + 10, 15);
+            this.ctx.roundRect(rent.x - 5, rentY - 5, rent.w + 10, rent.h + 10, 15);
             this.ctx.stroke();
         }
         
@@ -1719,21 +1755,21 @@ class AdBird {
         if ((this.state.rentBtnHover || rentFocused) && rentFramesSincePress > 30) {
             this.ctx.save();
             this.ctx.beginPath();
-            this.ctx.roundRect(rentX, rentY, rentBtnW, rentBtnH, 12);
+            this.ctx.roundRect(rent.x, rentY, rent.w, rent.h, 12);
             this.ctx.clip();
             const sPos = (f * 0.015) % 1;
             const sW = 70;
-            const sX = rentX - sW + (rentBtnW + sW * 2) * sPos;
+            const sX = rent.x - sW + (rent.w + sW * 2) * sPos;
             const sGrad = this.ctx.createLinearGradient(sX, 0, sX + sW, 0);
             sGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
             sGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.4)");
             sGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
             this.ctx.fillStyle = sGrad;
-            this.ctx.fillRect(rentX, rentY, rentBtnW, rentBtnH);
+            this.ctx.fillRect(rent.x, rentY, rent.w, rent.h);
             this.ctx.restore();
         }
         
-        // Text — "RENT-A-PIPE™" with tiny TM
+        // Text
         this.ctx.font = "900 20px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fff";
         this.ctx.textAlign = "center";
@@ -1741,12 +1777,11 @@ class AdBird {
         this.ctx.shadowBlur = 6;
         this.ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
         
-        // Main text baseline
         const mainText = "💰  RENT-A-PIPE";
         const priceText = "  $5";
         const tmText = "™";
         
-        // Measure all parts
+        this.ctx.font = "900 20px 'Outfit', sans-serif";
         const mainW = this.ctx.measureText(mainText).width;
         const priceW = this.ctx.measureText(priceText).width;
         this.ctx.font = "900 11px 'Outfit', sans-serif";
@@ -1755,22 +1790,17 @@ class AdBird {
         const totalTextW = mainW + tmW + priceW;
         const textStartX = rentBtnCx - totalTextW / 2;
         
-        // Draw main
         this.ctx.font = "900 20px 'Outfit', sans-serif";
         this.ctx.textAlign = "left";
         this.ctx.fillText(mainText, textStartX, rentBtnCy);
-        
-        // Draw tiny TM superscript
         this.ctx.font = "900 11px 'Outfit', sans-serif";
         this.ctx.fillText(tmText, textStartX + mainW, rentBtnCy - 8);
-        
-        // Draw price
         this.ctx.font = "900 20px 'Outfit', sans-serif";
         this.ctx.fillText(priceText, textStartX + mainW + tmW, rentBtnCy);
         
         this.ctx.restore();
         
-        // --- KEYBOARD HINT (backing pill for legibility on any world) ---
+        // --- KEYBOARD HINT ---
         if (!this.isMobile) {
             const hintText = "← → ARROWS TO SELECT  •  ENTER TO ACTIVATE";
             this.ctx.save();
@@ -1778,7 +1808,7 @@ class AdBird {
             const hintW = this.ctx.measureText(hintText).width + 28;
             const hintH = 24;
             const hintX = cx - hintW / 2;
-            const hintY = rentBaseY + rentBtnH + 18;
+            const hintY = rent.y + rent.h + 18;
             
             // Dark backing pill
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.7)";
@@ -1800,7 +1830,6 @@ class AdBird {
             this.ctx.fillText(hintText, cx, hintY);
             this.ctx.restore();
         }
-        this._recalculateSplashRects();
     }
 
     _resetToSplash() {
@@ -1977,9 +2006,7 @@ class AdBird {
         const ctaH = 52;
         const ctaX = cx - ctaW / 2;
         const ctaBaseY = cy + 220;
-        const playHoverLift = this.state.playBtnHover ? 4 : 0;
-        const ctaY = ctaBaseY - playHoverLift;
-        this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
+        this._playBtnRect = { x: ctaX, y: ctaBaseY - ctaH / 2, w: ctaW, h: ctaH };
         this.ctx.restore();
 
         // RENT
@@ -1987,9 +2014,7 @@ class AdBird {
         const rentBtnH = 58;
         const rentX = cx - rentBtnW / 2;
         const rentBaseY = ctaBaseY + 84;
-        const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
-        const rentY = rentBaseY - rentHoverLift;
-        this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
+        this._rentBtnRect = { x: rentX, y: rentBaseY, w: rentBtnW, h: rentBtnH };
     }
 
     // NEW:
