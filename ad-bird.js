@@ -760,10 +760,8 @@ class AdBird {
         // Mute button — circular, top right
         const m = this.ui.muteBtn;
         this.ctx.save();
-        
-        // Hover and Press animations
         const mHoverScale = this.state.muteHover ? 1.1 : 1.0;
-        const mFramesSincePress = f - this.state.mutePressed;
+        const mFramesSincePress = this.state.frameCount - this.state.mutePressed;
         const mPressScale = (mFramesSincePress < 10) ? 1 - (0.15 * (1 - mFramesSincePress / 10)) : 1;
         const mFinalScale = mHoverScale * mPressScale;
         
@@ -789,10 +787,8 @@ class AdBird {
         // Fullscreen button — circular, top right
         const fs = this.ui.fullscreenBtn;
         this.ctx.save();
-        
-        // Hover and Press animations
         const fsHoverScale = this.state.fullscreenHover ? 1.1 : 1.0;
-        const fsFramesSincePress = f - this.state.fullscreenPressed;
+        const fsFramesSincePress = this.state.frameCount - this.state.fullscreenPressed;
         const fsPressScale = (fsFramesSincePress < 10) ? 1 - (0.15 * (1 - fsFramesSincePress / 10)) : 1;
         const fsFinalScale = fsHoverScale * fsPressScale;
         
@@ -1630,7 +1626,7 @@ class AdBird {
         // Hover and Focus logic
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
         const playFocused = this.state.splashFocus === 0;
-        const ctaY = play.y + play.h/2 - playHoverLift;
+        const ctaY = play.y + play.h/2;
         
         // Click compression transform
         this.ctx.translate(play.x + play.w/2, ctaY);
@@ -1705,7 +1701,7 @@ class AdBird {
         // Hover lift
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
         const rentFocused = this.state.splashFocus === 1;
-        const rentY = rent.y - rentHoverLift;
+        const rentY = rent.y;
         
         this.ctx.save();
         const rentBtnCx = rent.x + rent.w / 2;
@@ -1997,8 +1993,9 @@ class AdBird {
     _recalculateSplashRects() {
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
-        
-        // PLAY
+        const f = this.state.frameCount;
+
+        // PLAY BUTTON
         const ctaText = this.isMobile ? "▶ TAP TO PLAY" : "▶ PRESS ENTER TO PLAY";
         this.ctx.save();
         this.ctx.font = "900 24px 'Outfit', sans-serif";
@@ -2006,15 +2003,25 @@ class AdBird {
         const ctaH = 52;
         const ctaX = cx - ctaW / 2;
         const ctaBaseY = cy + 220;
-        this._playBtnRect = { x: ctaX, y: ctaBaseY - ctaH / 2, w: ctaW, h: ctaH };
+        
+        const playHoverLift = this.state.playBtnHover ? 4 : 0;
+        const playFocused = this.state.splashFocus === 0;
+        const ctaY = ctaBaseY - playHoverLift;
+        
+        this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
         this.ctx.restore();
 
-        // RENT
+        // RENT BUTTON
         const rentBtnW = 260;
         const rentBtnH = 58;
         const rentX = cx - rentBtnW / 2;
         const rentBaseY = ctaBaseY + 84;
-        this._rentBtnRect = { x: rentX, y: rentBaseY, w: rentBtnW, h: rentBtnH };
+        
+        const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
+        const rentFocused = this.state.splashFocus === 1;
+        const rentY = rentBaseY - rentHoverLift;
+        
+        this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
     }
 
     // NEW:
