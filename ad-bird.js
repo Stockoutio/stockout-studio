@@ -89,11 +89,11 @@ class AdBird {
             comboVoiceLines: window.AdBirdContent.COMBO_VOICE_LINES,
             shopColors: [
                 { id: 'default', name: 'DEFAULT', cost: 0, tint: null },
-                { id: 'cyan', name: 'EMERALD', cost: 50, tint: '#10b981' },
-                { id: 'magenta', name: 'HOT PINK', cost: 100, tint: '#ec4899' },
-                { id: 'gold', name: 'GOLD RUSH', cost: 200, tint: '#fbbf24' },
-                { id: 'purple', name: 'SYNERGY PURPLE', cost: 350, tint: '#a855f7' },
-                { id: 'red', name: 'MARKET RED', cost: 500, tint: '#f43f5e' }
+                { id: 'cyan', name: 'EMERALD', cost: 750, tint: '#10b981' },
+                { id: 'magenta', name: 'HOT PINK', cost: 2500, tint: '#ec4899' },
+                { id: 'gold', name: 'GOLD RUSH', cost: 7500, tint: '#fbbf24' },
+                { id: 'purple', name: 'SYNERGY PURPLE', cost: 15000, tint: '#a855f7' },
+                { id: 'red', name: 'MARKET RED', cost: 50000, tint: '#f43f5e' }
             ]
         };
         this.config = { ...this.config, ...options };
@@ -149,7 +149,7 @@ class AdBird {
     }
 
     _initBuffers() {
-        this.pipes = []; this.bombs = []; this.bubbles = []; this.floatingTexts = [];
+        this.pipes = []; this.bombs = []; this.bubbles = []; this.floatingTexts = []; this.coins = [];
         this.assets = { player: new Image(), worlds: [], music: new Audio(this.config.musicSrc) };
         this.assets.music.loop = true;
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -541,7 +541,7 @@ class AdBird {
         Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0, combo: 0, lastHitFrame: 0, missCombo: 0, difficultyMultiplier: 1.0, comboVoiceBag: [] });
         this.canvas.style.cursor = 'default';
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
-        this.pipes = []; this.bombs = []; this.floatingTexts = [];
+        this.pipes = []; this.bombs = []; this.floatingTexts = []; this.coins = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
     }
 
@@ -767,6 +767,60 @@ class AdBird {
                 b.y = Math.random() * this.canvas.height;  // Rerandomize y on respawn
             } 
         });
+
+        // COINS — move, collect, expire
+        const dynamicSpeedForCoins = (this.config.pipeSpeed + Math.floor(this.state.score / 10) * 0.25) * this.state.difficultyMultiplier;
+        for (let i = this.coins.length - 1; i >= 0; i--) {
+            const c = this.coins[i];
+            c.x -= dynamicSpeedForCoins * dt;
+            c.spin += 0.15 * dt;
+            c.bob += 0.08 * dt;
+
+            if (c.collected) {
+                this.coins.splice(i, 1);
+                continue;
+            }
+
+            // Pickup — circle vs player AABB
+            const pcx = this.player.x + this.player.w / 2;
+            const pcy = this.player.y + this.player.h / 2;
+            const dx = c.x - pcx;
+            const dy = c.y - pcy;
+            if (dx * dx + dy * dy < (c.r + this.player.w / 2) * (c.r + this.player.w / 2)) {
+                c.collected = true;
+                this.state.adCoins += 1;
+                this._safeStorage('set', 'adBirdCoins', this.state.adCoins);
+
+                // Sparkle burst
+                for (let k = 0; k < 14; k++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    const sp = Math.random() * 6 + 2;
+                    this.state.particles.push({
+                        x: c.x, y: c.y,
+                        vx: Math.cos(ang) * sp,
+                        vy: Math.sin(ang) * sp,
+                        size: Math.random() * 3 + 1,
+                        color: Math.random() > 0.5 ? "#fbbf24" : "#fff",
+                        life: 0.7,
+                        isMega: true
+                    });
+                }
+
+                this._pushFloatingText({
+                    x: c.x, y: c.y - 20,
+                    text: "+1🪙",
+                    color: "#fbbf24",
+                    glow: "#f59e0b",
+                    scale: 0.9,
+                    vy: -2
+                });
+
+                this._playTone({ type: 'sine', freq: [900, 1400], vol: 0.2, dur: 0.1 });
+                continue;
+            }
+
+            if (c.x < -40) this.coins.splice(i, 1);
+        }
     }
 
     _spawnPipe() {
@@ -791,6 +845,19 @@ class AdBird {
             nearMissed: false,
             isSuper: isSuper
         });
+
+        // Spawn a coin mid-gap 60% of the time, 250px after the pipe (between pipes)
+        if (!isSuper && Math.random() < 0.6) {
+            const coinY = h + 30 + Math.random() * (gap - 60);
+            this.coins.push({
+                x: this.canvas.width + 250,
+                y: coinY,
+                r: 14,
+                collected: false,
+                spin: Math.random() * Math.PI * 2,
+                bob: Math.random() * Math.PI * 2
+            });
+        }
     }
 
     /* --- RENDERING --- */
@@ -798,7 +865,7 @@ class AdBird {
     _draw() {
         this.ctx.save(); if (this.state.screenShake > 0.5) this.ctx.translate((Math.random()-0.5)*this.state.screenShake, (Math.random()-0.5)*this.state.screenShake);
         this.ctx.clearRect(-40, -40, this.canvas.width+80, this.canvas.height+80);
-        this._renderWorld(); this._renderMidground(); this._renderPipes(); this._renderBombs(); 
+        this._renderWorld(); this._renderMidground(); this._renderPipes(); this._renderCoins(); this._renderBombs(); 
         if (this.state.gameRunning || this.state.isGameOver) this._renderPlayer();
         this._renderParticles(); this._renderFloatingTexts(); this._renderOverlay();
         this.ctx.restore();
@@ -811,14 +878,21 @@ class AdBird {
             const collapseY = p.collapseOffsetY || 0;
 
             if (!p.collapsing) {
-                // Fast path — render pipe as a single unit
                 this.ctx.save();
                 this.ctx.translate(shakeX, shakeY);
-                this._drawPipeBody(p);
-                this._drawPipeBorders(p, p.ad.color, 3);
-                this._drawPipeCaps(p, p.ad.color, 3, 18);
-                this._drawPipeStains(p, 3);
-                this._drawPipeLabel(p, p.ad.color);
+                if (p.isSuper) {
+                    this._drawSuperPipeBody(p);
+                    this._drawPipeBorders(p, "#fef3c7", 5);
+                    this._drawPipeCaps(p, "#fbbf24", 5, 22);
+                    this._drawPipeStains(p, 5);
+                    this._drawSuperPipeLabel(p);
+                } else {
+                    this._drawPipeBody(p);
+                    this._drawPipeBorders(p, p.ad.color, 3);
+                    this._drawPipeCaps(p, p.ad.color, 3, 18);
+                    this._drawPipeStains(p, 3);
+                    this._drawPipeLabel(p, p.ad.color);
+                }
                 this.ctx.restore();
                 return;
             }
@@ -927,6 +1001,83 @@ class AdBird {
         this.ctx.shadowColor = gc;
         this.ctx.shadowBlur = 12;
         this.ctx.fillText(p.ad.text, 0, 0);
+        this.ctx.restore();
+    }
+
+    _drawSuperPipeBody(p) {
+        const f = this.state.frameCount;
+        const pulse = Math.sin(f * 0.08) * 0.15 + 0.85;
+
+        // Animated vertical gradient — gold at edges, bright yellow center
+        const drawHalf = (yStart, yEnd) => {
+            const grad = this.ctx.createLinearGradient(p.x, yStart, p.x + p.w, yStart);
+            grad.addColorStop(0, `rgba(180, 130, 20, ${pulse})`);
+            grad.addColorStop(0.5, `rgba(253, 224, 71, ${pulse})`);
+            grad.addColorStop(1, `rgba(180, 130, 20, ${pulse})`);
+            this.ctx.fillStyle = grad;
+            this.ctx.fillRect(p.x, yStart, p.w, yEnd - yStart);
+        };
+        drawHalf(0, p.y);
+        drawHalf(p.y + p.gap, this.canvas.height);
+
+        // Diagonal shimmer stripes overlay
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.25;
+        const stripeOffset = (f * 1.2) % 40;
+        this.ctx.strokeStyle = "#fff";
+        this.ctx.lineWidth = 4;
+        for (let yy = -40 + stripeOffset; yy < this.canvas.height + 40; yy += 40) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(p.x - 10, yy);
+            this.ctx.lineTo(p.x + p.w + 10, yy + p.w + 20);
+            this.ctx.stroke();
+        }
+        this.ctx.restore();
+    }
+
+    _drawSuperPipeLabel(p) {
+        const f = this.state.frameCount;
+        const pulse = 1 + Math.sin(f * 0.12) * 0.08;
+
+        this.ctx.save();
+        this.ctx.translate(p.x + p.w / 2, p.y + p.gap + (this.canvas.height - (p.y + p.gap)) / 2);
+        this.ctx.rotate(-Math.PI / 2);
+        this.ctx.scale(pulse, pulse);
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+
+        const labelText = "🪙 JACKPOT 🪙";
+        this.ctx.font = "900 22px 'Outfit', sans-serif";
+
+        // Heavy stroke
+        this.ctx.strokeStyle = "#78350f";
+        this.ctx.lineWidth = 5;
+        this.ctx.strokeText(labelText, 0, 0);
+
+        // Gradient fill — bright white core, gold edges
+        const textW = this.ctx.measureText(labelText).width;
+        const labelGrad = this.ctx.createLinearGradient(-textW / 2, 0, textW / 2, 0);
+        labelGrad.addColorStop(0, "#fbbf24");
+        labelGrad.addColorStop(0.5, "#fff");
+        labelGrad.addColorStop(1, "#fbbf24");
+        this.ctx.fillStyle = labelGrad;
+        this.ctx.shadowColor = "#f59e0b";
+        this.ctx.shadowBlur = 18;
+        this.ctx.fillText(labelText, 0, 0);
+
+        // Swept shimmer on top
+        const shimPos = (f * 0.015) % 1.5 - 0.25;
+        this.ctx.save();
+        this.ctx.globalCompositeOperation = 'source-atop';
+        const shimX = -textW / 2 + textW * shimPos;
+        const shimGrad = this.ctx.createLinearGradient(shimX - 40, 0, shimX + 40, 0);
+        shimGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+        shimGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.9)");
+        shimGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+        this.ctx.fillStyle = shimGrad;
+        this.ctx.fillText(labelText, 0, 0);
+        this.ctx.restore();
+
         this.ctx.restore();
     }
 
@@ -1051,6 +1202,17 @@ class AdBird {
         this.ctx.fillText("SPEED", diffX, padding);
         this.ctx.fillStyle = "#fbbf24";
         this.ctx.fillText(this.state.difficultyMultiplier.toFixed(2) + "x", diffX, padding + 20);
+
+        // LIVE COIN COUNTER — below misses
+        this.ctx.font = "bold 14px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        this.ctx.fillText("🪙 AD COINS", padding, padding + 160);
+        this.ctx.font = "bold 28px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "#fbbf24";
+        this.ctx.shadowBlur = 14;
+        this.ctx.shadowColor = "#fbbf24";
+        this.ctx.fillText(this.state.adCoins, padding, padding + 180);
+        this.ctx.shadowBlur = 0;
         
         this.ctx.restore();
         
@@ -1513,6 +1675,45 @@ class AdBird {
             this.ctx.drawImage(bg, rx, 0, this.canvas.width + 2, this.canvas.height); 
             this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width, this.canvas.height); 
         } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
+    _renderCoins() {
+        if (!this.coins || this.coins.length === 0) return;
+        const f = this.state.frameCount;
+        this.coins.forEach(c => {
+            const bobY = Math.sin(c.bob) * 4;
+            const cy = c.y + bobY;
+            const widthScale = Math.abs(Math.cos(c.spin));  // 0 to 1 — spinning coin illusion
+
+            this.ctx.save();
+            this.ctx.translate(c.x, cy);
+
+            // Outer glow
+            this.ctx.shadowBlur = 20 + Math.sin(f * 0.15) * 8;
+            this.ctx.shadowColor = "#fbbf24";
+            this.ctx.fillStyle = "#fbbf24";
+            this.ctx.beginPath();
+            this.ctx.ellipse(0, 0, c.r * Math.max(widthScale, 0.15), c.r, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
+
+            // Inner highlight band
+            this.ctx.fillStyle = "#fde047";
+            this.ctx.beginPath();
+            this.ctx.ellipse(0, 0, c.r * 0.7 * Math.max(widthScale, 0.1), c.r * 0.7, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Coin face mark — shrinks and vanishes when sideways
+            if (widthScale > 0.3) {
+                this.ctx.fillStyle = "#78350f";
+                this.ctx.font = `bold ${Math.floor(c.r * 1.1 * widthScale)}px 'Outfit', sans-serif`;
+                this.ctx.textAlign = "center";
+                this.ctx.textBaseline = "middle";
+                this.ctx.fillText("$", 0, 1);
+            }
+
+            this.ctx.restore();
+        });
+    }
+
     _renderBombs() {
         this.bombs.forEach(b => {
             // Trail — longer, denser, color-shifted
@@ -2052,7 +2253,7 @@ class AdBird {
 
         // Translate origin to draw point, then scale — text draws at local (0,0)
         // so textAlign=center guarantees horizontal centering on cx
-        this.ctx.translate(cx, cy - 60);
+        this.ctx.translate(cx, cy + 60);
         this.ctx.scale(heroBreathe, heroBreathe);
 
         this.ctx.shadowBlur = 30 + (breathe * 20);
@@ -2093,12 +2294,12 @@ class AdBird {
                 { icon: "💥", label: "BOMB", desc: "SHIFT or R-CLICK" }
               ];
         
-        const cardW = 260;
-        const cardH = 150;
-        const cardGap = 28;
+        const cardW = 240;
+        const cardH = 130;
+        const cardGap = 24;
         const totalW = (cardW * 2) + cardGap;
         const startX = cx - totalW / 2;
-        const instY = cy + 20;
+        const instY = cy - 120;
         
         instructions.forEach((ins, i) => {
             const iX = startX + (i * (cardW + cardGap));
@@ -2161,23 +2362,23 @@ class AdBird {
             this.ctx.shadowBlur = 0;
 
             // Icon (bobbing)
-            this.ctx.font = "52px serif";
+            this.ctx.font = "44px serif";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "middle";
-            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 48 + iconBob);
+            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 40 + iconBob);
 
             // Label
-            this.ctx.font = "900 28px 'Outfit', sans-serif";
+            this.ctx.font = "900 24px 'Outfit', sans-serif";
             this.ctx.fillStyle = "#fff";
             this.ctx.shadowBlur = 8 + borderPulse * 8;
             this.ctx.shadowColor = accent;
-            this.ctx.fillText(ins.label, iX + cardW / 2, instY + 100);
+            this.ctx.fillText(ins.label, iX + cardW / 2, instY + 85);
             this.ctx.shadowBlur = 0;
 
             // Description
-            this.ctx.font = "bold 13px 'Outfit', sans-serif";
+            this.ctx.font = "bold 12px 'Outfit', sans-serif";
             this.ctx.fillStyle = accent;
-            this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 128);
+            this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 110);
 
             this.ctx.restore();
         });
@@ -2190,7 +2391,7 @@ class AdBird {
                 { label: "BEST MISSES", val: this.state.highTotalMisses, color: "#f43f5e" }
             ];
             
-            const badgeY = 215;
+            const badgeY = 180;
             const bW = 210;
             const bH = 85;
             const bGap = 20;
@@ -2422,7 +2623,7 @@ class AdBird {
         // --- SHOP MODAL (renders on top of everything if open) ---
         if (this.state.shopOpen) this._renderShop();
 
-        // --- KEYBOARD HINT (desktop only) ---
+        // --- KEYBOARD HINT (desktop only) — below the shop button ---
         if (!this.isMobile) {
             const hintText = "← → ARROWS TO SELECT  •  ENTER TO ACTIVATE";
             this.ctx.save();
@@ -2430,7 +2631,7 @@ class AdBird {
             const hintW = this.ctx.measureText(hintText).width + 28;
             const hintH = 24;
             const hintX = cx - hintW / 2;
-            const hintY = rent.y + rent.h + 18;
+            const hintY = this._shopBtnRect.y + this._shopBtnRect.h + 22;
 
             // Dark backing pill
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.7)";
@@ -2478,6 +2679,7 @@ class AdBird {
         this.pipes = [];
         this.bombs = [];
         this.floatingTexts = [];
+        this.coins = [];
         this.state.bgX = 0;
         this.state.currentWorld = this._nextWorld();
         this.state.screenShake = 15;
@@ -2627,33 +2829,33 @@ class AdBird {
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
 
-        // PLAY
+        // PLAY — moved up since cards are now above
         const ctaText = this.isMobile ? "▶ TAP TO PLAY" : "▶ PRESS ENTER TO PLAY";
         this.ctx.save();
         this.ctx.font = "900 24px 'Outfit', sans-serif";
         const ctaW = this.ctx.measureText(ctaText).width + 60;
         const ctaH = 52;
         const ctaX = cx - ctaW / 2;
-        const ctaBaseY = cy + 220;
+        const ctaBaseY = cy + 180;
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
         const ctaY = ctaBaseY - playHoverLift;
         this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
         this.ctx.restore();
 
-        // RENT
+        // RENT — tightened spacing
         const rentBtnW = 260;
-        const rentBtnH = 58;
+        const rentBtnH = 54;
         const rentX = cx - rentBtnW / 2;
-        const rentBaseY = ctaBaseY + 84;
+        const rentBaseY = ctaBaseY + 70;
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
         const rentY = rentBaseY - rentHoverLift;
         this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
 
-        // SHOP
-        const shopBtnW = 180;
-        const shopBtnH = 44;
+        // SHOP — closer to rent button, leaves room for keyboard hint
+        const shopBtnW = 200;
+        const shopBtnH = 40;
         const shopX = cx - shopBtnW / 2;
-        const shopY = this._rentBtnRect.y + this._rentBtnRect.h + 55;
+        const shopY = this._rentBtnRect.y + this._rentBtnRect.h + 18;
         this._shopBtnRect = { x: shopX, y: shopY, w: shopBtnW, h: shopBtnH };
     }
 
