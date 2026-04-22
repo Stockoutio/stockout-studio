@@ -1994,9 +1994,7 @@ class AdBird {
     }
 
     _recalculateSplashRects() {
-        // SAFETY GUARD: prevents crash during constructor (state not ready yet)
-        if (!this.state) return;
-        if (this.state.gameRunning || this.state.isGameOver) return;
+        if (!this.state || this.state.gameRunning || this.state.isGameOver) return;
 
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
