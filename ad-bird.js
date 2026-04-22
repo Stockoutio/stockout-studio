@@ -82,7 +82,7 @@ class AdBird {
             difficultyGainPerHit: 0.05,
             difficultyLossPerMiss: 0.04,
             difficultyMin: 0.85,
-            difficultyMax: 1.65,
+            difficultyMax: 2.5,
             minPipeSpawnGap: 55,
             slowMoDuration: 12,
             slowMoFactor: 0.25,
