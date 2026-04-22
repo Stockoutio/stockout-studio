@@ -1607,10 +1607,6 @@ class AdBird {
         
         // --- SPLASH LAYOUT ---
         this._recalculateSplashRects();
-        const f = this.state.frameCount;
-        const cx = this.canvas.width / 2;
-        const cy = this.canvas.height / 2;
-        const slowPulse = Math.sin(f * 0.05) * 0.5 + 0.5;
 
         // --- PLAY BUTTON ---
         const play = this._playBtnRect;
