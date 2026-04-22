@@ -710,6 +710,19 @@ class AdBird {
         }
         for (let i = this.bombs.length - 1; i >= 0; i--) { 
             const b = this.bombs[i]; b.y += b.speed * dt; let hit = false; 
+            
+            // Grant miss-immunity if this bomb passes through the x-range of a collapsing pipe.
+            // Prevents combo-kill when a second bomb would have hit an already-destroyed pipe.
+            // Once set, immune stays true for the rest of this bomb's lifetime.
+            if (!b.immune) {
+                for (const p of this.pipes) {
+                    if (p.collapsing && b.x > p.x - 10 && b.x < p.x + p.w + 10) {
+                        b.immune = true;
+                        break;
+                    }
+                }
+            }
+            
             for (const p of this.pipes) { 
                 // Skip collapsing pipes — already destroyed, can't be re-bombed
                 if (p.collapsing) continue;
@@ -723,6 +736,11 @@ class AdBird {
                 this.bombs.splice(i, 1);
             }
             else if (b.y > this.canvas.height) {
+                // Immune bomb — would have hit a pipe that was already mid-collapse. Silent remove.
+                if (b.immune) {
+                    this.bombs.splice(i, 1);
+                    continue;
+                }
                 // MISS!
                 const isGiga = b.scale >= 5.0;
                 const msg = isGiga ? this._nextFromBag('megaMissMsgBag', 'megaMissMessages') : this._nextFromBag('missMsgBag', 'missMessages');
@@ -808,7 +826,7 @@ class AdBird {
 
                 this._pushFloatingText({
                     x: c.x, y: c.y - 20,
-                    text: "+1🪙",
+                    text: "+1 💰",
                     color: "#fbbf24",
                     glow: "#f59e0b",
                     scale: 0.9,
@@ -1046,7 +1064,7 @@ class AdBird {
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
 
-        const labelText = "🪙 JACKPOT 🪙";
+        const labelText = "💰 JACKPOT 💰";
         this.ctx.font = "900 22px 'Outfit', sans-serif";
 
         // Heavy stroke
@@ -1206,7 +1224,7 @@ class AdBird {
         // LIVE COIN COUNTER — below misses
         this.ctx.font = "bold 14px 'Outfit', sans-serif";
         this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-        this.ctx.fillText("🪙 AD COINS", padding, padding + 160);
+        this.ctx.fillText("💰 AD COINS", padding, padding + 160);
         this.ctx.font = "bold 28px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fbbf24";
         this.ctx.shadowBlur = 14;
@@ -2097,7 +2115,7 @@ class AdBird {
             this.ctx.textBaseline = "middle";
             this.ctx.shadowBlur = 15;
             this.ctx.shadowColor = "#fbbf24";
-            this.ctx.fillText(`+${this.state.lastCoinsEarned} AD COINS 🪙   (TOTAL: ${this.state.adCoins})`, this.canvas.width / 2, this.canvas.height / 2 + 150);
+            this.ctx.fillText(`+${this.state.lastCoinsEarned} AD COINS 💰   (TOTAL: ${this.state.adCoins})`, this.canvas.width / 2, this.canvas.height / 2 + 150);
             this.ctx.restore();
         }
 
@@ -2253,7 +2271,7 @@ class AdBird {
 
         // Translate origin to draw point, then scale — text draws at local (0,0)
         // so textAlign=center guarantees horizontal centering on cx
-        this.ctx.translate(cx, cy + 60);
+        this.ctx.translate(cx, cy + 130);
         this.ctx.scale(heroBreathe, heroBreathe);
 
         this.ctx.shadowBlur = 30 + (breathe * 20);
@@ -2299,7 +2317,7 @@ class AdBird {
         const cardGap = 24;
         const totalW = (cardW * 2) + cardGap;
         const startX = cx - totalW / 2;
-        const instY = cy - 120;
+        const instY = cy - 50;
         
         instructions.forEach((ins, i) => {
             const iX = startX + (i * (cardW + cardGap));
@@ -2383,30 +2401,27 @@ class AdBird {
             this.ctx.restore();
         });
         
-        // --- HIGH SCORE BADGES ---
+        // --- HIGH SCORE BADGES — triangle: 1 on top (BEST REACH), 2 below flanking (IMPACT, MISSES) ---
         if (this.state.highScore > 0 || this.state.highDirectHits > 0) {
+            const bW = 210;
+            const bH = 70;
+            const bGap = 20;
+            const topY = 180;
+            const bottomY = topY + bH + 10;
+            
             const badges = [
-                { label: "BEST REACH", val: this.state.highScore, color: "#fbbf24" },
-                { label: "BEST IMPACT", val: this.state.highDirectHits, color: "#06b6d4" },
-                { label: "BEST MISSES", val: this.state.highTotalMisses, color: "#f43f5e" }
+                { label: "BEST REACH", val: this.state.highScore, color: "#fbbf24", x: cx - bW / 2, y: topY },
+                { label: "BEST IMPACT", val: this.state.highDirectHits, color: "#06b6d4", x: cx - bW - bGap / 2, y: bottomY },
+                { label: "BEST MISSES", val: this.state.highTotalMisses, color: "#f43f5e", x: cx + bGap / 2, y: bottomY }
             ];
             
-            const badgeY = 180;
-            const bW = 210;
-            const bH = 85;
-            const bGap = 20;
-            const bTotal = (bW * 3) + (bGap * 2);
-            const bStartX = cx - bTotal / 2;
-            
-            badges.forEach((b, i) => {
-                const bX = bStartX + (i * (bW + bGap));
-                
+            badges.forEach(b => {
                 this.ctx.save();
                 this.ctx.globalAlpha = 0.9;
                 
                 this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
                 this.ctx.beginPath();
-                this.ctx.roundRect(bX, badgeY, bW, bH, 14);
+                this.ctx.roundRect(b.x, b.y, bW, bH, 14);
                 this.ctx.fill();
                 
                 this.ctx.shadowBlur = 8;
@@ -2414,19 +2429,19 @@ class AdBird {
                 this.ctx.strokeStyle = b.color;
                 this.ctx.lineWidth = 2;
                 this.ctx.beginPath();
-                this.ctx.roundRect(bX, badgeY, bW, bH, 14);
+                this.ctx.roundRect(b.x, b.y, bW, bH, 14);
                 this.ctx.stroke();
                 this.ctx.shadowBlur = 0;
                 
-                this.ctx.font = "bold 13px 'Outfit', sans-serif";
+                this.ctx.font = "bold 12px 'Outfit', sans-serif";
                 this.ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "top";
-                this.ctx.fillText(b.label, bX + bW / 2, badgeY + 14);
-                this.ctx.font = "900 42px 'Outfit', sans-serif";
+                this.ctx.fillText(b.label, b.x + bW / 2, b.y + 10);
+                this.ctx.font = "900 34px 'Outfit', sans-serif";
                 this.ctx.fillStyle = b.color;
                 this.ctx.textBaseline = "middle";
-                this.ctx.fillText(b.val, bX + bW / 2, badgeY + 56);
+                this.ctx.fillText(b.val, b.x + bW / 2, b.y + 46);
                 
                 this.ctx.restore();
             });
@@ -2836,7 +2851,7 @@ class AdBird {
         const ctaW = this.ctx.measureText(ctaText).width + 60;
         const ctaH = 52;
         const ctaX = cx - ctaW / 2;
-        const ctaBaseY = cy + 180;
+        const ctaBaseY = cy + 200;
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
         const ctaY = ctaBaseY - playHoverLift;
         this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
@@ -2851,11 +2866,12 @@ class AdBird {
         const rentY = rentBaseY - rentHoverLift;
         this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
 
-        // SHOP — closer to rent button, leaves room for keyboard hint
+        // SHOP — anchors to rentBaseY (not rent's possibly-lifted y)
+        // so hovering the rent button doesn't drag the shop up/down
         const shopBtnW = 200;
-        const shopBtnH = 40;
+        const shopBtnH = 36;
         const shopX = cx - shopBtnW / 2;
-        const shopY = this._rentBtnRect.y + this._rentBtnRect.h + 18;
+        const shopY = rentBaseY + rentBtnH + 18;
         this._shopBtnRect = { x: shopX, y: shopY, w: shopBtnW, h: shopBtnH };
     }
 
@@ -2948,7 +2964,7 @@ class AdBird {
         this.ctx.fillStyle = "#fbbf24";
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
-        this.ctx.fillText(`🪙 SHOP  •  ${this.state.adCoins}`, cx, cy);
+        this.ctx.fillText(`💰 SHOP  •  ${this.state.adCoins}`, cx, cy);
         this.ctx.restore();
     }
 
@@ -3033,7 +3049,7 @@ class AdBird {
         this.ctx.fillStyle = "#fbbf24";
         this.ctx.shadowBlur = 12;
         this.ctx.shadowColor = "#fbbf24";
-        this.ctx.fillText(`🪙 ${this.state.adCoins} AD COINS`, 0, 0);
+        this.ctx.fillText(`💰 ${this.state.adCoins} AD COINS`, 0, 0);
         this.ctx.restore();
 
         // COLOR ROWS
@@ -3175,7 +3191,7 @@ class AdBird {
                 this.ctx.textAlign = "right";
                 this.ctx.shadowBlur = isHover ? 16 : 10;
                 this.ctx.shadowColor = "#fbbf24";
-                this.ctx.fillText(`BUY 🪙${c.cost}`, 0, 0);
+                this.ctx.fillText(`BUY 💰${c.cost}`, 0, 0);
                 this.ctx.restore();
             } else {
                 this.ctx.font = "900 18px 'Outfit', sans-serif";
