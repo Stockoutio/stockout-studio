@@ -94,6 +94,15 @@ class AdBird {
                 { id: 'gold', name: 'GOLD RUSH', cost: 7500, tint: '#fbbf24' },
                 { id: 'purple', name: 'SYNERGY PURPLE', cost: 15000, tint: '#a855f7' },
                 { id: 'red', name: 'MARKET RED', cost: 50000, tint: '#f43f5e' }
+            ],
+            // Coin denominations — higher values are rarer. weight = relative spawn chance.
+            // coreColor/edgeColor are used by _renderCoins. face is the character drawn on the coin.
+            coinTypes: [
+                { value: 1,  weight: 60, coreColor: '#fbbf24', edgeColor: '#b45309', face: '$',  r: 14 },
+                { value: 2,  weight: 25, coreColor: '#e5e7eb', edgeColor: '#6b7280', face: '2',  r: 15 },
+                { value: 5,  weight: 10, coreColor: '#fde047', edgeColor: '#ca8a04', face: '5',  r: 17 },
+                { value: 10, weight: 4,  coreColor: '#34d399', edgeColor: '#047857', face: '10', r: 19 },
+                { value: 50, weight: 1,  coreColor: '#93c5fd', edgeColor: '#1e40af', face: '50', r: 22 }
             ]
         };
         this.config = { ...this.config, ...options };
@@ -188,6 +197,15 @@ class AdBird {
         window.addEventListener('keydown', this._handleKeydown);
         window.addEventListener('resize', this._handleResize);
         window.addEventListener('orientationchange', this._handleResize);
+        // When the tab regains focus (e.g. user returns from Stripe), clear any stuck press animations
+        // that would otherwise leave buttons invisible due to stale Date.now() press timestamps.
+        window.addEventListener('focus', () => {
+            this.state.playBtnPressed = 0;
+            this.state.rentBtnPressed = 0;
+            this.state.fullscreenPressed = 0;
+            this.state.mutePressed = 0;
+            this.state.runItBackPressed = 0;
+        });
         
         const it = this.canvas.parentElement || this.canvas;
         it.addEventListener('mousedown', this._handleInput);
@@ -208,6 +226,8 @@ class AdBird {
         }
         this.state.lastRect = this.canvas.getBoundingClientRect();
         this._initMidground();
+        // Pre-compute splash rects so mouse hover detection works from frame 0
+        this._recalculateSplashRects();
         this._loop();
     }
 
@@ -260,10 +280,16 @@ class AdBird {
                 if (isFlap || isBomb || isEnter || isFocusCycle) e.preventDefault();
                 return;
             }
-            // Any direction/WASD cycles focus
+            // Any direction/WASD cycles focus across PLAY (0), RENT (1), SHOP (2)
             if (isFocusCycle) {
                 e.preventDefault();
-                this.state.splashFocus = this.state.splashFocus === 0 ? 1 : 0;
+                const isForward = ['ArrowRight', 'ArrowDown', 'KeyD', 'KeyS'].includes(e.code) ||
+                                  ['d', 'D', 's', 'S'].includes(e.key);
+                if (isForward) {
+                    this.state.splashFocus = (this.state.splashFocus + 1) % 3;
+                } else {
+                    this.state.splashFocus = (this.state.splashFocus + 2) % 3;  // -1 mod 3
+                }
                 this.playSound('score');
                 return;
             }
@@ -274,12 +300,16 @@ class AdBird {
                     // PLAY
                     this._triggerSplashButtonExplosion('play');
                     setTimeout(() => this.start(), 300);
-                } else {
+                } else if (this.state.splashFocus === 1) {
                     // RENT
                     this._triggerSplashButtonExplosion('rent');
                     setTimeout(() => {
                         window.open(this._getStripeUrl(), '_blank');
                     }, 300);
+                } else {
+                    // SHOP — toggle modal
+                    this.state.shopOpen = !this.state.shopOpen;
+                    this.playSound('score');
                 }
                 return;
             }
@@ -397,7 +427,11 @@ class AdBird {
     _handleMouseMove(e) {
         if (!this.state.assetsLoaded) return;
         
-        const r = this.state.lastRect || this.canvas.getBoundingClientRect();
+        // Re-fetch rect on every move — cheap, and fixes stale rect when canvas layout shifts
+        // (e.g. if CSS loads late on first visit, or the page resizes without a resize event)
+        const r = this.canvas.getBoundingClientRect();
+        this.state.lastRect = r;
+
         const canvasAspect = this.canvas.width / this.canvas.height;
         const rectAspect = r.width / r.height;
         let dw, dh, dx, dy;
@@ -431,6 +465,7 @@ class AdBird {
         // If hovering a splash button, shift focus to it
         if (hoveringPlay) this.state.splashFocus = 0;
         else if (hoveringRent) this.state.splashFocus = 1;
+        else if (hoveringSplashShop) this.state.splashFocus = 2;
 
         this.canvas.style.cursor = (hoveringRunBack || hoveringPlay || hoveringRent || hoveringFS || hoveringMute || hoveringSplashShop || hoveringGameOverShop) ? 'pointer' : 'default';
     }
@@ -612,8 +647,9 @@ class AdBird {
             p.life -= (p.isDeath ? 0.005 : this.config.particleLifeDecay) * dt; // Death particles last longer
             if (p.life <= 0) this.state.particles.splice(i, 1); 
         }
-        if (this.state.particles.length > 400) {
-            this.state.particles.splice(0, this.state.particles.length - 400);
+        const cap = this.perfMode ? 180 : 400;
+        if (this.state.particles.length > cap) {
+            this.state.particles.splice(0, this.state.particles.length - cap);
         }
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { 
             const t = this.floatingTexts[i]; t.age++; 
@@ -639,8 +675,9 @@ class AdBird {
                 p.collapseOffsetY += p.collapseVel * dt;
             }
 
-            // Sparkle particles around active super pipes
-            if (p.isSuper && !p.collapsing && Math.floor(this.state.frameCount) % 2 === 0) {
+            // Sparkle particles around active super pipes (throttled on mobile)
+            const sparkleGate = this.perfMode ? 6 : 2;
+            if (p.isSuper && !p.collapsing && Math.floor(this.state.frameCount) % sparkleGate === 0) {
                 this.state.particles.push({
                     x: p.x + p.w / 2 + (Math.random() - 0.5) * p.w,
                     y: Math.random() > 0.5 ? p.y - 5 : p.y + p.gap + 5,
@@ -806,39 +843,56 @@ class AdBird {
             const dy = c.y - pcy;
             if (dx * dx + dy * dy < (c.r + this.player.w / 2) * (c.r + this.player.w / 2)) {
                 c.collected = true;
-                this.state.adCoins += 1;
+                const comboMult = Math.max(1, this.state.combo);
+                const earned = (c.value || 1) * comboMult;
+                this.state.adCoins += earned;
                 this._safeStorage('set', 'adBirdCoins', this.state.adCoins);
 
-                // Sparkle burst
-                for (let k = 0; k < 14; k++) {
+                // Sparkle burst — scales slightly with value
+                const sparkCount = Math.min(30, 10 + (c.value || 1) * 2);
+                for (let k = 0; k < sparkCount; k++) {
                     const ang = Math.random() * Math.PI * 2;
-                    const sp = Math.random() * 6 + 2;
+                    const sp = Math.random() * 7 + 2;
                     this.state.particles.push({
                         x: c.x, y: c.y,
                         vx: Math.cos(ang) * sp,
                         vy: Math.sin(ang) * sp,
                         size: Math.random() * 3 + 1,
-                        color: Math.random() > 0.5 ? "#fbbf24" : "#fff",
+                        color: Math.random() > 0.5 ? c.coreColor || '#fbbf24' : "#fff",
                         life: 0.7,
                         isMega: true
                     });
                 }
 
+                const multText = comboMult > 1 ? ` ×${comboMult}` : "";
                 this._pushFloatingText({
                     x: c.x, y: c.y - 20,
-                    text: "+1 💰",
-                    color: "#fbbf24",
-                    glow: "#f59e0b",
-                    scale: 0.9,
+                    text: `+${earned} 💰${multText}`,
+                    color: c.coreColor || "#fbbf24",
+                    glow: c.edgeColor || "#f59e0b",
+                    scale: 0.9 + Math.min(0.6, (c.value || 1) / 50),
                     vy: -2
                 });
 
-                this._playTone({ type: 'sine', freq: [900, 1400], vol: 0.2, dur: 0.1 });
+                // Higher-value coins get a deeper, more satisfying pitch
+                const basePitch = 900 + (c.value || 1) * 30;
+                this._playTone({ type: 'sine', freq: [basePitch, basePitch + 500], vol: 0.2, dur: 0.12 });
                 continue;
             }
 
             if (c.x < -40) this.coins.splice(i, 1);
         }
+    }
+
+    _pickCoinType() {
+        const types = this.config.coinTypes;
+        const totalWeight = types.reduce((sum, t) => sum + t.weight, 0);
+        let roll = Math.random() * totalWeight;
+        for (const t of types) {
+            roll -= t.weight;
+            if (roll <= 0) return t;
+        }
+        return types[0];  // fallback
     }
 
     _spawnPipe() {
@@ -864,13 +918,38 @@ class AdBird {
             isSuper: isSuper
         });
 
-        // Spawn a coin mid-gap 60% of the time, 250px after the pipe (between pipes)
+        // Spawn a coin mid-gap 60% of the time, between this pipe and the next
         if (!isSuper && Math.random() < 0.6) {
+            const coinType = this._pickCoinType();
             const coinY = h + 30 + Math.random() * (gap - 60);
+
+            // Start at +250 past this pipe, then push further right if it would land inside ANY existing pipe
+            let coinX = this.canvas.width + 250;
+            const coinR = coinType.r;
+            let safeX = false;
+            let attempts = 0;
+            while (!safeX && attempts < 8) {
+                safeX = true;
+                for (const otherPipe of this.pipes) {
+                    const overlapsX = (coinX + coinR) > otherPipe.x && (coinX - coinR) < otherPipe.x + otherPipe.w;
+                    const insideSolidY = coinY < otherPipe.y || coinY > otherPipe.y + otherPipe.gap;
+                    if (overlapsX && insideSolidY) {
+                        coinX = otherPipe.x + otherPipe.w + 60 + coinR;
+                        safeX = false;
+                        break;
+                    }
+                }
+                attempts++;
+            }
+
             this.coins.push({
-                x: this.canvas.width + 250,
+                x: coinX,
                 y: coinY,
-                r: 14,
+                r: coinR,
+                value: coinType.value,
+                coreColor: coinType.coreColor,
+                edgeColor: coinType.edgeColor,
+                face: coinType.face,
                 collected: false,
                 spin: Math.random() * Math.PI * 2,
                 bob: Math.random() * Math.PI * 2
@@ -1699,33 +1778,43 @@ class AdBird {
         this.coins.forEach(c => {
             const bobY = Math.sin(c.bob) * 4;
             const cy = c.y + bobY;
-            const widthScale = Math.abs(Math.cos(c.spin));  // 0 to 1 — spinning coin illusion
+            const widthScale = Math.abs(Math.cos(c.spin));
+            const coreColor = c.coreColor || '#fbbf24';
+            const edgeColor = c.edgeColor || '#b45309';
+            const face = c.face || '$';
 
             this.ctx.save();
             this.ctx.translate(c.x, cy);
 
-            // Outer glow
+            // Outer glow + edge color
             this.ctx.shadowBlur = 20 + Math.sin(f * 0.15) * 8;
-            this.ctx.shadowColor = "#fbbf24";
-            this.ctx.fillStyle = "#fbbf24";
+            this.ctx.shadowColor = coreColor;
+            this.ctx.fillStyle = edgeColor;
             this.ctx.beginPath();
             this.ctx.ellipse(0, 0, c.r * Math.max(widthScale, 0.15), c.r, 0, 0, Math.PI * 2);
             this.ctx.fill();
             this.ctx.shadowBlur = 0;
 
-            // Inner highlight band
-            this.ctx.fillStyle = "#fde047";
+            // Inner core
+            this.ctx.fillStyle = coreColor;
             this.ctx.beginPath();
-            this.ctx.ellipse(0, 0, c.r * 0.7 * Math.max(widthScale, 0.1), c.r * 0.7, 0, 0, Math.PI * 2);
+            this.ctx.ellipse(0, 0, c.r * 0.78 * Math.max(widthScale, 0.12), c.r * 0.78, 0, 0, Math.PI * 2);
             this.ctx.fill();
 
-            // Coin face mark — shrinks and vanishes when sideways
-            if (widthScale > 0.3) {
-                this.ctx.fillStyle = "#78350f";
-                this.ctx.font = `bold ${Math.floor(c.r * 1.1 * widthScale)}px 'Outfit', sans-serif`;
+            // Highlight sheen
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            this.ctx.beginPath();
+            this.ctx.ellipse(-c.r * 0.25, -c.r * 0.3, c.r * 0.28 * Math.max(widthScale, 0.15), c.r * 0.28, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Face — hide when coin is nearly edge-on
+            if (widthScale > 0.35) {
+                const fontSize = Math.floor(c.r * 0.9 * widthScale);
+                this.ctx.fillStyle = edgeColor;
+                this.ctx.font = `900 ${fontSize}px 'Outfit', sans-serif`;
                 this.ctx.textAlign = "center";
                 this.ctx.textBaseline = "middle";
-                this.ctx.fillText("$", 0, 1);
+                this.ctx.fillText(face, 0, 1);
             }
 
             this.ctx.restore();
@@ -1817,8 +1906,9 @@ class AdBird {
             this.ctx.fill();
             this.ctx.restore();
 
-            // Spawn occasional ember particles at high combo
-            if (combo >= 6 && this.state.frameCount % 4 === 0) {
+            // Spawn occasional ember particles at high combo (throttled on mobile)
+            const emberGate = this.perfMode ? 10 : 4;
+            if (combo >= 6 && Math.floor(this.state.frameCount) % emberGate === 0) {
                 this.state.particles.push({
                     x: cx + (Math.random() - 0.5) * this.player.w,
                     y: cy + (Math.random() - 0.5) * this.player.h,
@@ -2271,7 +2361,7 @@ class AdBird {
 
         // Translate origin to draw point, then scale — text draws at local (0,0)
         // so textAlign=center guarantees horizontal centering on cx
-        this.ctx.translate(cx, cy + 130);
+        this.ctx.translate(cx, cy + 105);
         this.ctx.scale(heroBreathe, heroBreathe);
 
         this.ctx.shadowBlur = 30 + (breathe * 20);
@@ -2317,7 +2407,7 @@ class AdBird {
         const cardGap = 24;
         const totalW = (cardW * 2) + cardGap;
         const startX = cx - totalW / 2;
-        const instY = cy - 50;
+        const instY = cy - 85;
         
         instructions.forEach((ins, i) => {
             const iX = startX + (i * (cardW + cardGap));
@@ -2406,7 +2496,7 @@ class AdBird {
             const bW = 210;
             const bH = 70;
             const bGap = 20;
-            const topY = 180;
+            const topY = 150;
             const bottomY = topY + bH + 10;
             
             const badges = [
@@ -2454,8 +2544,9 @@ class AdBird {
         const play = this._playBtnRect;
         const ctaText = this.isMobile ? "▶ TAP TO PLAY" : "▶ PRESS ENTER TO PLAY";
         const playPressProgress = this._getPressProgress(this.state.playBtnPressed);
-        const playClickScale = 0.8 + playPressProgress * 0.2;
-        const playClickAlpha = playPressProgress;
+        const playIsPressed = this.state.playBtnPressed && (Date.now() - this.state.playBtnPressed) < 500;
+        const playClickScale = playIsPressed ? (0.8 + playPressProgress * 0.2) : 1.0;
+        const playClickAlpha = playIsPressed ? playPressProgress : 1.0;
 
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
         const playFocused = this.state.splashFocus === 0;
@@ -2528,10 +2619,13 @@ class AdBird {
         const rent = this._rentBtnRect;
         const rentPulse = Math.sin(f * 0.05) * 0.5 + 0.5;
         
-        // Click compression for rent button
+        // Click compression for rent button.
+        // Clamp alpha floor to 1.0 if the button isn't actively being pressed — protects against
+        // stale rentBtnPressed timestamps (e.g. user returned from Stripe tab after >330ms).
         const rentPressProgress = this._getPressProgress(this.state.rentBtnPressed);
-        const rentClickScale = 0.8 + rentPressProgress * 0.2;
-        const rentClickAlpha = rentPressProgress;
+        const rentIsPressed = this.state.rentBtnPressed && (Date.now() - this.state.rentBtnPressed) < 500;
+        const rentClickScale = rentIsPressed ? (0.8 + rentPressProgress * 0.2) : 1.0;
+        const rentClickAlpha = rentIsPressed ? rentPressProgress : 1.0;
         
         // Hover lift
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
@@ -2741,10 +2835,23 @@ class AdBird {
         // Play the shift sound for punch
         this.playSound('shift');
     }
-    _setupHiDPI() { const dpr = window.devicePixelRatio || 1; if (dpr > 1) { const lw = this.canvas.width; const lh = this.canvas.height; this.canvas.width = lw * dpr; this.canvas.height = lh * dpr; this.ctx.scale(dpr, dpr); 
-        // NOTE: Locks canvas.width/height to logical size for DPR scaling.
-        // Any future code that tries to resize the canvas will silently fail.
-        Object.defineProperty(this.canvas, 'width', { get: () => lw, configurable: true }); Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true }); } this.canvas.style.touchAction = 'none'; this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
+    _setupHiDPI() {
+        const dpr = window.devicePixelRatio || 1;
+        if (dpr > 1) {
+            const lw = this.canvas.width;
+            const lh = this.canvas.height;
+            this.canvas.width = lw * dpr;
+            this.canvas.height = lh * dpr;
+            this.ctx.scale(dpr, dpr);
+            // NOTE: Locks canvas.width/height to logical size for DPR scaling.
+            Object.defineProperty(this.canvas, 'width', { get: () => lw, configurable: true });
+            Object.defineProperty(this.canvas, 'height', { get: () => lh, configurable: true });
+        }
+        this.canvas.style.touchAction = 'none';
+        this.isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+        // perfMode auto-on for mobile — reduces particle count and expensive shadowBlur
+        this.perfMode = this.isMobile;
+    }
     _renderOverlay() { 
         this._renderHUD(); 
         if (this.state.isGameOver) this._renderGameOverScreen(); 
@@ -2752,47 +2859,43 @@ class AdBird {
     }
     _initMidground() {
         this.bubbles = [];
+        const bubbleCount = this.perfMode ? 8 : 15;
+        const orbCount = this.perfMode ? 4 : 8;
+        const dustCount = this.perfMode ? 3 : 6;
         
         // Layer A: Small bubbles (fastest, closest, most numerous)
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < bubbleCount; i++) {
             this.bubbles.push({
                 type: 'bubble',
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                size: Math.random() * 4 + 1,         // 1 - 5px
-                speed: Math.random() * 0.8 + 1.5,    // 1.5 - 2.3 (closest)
-                alpha: Math.random() * 0.3 + 0.2,
-                bobPhase: Math.random() * Math.PI * 2,
-                bobSpeed: Math.random() * 0.02 + 0.01
+                size: Math.random() * 2.5 + 1,
+                speed: Math.random() * 1.5 + 0.8,
+                opacity: Math.random() * 0.4 + 0.2
             });
         }
         
-        // Layer B: Medium drifting orbs (medium speed, glowy)
-        for (let i = 0; i < 8; i++) {
+        // Layer B: Medium glow orbs (slower, atmospheric)
+        const colors = ["#a855f7", "#06b6d4", "#ec4899"];
+        for (let i = 0; i < orbCount; i++) {
             this.bubbles.push({
                 type: 'orb',
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                size: Math.random() * 8 + 4,          // 4 - 12px
-                speed: Math.random() * 0.4 + 1.0,     // 1.0 - 1.4 (mid)
-                alpha: Math.random() * 0.25 + 0.15,
-                color: this.config.msgColors[Math.floor(Math.random() * this.config.msgColors.length)],
-                bobPhase: Math.random() * Math.PI * 2,
-                bobSpeed: Math.random() * 0.015 + 0.005
+                size: Math.random() * 8 + 4,
+                speed: Math.random() * 0.5 + 0.3,
+                color: colors[i % colors.length]
             });
         }
         
-        // Layer C: Distant large dust motes (slowest of the mid layers, still faster than bg)
-        for (let i = 0; i < 6; i++) {
+        // Layer C: Large soft dust (slowest, background depth)
+        for (let i = 0; i < dustCount; i++) {
             this.bubbles.push({
                 type: 'dust',
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                size: Math.random() * 18 + 10,        // 10 - 28px
-                speed: Math.random() * 0.25 + 0.8,    // 0.8 - 1.05 (farthest of mid)
-                alpha: Math.random() * 0.12 + 0.05,
-                bobPhase: Math.random() * Math.PI * 2,
-                bobSpeed: Math.random() * 0.01 + 0.003
+                size: Math.random() * 20 + 15,
+                speed: Math.random() * 0.2 + 0.1
             });
         }
     }
@@ -2811,18 +2914,21 @@ class AdBird {
                 this.ctx.arc(b.x, drawY, b.size, 0, Math.PI * 2);
                 this.ctx.fill();
             } else if (b.type === 'orb') {
-                // Glowy neon orbs
-                this.ctx.shadowBlur = 12;
-                this.ctx.shadowColor = b.color;
+                // Glowy neon orbs — shadowBlur skipped in perfMode (huge mobile cost)
+                if (!this.perfMode) {
+                    this.ctx.shadowBlur = 12;
+                    this.ctx.shadowColor = b.color;
+                }
                 this.ctx.fillStyle = b.color;
                 this.ctx.beginPath();
                 this.ctx.arc(b.x, drawY, b.size, 0, Math.PI * 2);
                 this.ctx.fill();
             } else if (b.type === 'dust') {
-                // Large soft dust motes (blurry, far away feel)
                 this.ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-                this.ctx.shadowBlur = b.size * 1.2;
-                this.ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+                if (!this.perfMode) {
+                    this.ctx.shadowBlur = b.size * 1.2;
+                    this.ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+                }
                 this.ctx.beginPath();
                 this.ctx.arc(b.x, drawY, b.size, 0, Math.PI * 2);
                 this.ctx.fill();
@@ -2851,7 +2957,7 @@ class AdBird {
         const ctaW = this.ctx.measureText(ctaText).width + 60;
         const ctaH = 52;
         const ctaX = cx - ctaW / 2;
-        const ctaBaseY = cy + 200;
+        const ctaBaseY = cy + 170;
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
         const ctaY = ctaBaseY - playHoverLift;
         this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
@@ -2912,37 +3018,41 @@ class AdBird {
     _renderShopButton(rect) {
         const hover = this.state.mouseX >= rect.x && this.state.mouseX <= rect.x + rect.w &&
                       this.state.mouseY >= rect.y && this.state.mouseY <= rect.y + rect.h;
+        // Only treat as "focused for highlight" if this is the splash screen shop AND focus is 2
+        const focused = !this.state.gameRunning && !this.state.isGameOver && this.state.splashFocus === 2 &&
+                        rect === this._shopBtnRect;
+        const active = hover || focused;
         const pulse = Math.sin(this.state.frameCount * 0.08) * 0.5 + 0.5;
-        const hoverScale = hover ? 1.08 : 1.0;
-        const hoverLift = hover ? 3 : 0;
-        const glowIntensity = hover ? 25 + pulse * 10 : 12 + pulse * 5;
+        const hoverScale = active ? 1.08 : 1.0;
+        const hoverLift = active ? 3 : 0;
+        const glowIntensity = active ? 25 + pulse * 10 : 12 + pulse * 5;
 
         const cx = rect.x + rect.w / 2;
         const cy = rect.y + rect.h / 2;
 
         this.ctx.save();
-        // Hover lift + scale-about-center
+        // Hover/Focus lift + scale-about-center
         this.ctx.translate(0, -hoverLift);
         this.ctx.translate(cx, cy);
         this.ctx.scale(hoverScale, hoverScale);
         this.ctx.translate(-cx, -cy);
 
         // Fill
-        this.ctx.fillStyle = hover ? "rgba(251, 191, 36, 0.3)" : "rgba(251, 191, 36, 0.15)";
+        this.ctx.fillStyle = active ? "rgba(251, 191, 36, 0.3)" : "rgba(251, 191, 36, 0.15)";
         this.ctx.beginPath();
         this.ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 10);
         this.ctx.fill();
 
         // Glowing border
         this.ctx.strokeStyle = "#fbbf24";
-        this.ctx.lineWidth = hover ? 3 : 2;
+        this.ctx.lineWidth = active ? 3 : 2;
         this.ctx.shadowBlur = glowIntensity;
         this.ctx.shadowColor = "#fbbf24";
         this.ctx.stroke();
         this.ctx.shadowBlur = 0;
 
-        // Shimmer sweep on hover
-        if (hover) {
+        // Shimmer sweep on active
+        if (active) {
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 10);
@@ -2965,6 +3075,16 @@ class AdBird {
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
         this.ctx.fillText(`💰 SHOP  •  ${this.state.adCoins}`, cx, cy);
+
+        // Focus ring when keyboard-selected
+        if (focused) {
+            this.ctx.strokeStyle = "rgba(251, 191, 36, 0.4)";
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.roundRect(rect.x - 5, rect.y - 5, rect.w + 10, rect.h + 10, 14);
+            this.ctx.stroke();
+        }
+
         this.ctx.restore();
     }
 
