@@ -1627,7 +1627,8 @@ class AdBird {
 
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
         const playFocused = this.state.splashFocus === 0;
-        const ctaY = play.y + play.h/2;
+        const ctaY = play.y + play.h / 2;
+        const showShimmerPlay = (this.state.playBtnHover || playFocused) && playClickAlpha > 0.3;
         
         // Click compression transform
         this.ctx.save();
@@ -1665,7 +1666,7 @@ class AdBird {
         }
         
         // Shimmer
-        if ((this.state.playBtnHover || playFocused) && playClickAlpha > 0.95) {
+        if (showShimmerPlay) {
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.roundRect(play.x, ctaY - play.h / 2, play.w, play.h, 12);
@@ -1704,6 +1705,7 @@ class AdBird {
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
         const rentFocused = this.state.splashFocus === 1;
         const rentY = rent.y;
+        const showShimmerRent = (this.state.rentBtnHover || rentFocused) && rentClickAlpha > 0.3;
         
         this.ctx.save();
         const rentBtnCx = rent.x + rent.w / 2;
@@ -1750,7 +1752,7 @@ class AdBird {
         }
         
         // Shimmer
-        if ((this.state.rentBtnHover || rentFocused) && rentClickAlpha > 0.95) {
+        if (showShimmerRent) {
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.roundRect(rent.x, rentY, rent.w, rent.h, 12);
