@@ -80,6 +80,13 @@ class AdBird {
                 shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 }
             }
         };
+        this.config = { ...this.config, ...options };
+    }
+
+    _getPressProgress(pressedTime) {
+        if (!pressedTime) return 1;
+        const elapsed = (Date.now() - pressedTime) / 1000;
+        return Math.max(0, 1 - elapsed * 3);
     }
 
     // NOTE: Depends on _setupHiDPI() having already run so canvas.width/height return logical dimensions.
@@ -94,6 +101,7 @@ class AdBird {
             bombBtn: { x: this.canvas.width - 180, y: bombY, w: 160, h: 100, radius: 15 },
             scoreCenter: this.canvas.width / 2
         };
+        this._recalculateSplashRects();
     }
 
     _initState() {
@@ -121,6 +129,11 @@ class AdBird {
         this.assets = { player: new Image(), worlds: [], music: new Audio(this.config.musicSrc) };
         this.assets.music.loop = true;
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    // NEW: URL Obfuscation
+    _getStripeUrl() {
+        return atob('aHR0cHM6Ly9idXkuc3RyaXBlLmNvbS85QjZhRVgwamRnT1Y4aXE3c0RjYkMwMA==');
     }
 
     _initEngine() {
@@ -224,7 +237,7 @@ class AdBird {
                     // RENT
                     this._triggerSplashButtonExplosion('rent');
                     setTimeout(() => {
-                        window.open('https://buy.stripe.com/9B6aEX0jdgOV8iq7sDcbC00', '_blank');
+                        window.open(this._getStripeUrl(), '_blank');
                     }, 300);
                 }
                 return;
@@ -269,12 +282,12 @@ class AdBird {
         
         // Fullscreen and mute are exclusive — they always do their own thing, never advance
         if (action === 'fullscreen') { 
-            this.state.fullscreenPressed = this.state.frameCount;
+            this.state.fullscreenPressed = Date.now();
             this.toggleFullscreen(); 
             return; 
         }
         if (action === 'mute') { 
-            this.state.mutePressed = this.state.frameCount;
+            this.state.mutePressed = Date.now();
             this.toggleMute(); 
             return; 
         }
@@ -294,7 +307,7 @@ class AdBird {
             if (this._isOverRentBtn(x, y)) {
                 this._triggerSplashButtonExplosion('rent');
                 setTimeout(() => {
-                    window.open('https://buy.stripe.com/9B6aEX0jdgOV8iq7sDcbC00', '_blank');
+                    window.open(this._getStripeUrl(), '_blank');
                 }, 300);
                 return;
             }
@@ -372,25 +385,24 @@ class AdBird {
         return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
     }
 
-    _triggerSplashButtonExplosion(which) {
-        // which: 'play' or 'rent'
-        const rect = which === 'play' ? this._playBtnRect : this._rentBtnRect;
-        if (!rect) return;
-        
-        if (which === 'play') this.state.playBtnPressed = this.state.frameCount;
-        else this.state.rentBtnPressed = this.state.frameCount;
-        
-        this.state.screenShake = 25;
-        
+    _triggerSplashButtonExplosion(type) {
+        if (type === 'play') {
+            this.state.playBtnPressed = Date.now();
+            this.state.screenShake = 25;
+            this.playSound('score');
+        } else if (type === 'rent') {
+            this.state.rentBtnPressed = Date.now();
+            this.state.screenShake = 15;
+            this.playSound('score');
+        }
+        const rect = type === 'play' ? this._playBtnRect : this._rentBtnRect;
         const cx = rect.x + rect.w / 2;
         const cy = rect.y + rect.h / 2;
         
-        // Fireworks-style burst: two rings of particles + sparkles
-        const burstColors = which === 'play' 
+        const burstColors = type === 'play' 
             ? ["#06b6d4", "#3b82f6", "#22d3ee", "#fff", "#a855f7"]
             : ["#f59e0b", "#ec4899", "#fbbf24", "#fff", "#f43f5e"];
         
-        // Outer ring — fast and wide
         for (let i = 0; i < 40; i++) {
             const angle = (Math.PI * 2 * i) / 40 + Math.random() * 0.15;
             const speed = Math.random() * 18 + 10;
@@ -406,7 +418,6 @@ class AdBird {
             });
         }
         
-        // Inner sparkle cloud — slower, brighter
         for (let i = 0; i < 30; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 8 + 2;
@@ -421,7 +432,6 @@ class AdBird {
                 isMega: true
             });
         }
-        
         this.playSound('shift');
     }
 
@@ -441,7 +451,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], missMsgBag: [], megaMissMsgBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0 });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0 });
         this.canvas.style.cursor = 'default';
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
@@ -761,8 +771,8 @@ class AdBird {
         const m = this.ui.muteBtn;
         this.ctx.save();
         const mHoverScale = this.state.muteHover ? 1.1 : 1.0;
-        const mFramesSincePress = this.state.frameCount - this.state.mutePressed;
-        const mPressScale = (mFramesSincePress < 10) ? 1 - (0.15 * (1 - mFramesSincePress / 10)) : 1;
+        const mPressProgress = this._getPressProgress(this.state.mutePressed);
+        const mPressScale = 0.85 + mPressProgress * 0.15;
         const mFinalScale = mHoverScale * mPressScale;
         
         this.ctx.translate(m.x, m.y);
@@ -788,8 +798,8 @@ class AdBird {
         const fs = this.ui.fullscreenBtn;
         this.ctx.save();
         const fsHoverScale = this.state.fullscreenHover ? 1.1 : 1.0;
-        const fsFramesSincePress = this.state.frameCount - this.state.fullscreenPressed;
-        const fsPressScale = (fsFramesSincePress < 10) ? 1 - (0.15 * (1 - fsFramesSincePress / 10)) : 1;
+        const fsPressProgress = this._getPressProgress(this.state.fullscreenPressed);
+        const fsPressScale = 0.85 + fsPressProgress * 0.15;
         const fsFinalScale = fsHoverScale * fsPressScale;
         
         this.ctx.translate(fs.x, fs.y);
@@ -1611,20 +1621,16 @@ class AdBird {
         // --- PLAY BUTTON ---
         const play = this._playBtnRect;
         const ctaText = this.isMobile ? "▶ TAP TO PLAY" : "▶ PRESS ENTER TO PLAY";
-        
-        this.ctx.save();
-        
-        // Press animation logic
-        const playFramesSincePress = f - this.state.playBtnPressed;
-        const playClickScale = playFramesSincePress < 15 ? 1 - (0.2 * (1 - playFramesSincePress / 15)) : 1;
-        const playClickAlpha = playFramesSincePress < 30 ? Math.max(0, 1 - (playFramesSincePress / 30)) : 1;
-        
-        // Hover and Focus logic
+        const playPressProgress = this._getPressProgress(this.state.playBtnPressed);
+        const playClickScale = 0.8 + playPressProgress * 0.2;
+        const playClickAlpha = playPressProgress;
+
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
         const playFocused = this.state.splashFocus === 0;
         const ctaY = play.y + play.h/2;
         
         // Click compression transform
+        this.ctx.save();
         this.ctx.translate(play.x + play.w/2, ctaY);
         this.ctx.scale(playClickScale, playClickScale);
         this.ctx.translate(-(play.x + play.w/2), -ctaY);
@@ -1659,7 +1665,7 @@ class AdBird {
         }
         
         // Shimmer
-        if ((this.state.playBtnHover || playFocused) && playFramesSincePress > 30) {
+        if ((this.state.playBtnHover || playFocused) && playClickAlpha > 0.95) {
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.roundRect(play.x, ctaY - play.h / 2, play.w, play.h, 12);
@@ -1690,9 +1696,9 @@ class AdBird {
         const rentPulse = Math.sin(f * 0.05) * 0.5 + 0.5;
         
         // Click compression for rent button
-        const rentFramesSincePress = f - this.state.rentBtnPressed;
-        const rentClickScale = rentFramesSincePress < 15 ? 1 - (0.2 * (1 - rentFramesSincePress / 15)) : 1;
-        const rentClickAlpha = rentFramesSincePress < 30 ? Math.max(0, 1 - (rentFramesSincePress / 30)) : 1;
+        const rentPressProgress = this._getPressProgress(this.state.rentBtnPressed);
+        const rentClickScale = 0.8 + rentPressProgress * 0.2;
+        const rentClickAlpha = rentPressProgress;
         
         // Hover lift
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
@@ -1744,7 +1750,7 @@ class AdBird {
         }
         
         // Shimmer
-        if ((this.state.rentBtnHover || rentFocused) && rentFramesSincePress > 30) {
+        if ((this.state.rentBtnHover || rentFocused) && rentClickAlpha > 0.95) {
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.roundRect(rent.x, rentY, rent.w, rent.h, 12);
@@ -1861,7 +1867,7 @@ class AdBird {
     }
 
     _triggerButtonExplosion() {
-        this.state.runItBackPressed = this.state.frameCount;
+        this.state.runItBackPressed = Date.now();
         this.state.screenShake = 20;
         
         const btnW = 280;
@@ -1987,11 +1993,11 @@ class AdBird {
     }
 
     _recalculateSplashRects() {
+        if (this.state.gameRunning || this.state.isGameOver) return;
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
-        const f = this.state.frameCount;
 
-        // PLAY BUTTON
+        // PLAY
         const ctaText = this.isMobile ? "▶ TAP TO PLAY" : "▶ PRESS ENTER TO PLAY";
         this.ctx.save();
         this.ctx.font = "900 24px 'Outfit', sans-serif";
@@ -1999,24 +2005,22 @@ class AdBird {
         const ctaH = 52;
         const ctaX = cx - ctaW / 2;
         const ctaBaseY = cy + 220;
-        
+
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
-        const playFocused = this.state.splashFocus === 0;
         const ctaY = ctaBaseY - playHoverLift;
-        
+
         this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
         this.ctx.restore();
 
-        // RENT BUTTON
+        // RENT
         const rentBtnW = 260;
         const rentBtnH = 58;
         const rentX = cx - rentBtnW / 2;
         const rentBaseY = ctaBaseY + 84;
-        
+
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
-        const rentFocused = this.state.splashFocus === 1;
         const rentY = rentBaseY - rentHoverLift;
-        
+
         this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
     }
 
