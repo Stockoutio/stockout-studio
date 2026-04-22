@@ -126,6 +126,13 @@ class AdBird {
         // NEW:
         this.lastTime = 0;
         this._boundLoop = (timestamp = 0) => this._loop(timestamp);
+        
+        // NEW: Store bound functions for reliable removal in destroy()
+        this._handleKeydown = this._handleKeydown.bind(this);
+        this._handleInput = this._handleInput.bind(this);
+        this._handleMouseMove = this._handleMouseMove.bind(this);
+        this._handleResize = this._handleResize.bind(this);
+
         this.assets.player.src = this.config.playerImg;
         this.assets.player.onload = () => this.state.assetsLoaded++;
         // NEW:
@@ -138,15 +145,24 @@ class AdBird {
             img.onerror = () => { console.warn(`World image ${p} failed to load`); this.state.assetsLoaded++; };
             this.assets.worlds.push(img); 
         });
-        window.addEventListener('keydown', (e) => this._handleKeydown(e));
-        // NEW:
-        this._handleResize = this._handleResize.bind(this);
+        
+        window.addEventListener('keydown', this._handleKeydown);
         window.addEventListener('resize', this._handleResize);
         window.addEventListener('orientationchange', this._handleResize);
+        
         const it = this.canvas.parentElement || this.canvas;
-        it.addEventListener('mousedown', (e) => { if (!this.isMobile) this._handleInput(e); });
-        it.addEventListener('mousemove', (e) => { if (!this.isMobile) this._handleMouseMove(e); });
-        it.addEventListener('touchstart', (e) => { if (this.isMobile) { e.preventDefault(); for (let i = 0; i < e.changedTouches.length; i++) { const t = e.changedTouches[i]; this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} }); } } }, { passive: false });
+        it.addEventListener('mousedown', this._handleInput);
+        it.addEventListener('mousemove', this._handleMouseMove);
+        it.addEventListener('touchstart', (e) => { 
+            if (this.isMobile) { 
+                e.preventDefault(); 
+                for (let i = 0; i < e.changedTouches.length; i++) { 
+                    const t = e.changedTouches[i]; 
+                    this._handleInput({ clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} }); 
+                } 
+            } 
+        }, { passive: false });
+        
         it.addEventListener('contextmenu', (e) => e.preventDefault());
         if (this.overlay) {
             // Transparent to pointer events — but capture one gesture for audio unlock on iOS
@@ -179,8 +195,10 @@ class AdBird {
         const isFlap = KEYMAP.flapCodes.includes(e.code) || KEYMAP.flapKeys.includes(e.key);
         const isBomb = KEYMAP.bombCodes.includes(e.code) || KEYMAP.bombKeys.includes(e.key);
         const isEnter = e.code === 'Enter' || e.key === 'Enter';
-        const isLeft = e.code === 'ArrowLeft' || e.key === 'ArrowLeft';
-        const isRight = e.code === 'ArrowRight' || e.key === 'ArrowRight';
+        
+        // Focus navigation keys
+        const isFocusCycle = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].includes(e.code) || 
+                            ['a', 'A', 'd', 'D', 'w', 'W', 's', 'S'].includes(e.key);
 
         // Game-over screen handling
         if (this.state.isGameOver) {
@@ -194,8 +212,8 @@ class AdBird {
 
         // Splash screen — Option A keyboard nav
         if (!this.state.gameRunning) {
-            // Arrow keys shift focus between the two buttons
-            if (isLeft || isRight) {
+            // Any direction/WASD cycles focus
+            if (isFocusCycle) {
                 e.preventDefault();
                 this.state.splashFocus = this.state.splashFocus === 0 ? 1 : 0;
                 this.playSound('score');
@@ -417,7 +435,6 @@ class AdBird {
     _loop(timestamp = 0) {
         const dt = Math.min((timestamp - (this.lastTime || timestamp)) / 16.67, 2.5);
         this.lastTime = timestamp;
-        this.state.lastRect = this.canvas.getBoundingClientRect();
         this._update(dt);
         this._updateParticles(dt);
         this._draw();
@@ -546,7 +563,8 @@ class AdBird {
             }
         }
         this.bubbles.forEach(b => { 
-            b.x -= b.speed; 
+            // NEW:
+            b.x -= b.speed * dt; 
             b.bobPhase += b.bobSpeed;
             if (b.x < -20) { 
                 b.x = this.canvas.width + 20; 
@@ -1939,6 +1957,10 @@ class AdBird {
     _handleResize() {
         this.state.lastRect = this.canvas.getBoundingClientRect();
         this._initHUDGeometry();
+        // Force-recalculate splash buttons by running the layout logic once
+        if (!this.state.gameRunning && !this.state.isGameOver) {
+            this._renderStartScreen();
+        }
     }
 
     // NEW:
@@ -1949,7 +1971,7 @@ class AdBird {
         const it = this.canvas.parentElement || this.canvas;
         it.removeEventListener('mousedown', this._handleInput);
         it.removeEventListener('mousemove', this._handleMouseMove);
-        it.removeEventListener('touchstart', this._handleInput);
+        // Clean up any internal touch handlers if necessary
         if (this.assets && this.assets.music) this.assets.music.pause();
     }
 }
