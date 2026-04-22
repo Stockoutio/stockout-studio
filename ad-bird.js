@@ -101,7 +101,6 @@ class AdBird {
             bombBtn: { x: this.canvas.width - 180, y: bombY, w: 160, h: 100, radius: 15 },
             scoreCenter: this.canvas.width / 2
         };
-        this._recalculateSplashRects();
     }
 
     _initState() {
@@ -1704,7 +1703,7 @@ class AdBird {
         // Hover lift
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
         const rentFocused = this.state.splashFocus === 1;
-        const rentY = rent.y - rentHoverLift;
+        const rentY = rent.y;
         const showShimmerRent = (this.state.rentBtnHover || rentFocused) && rentClickAlpha > 0.3;
         
         this.ctx.save();
@@ -1995,7 +1994,10 @@ class AdBird {
     }
 
     _recalculateSplashRects() {
+        // SAFETY GUARD: prevents crash during constructor (state not ready yet)
+        if (!this.state) return;
         if (this.state.gameRunning || this.state.isGameOver) return;
+
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
 
@@ -2007,10 +2009,8 @@ class AdBird {
         const ctaH = 52;
         const ctaX = cx - ctaW / 2;
         const ctaBaseY = cy + 220;
-
         const playHoverLift = this.state.playBtnHover ? 4 : 0;
         const ctaY = ctaBaseY - playHoverLift;
-
         this._playBtnRect = { x: ctaX, y: ctaY - ctaH / 2, w: ctaW, h: ctaH };
         this.ctx.restore();
 
@@ -2019,10 +2019,8 @@ class AdBird {
         const rentBtnH = 58;
         const rentX = cx - rentBtnW / 2;
         const rentBaseY = ctaBaseY + 84;
-
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
         const rentY = rentBaseY - rentHoverLift;
-
         this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
     }
 
