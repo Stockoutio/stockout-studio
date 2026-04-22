@@ -68,7 +68,7 @@ class AdBird {
             // --- Pass 2: Refactor Configs ---
             screenShakeDecay: 0.9,
             particleGravity: 0.15,
-            particleLifeDecay: 0.02,
+            particleLifeDecay: 0.035,
             birdRotationFactor: 0.05,
             floatingTextRiseDelay: 30,
             floatingTextMaxAge: 73,
@@ -79,7 +79,7 @@ class AdBird {
                 crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 },
                 shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 }
             },
-            difficultyGainPerHit: 0.025,
+            difficultyGainPerHit: 0.05,
             difficultyLossPerMiss: 0.04,
             difficultyMin: 0.85,
             difficultyMax: 1.65,
@@ -216,10 +216,17 @@ class AdBird {
     _handleKeydown(e) {
         if (!this.state.assetsLoaded) return;
         
-        // Fullscreen toggle always works
+        // Fullscreen toggle always works — even during death pause
         if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
             e.preventDefault();
             this.toggleFullscreen();
+            return;
+        }
+
+        // Block all other input during the death animation pause
+        // (prevents space/enter from triggering splash logic mid-death)
+        if (this.state.waitingForGameOver) {
+            e.preventDefault();
             return;
         }
 
@@ -318,8 +325,25 @@ class AdBird {
 
         if (this.state.waitingForGameOver) return;
         
-        // Game over — tap anywhere advances, RUN IT BACK button always animates
+        // Game over — shop takes priority, then tap anywhere advances
         if (this.state.isGameOver) {
+            // If shop is open, let it handle the click (purchase, select, or close)
+            if (this.state.shopOpen) {
+                if (this._handleShopClick(x, y)) return;
+            }
+
+            // Shop button opens the modal (over the game over screen)
+            if (this._gameOverShopBtnRect &&
+                x >= this._gameOverShopBtnRect.x && x <= this._gameOverShopBtnRect.x + this._gameOverShopBtnRect.w &&
+                y >= this._gameOverShopBtnRect.y && y <= this._gameOverShopBtnRect.y + this._gameOverShopBtnRect.h) {
+                this.state.shopOpen = !this.state.shopOpen;
+                this.playSound('score');
+                return;
+            }
+
+            // Don't advance to splash while shop is open
+            if (this.state.shopOpen) return;
+
             this._triggerButtonExplosion();
             this._resetToSplash();
             return;
@@ -507,9 +531,12 @@ class AdBird {
 
     // NEW:
     _update(dt) {
+        // Decays run regardless of game state so the game over screen doesn't shake forever
+        if (this.state.screenShake > 0) this.state.screenShake *= 0.9;
+        if (this.state.flashOpacity > 0) this.state.flashOpacity *= 0.92;
+
         if (!this.state.gameRunning || this.state.isGameOver) {
             this.state.frameCount += dt;
-            this._updateParticles(dt);
             return;
         }
 
@@ -522,8 +549,6 @@ class AdBird {
         }
 
         this.state.frameCount += dt;
-        if (this.state.screenShake > 0) this.state.screenShake *= 0.9;
-        if (this.state.flashOpacity > 0) this.state.flashOpacity *= 0.92;
 
         this.player.velocity += this.config.gravity * effectiveDt;
         this.player.y += this.player.velocity * effectiveDt;
@@ -544,8 +569,6 @@ class AdBird {
         if (this.state.bombTimer > 0) this.state.bombTimer -= effectiveDt;
 
         this._updateEntities(effectiveDt);
-        this._updateParticles(dt);
-        // NEW:
         if (this._updateFloatingTexts) this._updateFloatingTexts(effectiveDt);
 
         if (this.state.frameCount >= this.state.nextPipeFrame) {
@@ -590,16 +613,28 @@ class AdBird {
                 p.collapseOffsetY += p.collapseVel * dt;
             }
 
+            // Sparkle particles around active super pipes
+            if (p.isSuper && !p.collapsing && Math.floor(this.state.frameCount) % 2 === 0) {
+                this.state.particles.push({
+                    x: p.x + p.w / 2 + (Math.random() - 0.5) * p.w,
+                    y: Math.random() > 0.5 ? p.y - 5 : p.y + p.gap + 5,
+                    vx: (Math.random() - 0.5) * 1,
+                    vy: (Math.random() - 0.5) * 1,
+                    size: Math.random() * 2 + 1,
+                    color: Math.random() > 0.5 ? "#fbbf24" : "#fff",
+                    life: 0.6,
+                    isMega: true
+                });
+            }
+
             p.x -= dynamicSpeed * dt;
             if (p.highlight > 0) p.highlight *= 0.82;
             p.stains.forEach(s => s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; }));
             
-            if (p.collapsing) continue;
-            
             const pd = 15; const bx = this.player.x+pd, bw = this.player.w-(pd*2), by = this.player.y+pd, bh = this.player.h-(pd*2);
             
-            // NEAR-MISS DETECTION
-            if (!p.nearMissed && bx < p.x + p.w && bx + bw > p.x) {
+            // NEAR-MISS DETECTION — skip for collapsing pipes (they're not a threat anymore)
+            if (!p.collapsing && !p.nearMissed && bx < p.x + p.w && bx + bw > p.x) {
                 const topGapEdge = p.y;
                 const bottomGapEdge = p.y + p.gap;
                 const distToTop = by - topGapEdge;
@@ -638,10 +673,16 @@ class AdBird {
                 }
             }
 
-            if (bx < p.x+p.w && bx+bw > p.x && (by < p.y || by+bh > p.y+p.gap)) { this.gameOver(); return; }
+            // Death collision — skip for collapsing pipes so bombed pipes never kill the player
+            if (!p.collapsing && bx < p.x+p.w && bx+bw > p.x && (by < p.y || by+bh > p.y+p.gap)) { this.gameOver(); return; }
             if (!p.scored && p.x + p.w < this.player.x) { 
-                p.scored = true; p.highlight = 1.0; this.state.score++; this.playSound('score'); 
-                if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld(); 
+                p.scored = true; p.highlight = 1.0;
+                if (p.isSuper) {
+                    this._triggerSuperPipePass();
+                } else {
+                    this.state.score++; this.playSound('score'); 
+                    if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld(); 
+                }
             }
             if (p.x + p.w < -150 || p.collapseOffsetY > this.canvas.height + 200) this.pipes.splice(i, 1);
         }
@@ -696,7 +737,7 @@ class AdBird {
                 this.state.lastMissFrame = this.state.frameCount;
                 this.state.combo = 0;
                 this.state.missCombo++;
-                this.state.difficultyMultiplier = Math.max(this.config.difficultyMin, this.state.difficultyMultiplier - this.config.difficultyLossPerMiss);
+                this.state.difficultyMultiplier = 1.0;
                 this.playSound(isGiga ? 'mega_miss' : 'miss');
                 this.bombs.splice(i, 1);
             }
@@ -713,7 +754,6 @@ class AdBird {
     }
 
     _spawnPipe() {
-        const ad = this._nextAd();
         const baseInterval = Math.floor(Math.random() * 80) + 80;
         const scaledInterval = Math.max(this.config.minPipeSpawnGap, baseInterval / this.state.difficultyMultiplier);
         this.state.nextPipeFrame = this.state.frameCount + scaledInterval;
@@ -722,11 +762,18 @@ class AdBird {
         const minH_top = this.config.minPipeHeightTop;
         const maxH_top = this.canvas.height - gap - this.config.minPipeHeightBottom;
         const h = Math.floor(Math.random() * (maxH_top - minH_top)) + minH_top;
+        
+        // Super pipe — rare (4%), only after the player has scored 10
+        // Use a custom ad object so we don't burn through the normal ad bag
+        const isSuper = this.state.score >= 10 && Math.random() < 0.04;
+        const ad = isSuper ? { text: "JACKPOT", color: "#fbbf24" } : this._nextAd();
+        
         this.pipes.push({ 
             x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: gap, ad: ad, 
             scored: false, highlight: 0, stains: [],
             shakeTimer: 0, collapsing: false, collapseOffsetY: 0, collapseVel: 0,
-            nearMissed: false
+            nearMissed: false,
+            isSuper: isSuper
         });
     }
 
@@ -743,15 +790,45 @@ class AdBird {
 
     _renderPipes() {
         this.pipes.forEach(p => {
-            this.ctx.save();
-            let sx = 0, sy = 0;
-            if (p.shakeTimer > 0) {
-                sx = (Math.random() - 0.5) * 12;
-                sy = (Math.random() - 0.5) * 12;
-            }
-            sy += p.collapseOffsetY || 0;
-            this.ctx.translate(sx, sy);
+            const shakeX = p.shakeTimer > 0 ? (Math.random() - 0.5) * 12 : 0;
+            const shakeY = p.shakeTimer > 0 ? (Math.random() - 0.5) * 12 : 0;
+            const collapseY = p.collapseOffsetY || 0;
 
+            if (!p.collapsing) {
+                // Fast path — render pipe as a single unit
+                this.ctx.save();
+                this.ctx.translate(shakeX, shakeY);
+                this._drawPipeBody(p);
+                this._drawPipeBorders(p, p.ad.color, 3);
+                this._drawPipeCaps(p, p.ad.color, 3, 18);
+                this._drawPipeStains(p, 3);
+                this._drawPipeLabel(p, p.ad.color);
+                this.ctx.restore();
+                return;
+            }
+
+            // Collapsing pipe — render top and bottom halves separately
+            // so only the bottom falls while the top stays rooted to the ceiling
+
+            // TOP HALF — stays in place, fades out as bottom clears the screen
+            this.ctx.save();
+            this.ctx.globalAlpha = Math.max(0, 1 - collapseY / 400);
+            this.ctx.translate(shakeX, shakeY);
+            this.ctx.beginPath();
+            this.ctx.rect(p.x - 30, 0, p.w + 60, p.y + 25);
+            this.ctx.clip();
+            this._drawPipeBody(p);
+            this._drawPipeBorders(p, p.ad.color, 3);
+            this._drawPipeCaps(p, p.ad.color, 3, 18);
+            this._drawPipeStains(p, 3);
+            this.ctx.restore();
+
+            // BOTTOM HALF — shake + collapse offset, carries the label down with it
+            this.ctx.save();
+            this.ctx.translate(shakeX, shakeY + collapseY);
+            this.ctx.beginPath();
+            this.ctx.rect(p.x - 30, p.y + p.gap - 25, p.w + 60, this.canvas.height - (p.y + p.gap) + 60);
+            this.ctx.clip();
             this._drawPipeBody(p);
             this._drawPipeBorders(p, p.ad.color, 3);
             this._drawPipeCaps(p, p.ad.color, 3, 18);
@@ -853,16 +930,46 @@ class AdBird {
         this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
         this.ctx.restore();
 
-        // COMBO INDICATOR
+        // COMBO INDICATOR — animated, scales and colors with combo tier
         if (this.state.combo >= 2) {
-            const comboText = `${this.state.combo}× COMBO ✨`;
+            const c = this.state.combo;
+            const framesSincePunch = this.state.frameCount - this.state.lastHitFrame;
+            const punch = Math.max(0, 1 - framesSincePunch / 10) * 0.5;       // 0 to 0.5, decays over 10 frames
+            const breathe = Math.sin(this.state.frameCount * 0.15) * 0.04;     // gentle pulse
+            const growth = Math.min(c / 20, 1) * 0.8;                          // 0 to 0.8, maxes at combo 20
+            const scale = 1.0 + punch + breathe + growth;
+            
+            // Color tiers — cyan → yellow → orange → red → pink
+            let color, glow;
+            if (c >= 20)      { color = "#fff";     glow = "#ec4899"; }
+            else if (c >= 15) { color = "#fecaca";  glow = "#ef4444"; }
+            else if (c >= 10) { color = "#fed7aa";  glow = "#f97316"; }
+            else if (c >= 5)  { color = "#fef3c7";  glow = "#fbbf24"; }
+            else              { color = "#a5f3fc";  glow = "#06b6d4"; }
+            
+            // Shake ramps in from combo 9 onwards, caps at 10px
+            const shakeAmount = Math.max(0, Math.min(c - 8, 10));
+            const shakeX = (Math.random() - 0.5) * shakeAmount;
+            const shakeY = (Math.random() - 0.5) * shakeAmount;
+            
+            // Rotation wobble kicks in at combo 15
+            const wobble = c >= 15 ? Math.sin(this.state.frameCount * 0.4) * 0.08 : 0;
+            
             this.ctx.save();
+            this.ctx.translate(this.ui.scoreCenter + shakeX, 130 + shakeY);
+            this.ctx.rotate(wobble);
+            this.ctx.scale(scale, scale);
             this.ctx.textAlign = "center";
-            this.ctx.font = "900 24px 'Outfit', sans-serif";
-            this.ctx.shadowBlur = 15;
-            this.ctx.shadowColor = "#06b6d4";
-            this.ctx.fillStyle = "#fff";
-            this.ctx.fillText(comboText, this.ui.scoreCenter, 115);
+            this.ctx.textBaseline = "middle";
+            this.ctx.font = "900 26px 'Outfit', sans-serif";
+            this.ctx.shadowBlur = 15 + punch * 30;
+            this.ctx.shadowColor = glow;
+            this.ctx.strokeStyle = "#000";
+            this.ctx.lineWidth = 3;
+            const text = `${c}× COMBO`;
+            this.ctx.strokeText(text, 0, 0);
+            this.ctx.fillStyle = color;
+            this.ctx.fillText(text, 0, 0);
             this.ctx.restore();
         }
 
@@ -875,7 +982,7 @@ class AdBird {
             this.ctx.shadowBlur = 12;
             this.ctx.shadowColor = "#f43f5e";
             this.ctx.fillStyle = "#fca5a5";
-            this.ctx.fillText(missText, this.ui.scoreCenter, 145);
+            this.ctx.fillText(missText, this.ui.scoreCenter, 170);
             this.ctx.restore();
         }
 
@@ -1048,23 +1155,53 @@ class AdBird {
         const isMega = scale >= 5.0;
         
         if (isMega) {
-            const shockwaveRadius = 400;
-            this.pipes.forEach(otherPipe => {
-                const dist = Math.abs(otherPipe.x - p.x);
-                if (dist < shockwaveRadius && otherPipe !== p) {
-                    otherPipe.shakeTimer = 18;  // 0.3s at 60fps
-                    otherPipe.collapsing = true;
-                }
-            });
+            // The bombed pipe always collapses
+            p.shakeTimer = 18;
+            p.collapsing = true;
             this.state.slowMoTimer = this.config.slowMoDuration;
             this.state.slowMoStrength = this.config.slowMoFactor;
+            
+            // CHAIN REACTION — only triggers when player has built up a 10+ combo
+            // Feels like a screen-clear reward for high streaks, not a constant chaos generator
+            if (this.state.combo >= 10) {
+                const shockwaveRadius = 400;
+                let chainedCount = 0;
+                this.pipes.forEach(otherPipe => {
+                    if (otherPipe === p) return;
+                    const dist = Math.abs(otherPipe.x - p.x);
+                    if (dist < shockwaveRadius) {
+                        otherPipe.shakeTimer = 18;
+                        otherPipe.collapsing = true;
+                        chainedCount++;
+                    }
+                });
+                if (chainedCount > 0) {
+                    this.floatingTexts.push({
+                        x: this.canvas.width / 2,
+                        y: this.canvas.height / 2 + 60,
+                        text: "CHAIN REACTION!",
+                        color: "#fbbf24",
+                        scale: 1.6,
+                        glow: "#f59e0b",
+                        age: 0,
+                        alpha: 1,
+                        vy: -3,
+                        vx: 0,
+                        align: "center",
+                        isMega: true,
+                        isShivering: true
+                    });
+                    this.state.screenShake = Math.max(this.state.screenShake, 35);
+                    this.state.flashOpacity = 0.8;
+                }
+            }
         }
 
         this.state.screenShake = isMega ? 30 : 10 * scale; 
         if (isMega) this.state.flashOpacity = 0.6;
         
-        const wasRecentHit = (this.state.frameCount - this.state.lastHitFrame) < 120;
-        this.state.combo = wasRecentHit ? this.state.combo + 1 : 1;
+        // Combo persists indefinitely between hits — only a miss breaks it
+        this.state.combo++;
         this.state.missCombo = 0;
         this.state.difficultyMultiplier = Math.min(this.config.difficultyMax, this.state.difficultyMultiplier + this.config.difficultyGainPerHit);
         this.state.lastHitFrame = this.state.frameCount;
@@ -1139,34 +1276,85 @@ class AdBird {
         }); 
         this.playSound('splat'); 
 
-        let sy_combo = sy - 70;
-        if (this.state.combo >= 3) {
-            this.floatingTexts.push({ 
-                x: tx, y: sy_combo, text: `${this.state.combo}x COMBO`, 
-                color: "#fbbf24", scale: 1.1, glow: "#f59e0b", age: 0, alpha: 1, vy: -2.5, vx: 0, align: "center" 
-            }); 
-        }
+        // Floating combo text removed — combo indicator now lives in the HUD
 
         if (this.state.combo > 0 && this.state.combo % 5 === 0) {
+            // Fallback if comboVoiceLines failed to load from content.js
+            if (!this.config.comboVoiceLines || this.config.comboVoiceLines.length === 0) {
+                this.config.comboVoiceLines = [
+                    "BRAND SUPREMACY",
+                    "KPIs ANNIHILATED",
+                    "SYNERGY ACHIEVED",
+                    "MARKET PENETRATION MAXIMUM",
+                    "VIRAL TRAJECTORY CONFIRMED"
+                ];
+            }
             const voiceLine = this._nextFromBag('comboVoiceBag', 'comboVoiceLines');
-            this.floatingTexts.push({
-                x: this.canvas.width / 2,
-                y: this.canvas.height / 2 - 40,
-                text: voiceLine,
-                color: "#fff",
-                scale: 1.8,
-                glow: "#a855f7",
-                age: 0,
-                alpha: 1,
-                vy: -2,
-                vx: 0,
-                align: "center",
-                isMega: true,
-                isShivering: true
-            });
-            this.state.screenShake = Math.max(this.state.screenShake, 15);
-            this.playSound('shift');
+            if (voiceLine) {
+                this.floatingTexts.push({
+                    x: this.canvas.width / 2,
+                    y: this.canvas.height / 2 - 40,
+                    text: voiceLine,
+                    color: "#fff",
+                    scale: 1.8,
+                    glow: "#a855f7",
+                    age: 0,
+                    alpha: 1,
+                    vy: -2,
+                    vx: 0,
+                    align: "center",
+                    isMega: true,
+                    isShivering: true
+                });
+                this.state.screenShake = Math.max(this.state.screenShake, 15);
+                this.playSound('shift');
+            }
         }
+    }
+
+    _triggerSuperPipePass() {
+        this.state.score += 5;
+        this.state.directHits += 3;
+        this.state.screenShake = 30;
+        this.state.flashOpacity = 1.0;
+        this.state.slowMoTimer = this.config.slowMoDuration;
+        this.state.slowMoStrength = 0.35;
+        
+        // Golden explosion from the bird
+        const cx = this.player.x + this.player.w / 2;
+        const cy = this.player.y + this.player.h / 2;
+        const colors = ["#fbbf24", "#fff", "#f59e0b", "#fde047"];
+        for (let i = 0; i < 100; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 20 + 5;
+            this.state.particles.push({
+                x: cx, y: cy,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: Math.random() * 5 + 2,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                life: 1.0 + Math.random(),
+                isMega: true
+            });
+        }
+        
+        // Fanfare floating text
+        this.floatingTexts.push({
+            x: this.canvas.width / 2,
+            y: this.canvas.height / 2 - 20,
+            text: "JACKPOT! +5",
+            color: "#fff",
+            scale: 2.2,
+            glow: "#fbbf24",
+            age: 0, alpha: 1,
+            vy: -3, vx: 0,
+            align: "center",
+            isMega: true,
+            isShivering: true
+        });
+        
+        this.playSound('shift');
+        if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld();
     }
 
     gameOver() { 
@@ -1425,10 +1613,16 @@ class AdBird {
 
         const selected = this.config.shopColors.find(c => c.id === this.state.selectedColor);
         if (selected && selected.tint) {
-            this.ctx.globalCompositeOperation = 'source-atop';
+            // Step 1 — multiply blend tints the whole rect with the color, preserving the bird's
+            // shading and outlines (black stays black, white becomes the tint, greys become tinted greys)
+            this.ctx.globalCompositeOperation = 'multiply';
             this.ctx.fillStyle = selected.tint;
-            this.ctx.globalAlpha = 0.45;
             this.ctx.fillRect(-this.player.w / 2, -this.player.h / 2, this.player.w, this.player.h);
+            
+            // Step 2 — the multiply leaked outside the bird's silhouette into transparent areas.
+            // destination-in with the original sprite clips the result back to the bird's shape.
+            this.ctx.globalCompositeOperation = 'destination-in';
+            this.ctx.drawImage(this.assets.player, -this.player.w / 2, -this.player.h / 2, this.player.w, this.player.h);
         }
         this.ctx.restore();
     }
@@ -1792,7 +1986,36 @@ class AdBird {
                 btnYBase + btnH + 28
             ); 
             this.ctx.restore();
+
+            // SHOP BUTTON — below hint text
+            const shopBtnW = 180;
+            const shopBtnH = 40;
+            const shopBtnX = (this.canvas.width - shopBtnW) / 2;
+            const shopBtnY = btnYBase + btnH + 50;
+            this._gameOverShopBtnRect = { x: shopBtnX, y: shopBtnY, w: shopBtnW, h: shopBtnH };
+
+            this.ctx.save();
+            this.ctx.globalAlpha = btnProgress;
+            this.ctx.fillStyle = "rgba(251, 191, 36, 0.15)";
+            this.ctx.beginPath();
+            this.ctx.roundRect(shopBtnX, shopBtnY, shopBtnW, shopBtnH, 10);
+            this.ctx.fill();
+            this.ctx.strokeStyle = "#fbbf24";
+            this.ctx.lineWidth = 2;
+            this.ctx.shadowBlur = 12;
+            this.ctx.shadowColor = "#fbbf24";
+            this.ctx.stroke();
+            this.ctx.shadowBlur = 0;
+            this.ctx.font = "900 16px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "#fbbf24";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText(`🪙 SHOP  •  ${this.state.adCoins}`, shopBtnX + shopBtnW / 2, shopBtnY + shopBtnH / 2);
+            this.ctx.restore();
         }
+
+        // Render shop modal on top of game over if open
+        if (this.state.shopOpen) this._renderShop();
     }
     _renderStartScreen() { 
         if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
@@ -1805,17 +2028,11 @@ class AdBird {
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
         
-        // --- HERO: The ready message with breathing scale + shimmer ---
+        // --- HERO: Ready message, rock-solid centered with breathing scale + shimmer ---
         this.ctx.save();
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
-        
-        // Apply breathing scale
-        this.ctx.translate(cx, cy - 60);
-        this.ctx.scale(heroBreathe, heroBreathe);
-        this.ctx.translate(-cx, -(cy - 60));
-        
-        // Dynamic font sizing
+
         let heroFontSize = 64;
         this.ctx.font = `900 ${heroFontSize}px 'Outfit', sans-serif`;
         let measuredW = this.ctx.measureText(this.state.currentReadyMsg).width;
@@ -1825,37 +2042,37 @@ class AdBird {
             this.ctx.font = `900 ${heroFontSize}px 'Outfit', sans-serif`;
             measuredW = this.ctx.measureText(this.state.currentReadyMsg).width;
         }
-        
-        // Heavy stroke
+
+        // Translate origin to draw point, then scale — text draws at local (0,0)
+        // so textAlign=center guarantees horizontal centering on cx
+        this.ctx.translate(cx, cy - 60);
+        this.ctx.scale(heroBreathe, heroBreathe);
+
         this.ctx.shadowBlur = 30 + (breathe * 20);
         this.ctx.shadowColor = "#a855f7";
         this.ctx.strokeStyle = "#000";
         this.ctx.lineWidth = 8;
-        this.ctx.strokeText(this.state.currentReadyMsg, cx, cy - 60);
-        
-        // Gradient fill
-        const heroGrad = this.ctx.createLinearGradient(cx - 300, 0, cx + 300, 0);
+        this.ctx.strokeText(this.state.currentReadyMsg, 0, 0);
+
+        const heroGrad = this.ctx.createLinearGradient(-measuredW/2, 0, measuredW/2, 0);
         heroGrad.addColorStop(0, "#06b6d4");
         heroGrad.addColorStop(0.5, "#a855f7");
         heroGrad.addColorStop(1, "#06b6d4");
         this.ctx.fillStyle = heroGrad;
-        this.ctx.fillText(this.state.currentReadyMsg, cx, cy - 60);
-        
-        // Shimmer overlay — swept across the text
-        const heroShimmerPos = (f * 0.006) % 1.5 - 0.25; // -0.25 to 1.25
+        this.ctx.fillText(this.state.currentReadyMsg, 0, 0);
+
+        const heroShimmerPos = (f * 0.006) % 1.5 - 0.25;
         this.ctx.save();
         this.ctx.globalCompositeOperation = 'source-atop';
-        const shimmerGradHero = this.ctx.createLinearGradient(
-            cx - measuredW/2 + measuredW * heroShimmerPos - 80, 0,
-            cx - measuredW/2 + measuredW * heroShimmerPos + 80, 0
-        );
+        const shimX = -measuredW/2 + measuredW * heroShimmerPos;
+        const shimmerGradHero = this.ctx.createLinearGradient(shimX - 80, 0, shimX + 80, 0);
         shimmerGradHero.addColorStop(0, "rgba(255, 255, 255, 0)");
-        shimmerGradHero.addColorStop(0.5, "rgba(255, 255, 255, 0.5)");
+        shimmerGradHero.addColorStop(0.5, "rgba(255, 255, 255, 0.65)");
         shimmerGradHero.addColorStop(1, "rgba(255, 255, 255, 0)");
         this.ctx.fillStyle = shimmerGradHero;
-        this.ctx.fillText(this.state.currentReadyMsg, cx, cy - 60);
+        this.ctx.fillText(this.state.currentReadyMsg, 0, 0);
         this.ctx.restore();
-        
+
         this.ctx.restore();
         
         // --- INSTRUCTION CARDS: bigger, bolder ---
@@ -1880,50 +2097,81 @@ class AdBird {
             const iX = startX + (i * (cardW + cardGap));
             const accent = i === 0 ? "#06b6d4" : "#a855f7";
             const accentRgb = i === 0 ? "6, 182, 212" : "168, 85, 247";
-            
+
+            // Per-card animation phases (staggered by index)
+            const phase = f * 0.04 + i * Math.PI;
+            const iconBob = Math.sin(phase) * 4;
+            const cardScale = 1 + Math.sin(phase * 0.5) * 0.02;
+            const borderPulse = Math.sin(phase * 0.7) * 0.5 + 0.5;
+
             this.ctx.save();
-            
+
+            // Scale about card center
+            const cardCx = iX + cardW / 2;
+            const cardCy = instY + cardH / 2;
+            this.ctx.translate(cardCx, cardCy);
+            this.ctx.scale(cardScale, cardScale);
+            this.ctx.translate(-cardCx, -cardCy);
+
             // Card tint
-            this.ctx.fillStyle = `rgba(${accentRgb}, 0.12)`;
+            this.ctx.fillStyle = `rgba(${accentRgb}, 0.15)`;
             this.ctx.beginPath();
             this.ctx.roundRect(iX, instY, cardW, cardH, 20);
             this.ctx.fill();
-            
+
             // Dark backing
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.55)";
             this.ctx.beginPath();
             this.ctx.roundRect(iX, instY, cardW, cardH, 20);
             this.ctx.fill();
-            
-            // Glowing border
-            this.ctx.shadowBlur = 18 + (slowPulse * 10);
+
+            // SHIMMER sweep — staggered, runs 1/3 of the time per card
+            const shimmerCycle = ((f * 0.012) + i * 0.5) % 3;
+            if (shimmerCycle < 1) {
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.roundRect(iX, instY, cardW, cardH, 20);
+                this.ctx.clip();
+                const shimW = 110;
+                const shimX2 = iX - shimW + (cardW + shimW * 2) * shimmerCycle;
+                const cardShimGrad = this.ctx.createLinearGradient(shimX2, 0, shimX2 + shimW, 0);
+                cardShimGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+                cardShimGrad.addColorStop(0.5, `rgba(${accentRgb}, 0.35)`);
+                cardShimGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+                this.ctx.fillStyle = cardShimGrad;
+                this.ctx.fillRect(iX, instY, cardW, cardH);
+                this.ctx.restore();
+            }
+
+            // Glowing border with stronger pulse
+            this.ctx.shadowBlur = 20 + borderPulse * 20;
             this.ctx.shadowColor = accent;
             this.ctx.strokeStyle = accent;
-            this.ctx.lineWidth = 2.5;
+            this.ctx.lineWidth = 2.5 + borderPulse * 1.5;
             this.ctx.beginPath();
             this.ctx.roundRect(iX, instY, cardW, cardH, 20);
             this.ctx.stroke();
             this.ctx.shadowBlur = 0;
-            
-            // Icon
+
+            // Icon (bobbing)
             this.ctx.font = "52px serif";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "middle";
-            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 48);
-            
+            this.ctx.fillText(ins.icon, iX + cardW / 2, instY + 48 + iconBob);
+
             // Label
             this.ctx.font = "900 28px 'Outfit', sans-serif";
             this.ctx.fillStyle = "#fff";
-            this.ctx.shadowBlur = 8;
+            this.ctx.shadowBlur = 8 + borderPulse * 8;
             this.ctx.shadowColor = accent;
             this.ctx.fillText(ins.label, iX + cardW / 2, instY + 100);
             this.ctx.shadowBlur = 0;
-            
+
             // Description
             this.ctx.font = "bold 13px 'Outfit', sans-serif";
             this.ctx.fillStyle = accent;
             this.ctx.fillText(ins.desc, iX + cardW / 2, instY + 128);
-            
+
             this.ctx.restore();
         });
         
@@ -1935,7 +2183,7 @@ class AdBird {
                 { label: "BEST MISSES", val: this.state.highTotalMisses, color: "#f43f5e" }
             ];
             
-            const badgeY = 175;
+            const badgeY = 215;
             const bW = 210;
             const bH = 85;
             const bGap = 20;
@@ -2231,6 +2479,7 @@ class AdBird {
         this.state.playBtnPressed = 0;
         this.state.rentBtnPressed = 0;
         this.state.splashFocus = 0;
+        this.state.shopOpen = false;
         this.state.combo = 0;
         this.state.lastHitFrame = 0;
         this.state.missCombo = 0;
@@ -2421,92 +2670,250 @@ class AdBird {
         this._shopBtnRect = { x: shopX, y: shopY, w: shopBtnW, h: shopBtnH };
     }
 
+    _hexToRgb(hex) {
+        const m = (hex || "").match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+        if (!m) return "255, 255, 255";
+        return `${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}`;
+    }
+
     _renderShop() {
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
-        const w = this.canvas.width * 0.7;
-        const h = 480;
+        const w = Math.min(this.canvas.width * 0.75, 640);
+        const h = 580;
         const x = cx - w / 2;
         const y = cy - h / 2;
+        const f = this.state.frameCount;
 
         this.ctx.save();
-        // Overlay
-        this.ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+
+        // Dim backdrop
+        this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Modal bg
-        this.ctx.fillStyle = "#111827";
-        this.ctx.shadowBlur = 40;
-        this.ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        // Modal background — subtle vertical gradient
+        const bgGrad = this.ctx.createLinearGradient(x, y, x, y + h);
+        bgGrad.addColorStop(0, "#1f2937");
+        bgGrad.addColorStop(1, "#0f172a");
+        this.ctx.fillStyle = bgGrad;
+        this.ctx.shadowBlur = 50;
+        this.ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
         this.ctx.beginPath();
         this.ctx.roundRect(x, y, w, h, 24);
         this.ctx.fill();
-        this.ctx.strokeStyle = "#374151";
-        this.ctx.lineWidth = 2;
+        this.ctx.shadowBlur = 0;
+
+        // Pulsing outer border glow
+        const borderGlow = 18 + Math.sin(f * 0.05) * 8;
+        this.ctx.strokeStyle = "#a855f7";
+        this.ctx.lineWidth = 3;
+        this.ctx.shadowBlur = borderGlow;
+        this.ctx.shadowColor = "#a855f7";
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, w, h, 24);
         this.ctx.stroke();
+        this.ctx.shadowBlur = 0;
 
-        // Title
-        this.ctx.font = "900 32px 'Outfit', sans-serif";
-        this.ctx.fillStyle = "#fff";
+        // TITLE with gradient + shimmer sweep
+        const titleY = y + 55;
         this.ctx.textAlign = "center";
-        this.ctx.fillText("BIRD COSMETICS", cx, y + 50);
+        this.ctx.textBaseline = "middle";
+        this.ctx.font = "900 36px 'Outfit', sans-serif";
+        const titleText = "BIRD COSMETICS";
+        const titleW = this.ctx.measureText(titleText).width;
 
-        this.ctx.font = "bold 18px 'Outfit', sans-serif";
+        this.ctx.strokeStyle = "#000";
+        this.ctx.lineWidth = 5;
+        this.ctx.strokeText(titleText, cx, titleY);
+
+        const titleGrad = this.ctx.createLinearGradient(cx - titleW/2, 0, cx + titleW/2, 0);
+        titleGrad.addColorStop(0, "#fbbf24");
+        titleGrad.addColorStop(0.5, "#f59e0b");
+        titleGrad.addColorStop(1, "#fbbf24");
+        this.ctx.fillStyle = titleGrad;
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowColor = "#f59e0b";
+        this.ctx.fillText(titleText, cx, titleY);
+        this.ctx.shadowBlur = 0;
+
+        const titleShimPos = (f * 0.008) % 1.5 - 0.25;
+        this.ctx.save();
+        this.ctx.globalCompositeOperation = 'source-atop';
+        const titleShimX = cx - titleW/2 + titleW * titleShimPos;
+        const titleShimGrad = this.ctx.createLinearGradient(titleShimX - 60, 0, titleShimX + 60, 0);
+        titleShimGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+        titleShimGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.75)");
+        titleShimGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+        this.ctx.fillStyle = titleShimGrad;
+        this.ctx.fillText(titleText, cx, titleY);
+        this.ctx.restore();
+
+        // Coin counter with pulse
+        const coinPulse = 1 + Math.sin(f * 0.08) * 0.04;
+        this.ctx.save();
+        this.ctx.translate(cx, y + 100);
+        this.ctx.scale(coinPulse, coinPulse);
+        this.ctx.font = "bold 20px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fbbf24";
-        this.ctx.fillText(`🪙 ${this.state.adCoins} AD COINS`, cx, y + 80);
+        this.ctx.shadowBlur = 12;
+        this.ctx.shadowColor = "#fbbf24";
+        this.ctx.fillText(`🪙 ${this.state.adCoins} AD COINS`, 0, 0);
+        this.ctx.restore();
 
-        // Color list
-        const rowH = 55;
-        const rowStartY = y + 120;
+        // COLOR ROWS
+        const rowH = 58;
+        const rowStartY = y + 140;
+        const rowPad = 20;
+
         this.config.shopColors.forEach((c, i) => {
             const rowY = rowStartY + i * rowH;
+            const rowX = x + rowPad;
+            const rowW = w - rowPad * 2;
             const isOwned = this.state.ownedColors.includes(c.id);
             const isSelected = this.state.selectedColor === c.id;
             const canAfford = this.state.adCoins >= c.cost;
 
-            // Row background if hovering (simplistic)
-            const isHover = this.state.mouseY >= rowY && this.state.mouseY <= rowY + rowH &&
-                           this.state.mouseX >= x && this.state.mouseX <= x + w;
+            const isHover = this.state.mouseY >= rowY && this.state.mouseY <= rowY + rowH - 4 &&
+                           this.state.mouseX >= rowX && this.state.mouseX <= rowX + rowW;
 
-            if (isHover) {
-                this.ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-                this.ctx.fillRect(x + 10, rowY, w - 20, rowH - 5);
+            const rowPhase = f * 0.05 + i * 0.3;
+            const tintHex = c.tint || "#ffffff";
+            const tintRgb = this._hexToRgb(tintHex);
+
+            let rowBgAlpha = 0.05;
+            let rowXOffset = 0;
+            if (isSelected) {
+                rowBgAlpha = 0.18 + Math.sin(rowPhase) * 0.04;
+            } else if (isHover) {
+                rowBgAlpha = 0.14;
+                rowXOffset = 8;
             }
 
-            // Color swatch
-            this.ctx.fillStyle = c.tint || "#fff";
-            this.ctx.shadowBlur = 10;
-            this.ctx.shadowColor = c.tint || "#fff";
+            // Row background
+            this.ctx.fillStyle = `rgba(${tintRgb}, ${rowBgAlpha})`;
             this.ctx.beginPath();
-            this.ctx.arc(x + 40, rowY + rowH / 2 - 2, 12, 0, Math.PI * 2);
+            this.ctx.roundRect(rowX + rowXOffset, rowY, rowW, rowH - 6, 12);
+            this.ctx.fill();
+
+            // Selected row — glowing border in tint color
+            if (isSelected) {
+                this.ctx.strokeStyle = tintHex;
+                this.ctx.lineWidth = 2;
+                this.ctx.shadowBlur = 14;
+                this.ctx.shadowColor = tintHex;
+                this.ctx.beginPath();
+                this.ctx.roundRect(rowX + rowXOffset, rowY, rowW, rowH - 6, 12);
+                this.ctx.stroke();
+                this.ctx.shadowBlur = 0;
+            }
+
+            // Hover shimmer
+            if (isHover && !isSelected) {
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.roundRect(rowX + rowXOffset, rowY, rowW, rowH - 6, 12);
+                this.ctx.clip();
+                const rowShimPos = (f * 0.015) % 2 - 0.5;
+                const rowShimX = rowX + rowW * rowShimPos;
+                const rowShimGrad = this.ctx.createLinearGradient(rowShimX - 70, 0, rowShimX + 70, 0);
+                rowShimGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+                rowShimGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.18)");
+                rowShimGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+                this.ctx.fillStyle = rowShimGrad;
+                this.ctx.fillRect(rowX, rowY, rowW, rowH);
+                this.ctx.restore();
+            }
+
+            // Swatch with glow + pulse
+            const swatchX = rowX + 34 + rowXOffset;
+            const swatchY = rowY + (rowH - 6) / 2;
+            const swatchPulse = 1 + Math.sin(rowPhase) * 0.1;
+            const swatchR = 14 * swatchPulse;
+
+            this.ctx.fillStyle = tintHex;
+            this.ctx.shadowBlur = 16 + (isHover ? 10 : 0);
+            this.ctx.shadowColor = tintHex;
+            this.ctx.beginPath();
+            this.ctx.arc(swatchX, swatchY, swatchR, 0, Math.PI * 2);
             this.ctx.fill();
             this.ctx.shadowBlur = 0;
 
-            // Name
-            this.ctx.font = "bold 18px 'Outfit', sans-serif";
-            this.ctx.fillStyle = isSelected ? "#fff" : "#9ca3af";
-            this.ctx.textAlign = "left";
-            this.ctx.fillText(c.name, x + 70, rowY + rowH / 2);
+            // Swatch inner highlight
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+            this.ctx.beginPath();
+            this.ctx.arc(swatchX - 4, swatchY - 4, swatchR * 0.3, 0, Math.PI * 2);
+            this.ctx.fill();
 
-            // Status / Action
+            // Name
+            this.ctx.font = "bold 20px 'Outfit', sans-serif";
+            this.ctx.fillStyle = (isSelected || isHover) ? "#fff" : "#9ca3af";
+            this.ctx.textAlign = "left";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText(c.name, swatchX + 30, swatchY);
+
+            // Right-side status/action
             this.ctx.textAlign = "right";
+            const rightX = rowX + rowW - 20 + rowXOffset;
+
             if (isSelected) {
+                const badgeW = 120;
+                const badgeH = 28;
+                const badgeX = rightX - badgeW;
+                const badgeY = swatchY - badgeH / 2;
+                const badgePulse = 1 + Math.sin(rowPhase * 2) * 0.04;
+
+                this.ctx.save();
+                this.ctx.translate(badgeX + badgeW / 2, badgeY + badgeH / 2);
+                this.ctx.scale(badgePulse, badgePulse);
+                this.ctx.translate(-(badgeX + badgeW / 2), -(badgeY + badgeH / 2));
+
                 this.ctx.fillStyle = "#10b981";
-                this.ctx.fillText("EQUIPPED", x + w - 30, rowY + rowH / 2);
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = "#10b981";
+                this.ctx.beginPath();
+                this.ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 14);
+                this.ctx.fill();
+                this.ctx.shadowBlur = 0;
+
+                this.ctx.font = "900 14px 'Outfit', sans-serif";
+                this.ctx.fillStyle = "#064e3b";
+                this.ctx.textAlign = "center";
+                this.ctx.fillText("EQUIPPED", badgeX + badgeW / 2, swatchY);
+                this.ctx.restore();
             } else if (isOwned) {
-                this.ctx.fillStyle = "#60a5fa";
-                this.ctx.fillText("SELECT", x + w - 30, rowY + rowH / 2);
+                this.ctx.font = "900 18px 'Outfit', sans-serif";
+                this.ctx.fillStyle = isHover ? "#93c5fd" : "#3b82f6";
+                if (isHover) {
+                    this.ctx.shadowBlur = 12;
+                    this.ctx.shadowColor = "#60a5fa";
+                }
+                this.ctx.fillText("SELECT →", rightX, swatchY);
+                this.ctx.shadowBlur = 0;
+            } else if (canAfford) {
+                const buyPulse = 1 + Math.sin(rowPhase * 1.5) * 0.04;
+                this.ctx.save();
+                this.ctx.translate(rightX, swatchY);
+                this.ctx.scale(buyPulse, buyPulse);
+                this.ctx.font = "900 18px 'Outfit', sans-serif";
+                this.ctx.fillStyle = isHover ? "#fde047" : "#fbbf24";
+                this.ctx.textAlign = "right";
+                this.ctx.shadowBlur = isHover ? 16 : 10;
+                this.ctx.shadowColor = "#fbbf24";
+                this.ctx.fillText(`BUY 🪙${c.cost}`, 0, 0);
+                this.ctx.restore();
             } else {
-                this.ctx.fillStyle = canAfford ? "#fbbf24" : "#ef4444";
-                this.ctx.fillText(`BUY 🪙${c.cost}`, x + w - 30, rowY + rowH / 2);
+                this.ctx.font = "900 18px 'Outfit', sans-serif";
+                this.ctx.fillStyle = "#6b7280";
+                this.ctx.fillText(`🔒 ${c.cost}`, rightX, swatchY);
             }
         });
 
         // Close hint
-        this.ctx.font = "bold 14px 'Outfit', sans-serif";
-        this.ctx.fillStyle = "#4b5563";
+        this.ctx.font = "bold 12px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "#6b7280";
         this.ctx.textAlign = "center";
-        this.ctx.fillText("CLICK ANYWHERE OUTSIDE OR SHOP BUTTON TO CLOSE", cx, y + h - 30);
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText("CLICK OUTSIDE OR THE SHOP BUTTON TO CLOSE", cx, y + h - 25);
 
         this.ctx.restore();
     }
@@ -2514,19 +2921,19 @@ class AdBird {
     _handleShopClick(x, y) {
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
-        const w = this.canvas.width * 0.7;
-        const h = 480;
+        const w = Math.min(this.canvas.width * 0.75, 640);
+        const h = 580;
         const modalX = cx - w / 2;
         const modalY = cy - h / 2;
 
-        // If click outside modal, close
+        // Click outside modal closes it
         if (x < modalX || x > modalX + w || y < modalY || y > modalY + h) {
             this.state.shopOpen = false;
             return true;
         }
 
-        const rowH = 55;
-        const rowStartY = modalY + 120;
+        const rowH = 58;
+        const rowStartY = modalY + 140;
         const clickedRowIndex = Math.floor((y - rowStartY) / rowH);
 
         if (clickedRowIndex >= 0 && clickedRowIndex < this.config.shopColors.length) {
