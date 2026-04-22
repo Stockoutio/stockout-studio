@@ -123,11 +123,26 @@ class AdBird {
     }
 
     _initEngine() {
-        this._boundLoop = () => this._loop();
+        // NEW:
+        this.lastTime = 0;
+        this._boundLoop = (timestamp = 0) => this._loop(timestamp);
         this.assets.player.src = this.config.playerImg;
         this.assets.player.onload = () => this.state.assetsLoaded++;
-        this.config.worlds.forEach((p) => { const img = new Image(); img.src = p; img.onload = () => { this.state.assetsLoaded++; }; this.assets.worlds.push(img); });
+        // NEW:
+        this.assets.player.onerror = () => { console.warn("Player image failed to load"); this.state.assetsLoaded++; };
+        this.config.worlds.forEach((p) => { 
+            const img = new Image(); 
+            img.src = p; 
+            img.onload = () => { this.state.assetsLoaded++; }; 
+            // NEW:
+            img.onerror = () => { console.warn(`World image ${p} failed to load`); this.state.assetsLoaded++; };
+            this.assets.worlds.push(img); 
+        });
         window.addEventListener('keydown', (e) => this._handleKeydown(e));
+        // NEW:
+        this._handleResize = this._handleResize.bind(this);
+        window.addEventListener('resize', this._handleResize);
+        window.addEventListener('orientationchange', this._handleResize);
         const it = this.canvas.parentElement || this.canvas;
         it.addEventListener('mousedown', (e) => { if (!this.isMobile) this._handleInput(e); });
         it.addEventListener('mousemove', (e) => { if (!this.isMobile) this._handleMouseMove(e); });
@@ -398,15 +413,19 @@ class AdBird {
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
     }
 
-    _loop() { 
-        this.state.lastRect = this.canvas.getBoundingClientRect(); 
-        this._update(); 
-        this._updateParticles(); // Always update particles even when game is paused
-        this._draw(); 
-        requestAnimationFrame(this._boundLoop); 
+    // NEW:
+    _loop(timestamp = 0) {
+        const dt = Math.min((timestamp - (this.lastTime || timestamp)) / 16.67, 2.5);
+        this.lastTime = timestamp;
+        this.state.lastRect = this.canvas.getBoundingClientRect();
+        this._update(dt);
+        this._updateParticles(dt);
+        this._draw();
+        requestAnimationFrame(this._boundLoop);
     }
 
-    _update() {
+    // NEW:
+    _update(dt) {
         if (this.state.screenShake > 0) this.state.screenShake *= this.config.screenShakeDecay;
         
         if (!this.state.gameRunning) { 
@@ -415,27 +434,37 @@ class AdBird {
                 this.player.velocity = 0;
             }
             this.player.flipAngle += this.player.flipDirection * 0.2; 
-            this.state.frameCount++;
+            // NEW:
+            this.state.frameCount += dt;
             return; 
         }
 
-        this.player.velocity += this.config.gravity; 
-        this.player.y += this.player.velocity;
-        this.state.bgX = (this.state.bgX - this.config.bgSpeed) % this.canvas.width;
-        if (this.state.bombTimer > 0) this.state.bombTimer--;
+        // NEW:
+        this.player.velocity += this.config.gravity * dt; 
+        this.player.y += this.player.velocity * dt;
+        this.state.bgX = (this.state.bgX - this.config.bgSpeed * dt) % this.canvas.width;
+        if (this.state.bombTimer > 0) this.state.bombTimer -= dt;
+
         if (this.player.isFlipping) { this.player.flipAngle += this.player.flipDirection * this.player.flipSpeed; if (Math.abs(this.player.flipAngle) >= Math.PI * 2) { this.player.flipAngle = 0; this.player.isFlipping = false; } }
+        
+        // NEW:
         if (this.state.frameCount >= this.state.nextPipeFrame) this._spawnPipe();
-        this._updateEntities();
+        this._updateEntities(dt);
+
         if (this.player.y + this.player.h > this.canvas.height || this.player.y < 0) this.gameOver();
-        this.state.frameCount++;
+        
+        // NEW:
+        this.state.frameCount += dt;
     }
 
-    _updateParticles() {
+    // NEW:
+    _updateParticles(dt) {
         for (let i = this.state.particles.length - 1; i >= 0; i--) { 
             const p = this.state.particles[i]; p.x += p.vx; p.y += p.vy; 
             if (p.rotation !== undefined) p.rotation += p.rotSpeed;
-            p.vy += this.config.particleGravity * (p.isBit || p.isTurkey ? 1.5 : 1); 
-            p.life -= (p.isDeath ? 0.005 : this.config.particleLifeDecay); // Death particles last longer
+            // NEW:
+            p.vy += this.config.particleGravity * dt * (p.isBit || p.isTurkey ? 1.5 : 1); 
+            p.life -= (p.isDeath ? 0.005 : this.config.particleLifeDecay) * dt; // Death particles last longer
             if (p.life <= 0) this.state.particles.splice(i, 1); 
         }
         if (this.state.particles.length > 200) {
@@ -451,9 +480,11 @@ class AdBird {
         }
     }
 
-    _updateEntities() {
+    // NEW:
+    _updateEntities(dt) {
         for (let i = this.pipes.length - 1; i >= 0; i--) {
-            const p = this.pipes[i]; p.x -= this.config.pipeSpeed;
+            // NEW:
+            const p = this.pipes[i]; p.x -= this.config.pipeSpeed * dt;
             if (p.highlight > 0) p.highlight *= 0.82;
             p.stains.forEach(s => s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; }));
             const pd = 15; const bx = this.player.x+pd, bw = this.player.w-(pd*2), by = this.player.y+pd, bh = this.player.h-(pd*2);
@@ -465,7 +496,8 @@ class AdBird {
             if (p.x + p.w < -150) this.pipes.splice(i, 1);
         }
         for (let i = this.bombs.length - 1; i >= 0; i--) { 
-            const b = this.bombs[i]; b.y += b.speed; let hit = false; 
+            // NEW:
+            const b = this.bombs[i]; b.y += b.speed * dt; let hit = false; 
             for (const p of this.pipes) { 
                 if (b.x > p.x && b.x < p.x + p.w && (b.y < p.y || b.y > p.y + p.gap)) { 
                     this._createSplat(p, b.x, b.y, b.scale); 
@@ -1902,6 +1934,23 @@ class AdBird {
             
             this.ctx.restore();
         });
+    }
+    // NEW:
+    _handleResize() {
+        this.state.lastRect = this.canvas.getBoundingClientRect();
+        this._initHUDGeometry();
+    }
+
+    // NEW:
+    destroy() {
+        window.removeEventListener('keydown', this._handleKeydown);
+        window.removeEventListener('resize', this._handleResize);
+        window.removeEventListener('orientationchange', this._handleResize);
+        const it = this.canvas.parentElement || this.canvas;
+        it.removeEventListener('mousedown', this._handleInput);
+        it.removeEventListener('mousemove', this._handleMouseMove);
+        it.removeEventListener('touchstart', this._handleInput);
+        if (this.assets && this.assets.music) this.assets.music.pause();
     }
 }
 
