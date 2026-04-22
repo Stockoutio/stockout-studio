@@ -89,7 +89,7 @@ class AdBird {
             comboVoiceLines: window.AdBirdContent.COMBO_VOICE_LINES,
             shopColors: [
                 { id: 'default', name: 'DEFAULT', cost: 0, tint: null },
-                { id: 'cyan', name: 'CYAN NEON', cost: 50, tint: '#06b6d4' },
+                { id: 'cyan', name: 'EMERALD', cost: 50, tint: '#10b981' },
                 { id: 'magenta', name: 'HOT PINK', cost: 100, tint: '#ec4899' },
                 { id: 'gold', name: 'GOLD RUSH', cost: 200, tint: '#fbbf24' },
                 { id: 'purple', name: 'SYNERGY PURPLE', cost: 350, tint: '#a855f7' },
@@ -240,6 +240,11 @@ class AdBird {
 
         // Game-over screen handling
         if (this.state.isGameOver) {
+            // Shop open — swallow game keys so Enter/Space doesn't reset past the shop
+            if (this.state.shopOpen) {
+                if (isFlap || isBomb || isEnter) e.preventDefault();
+                return;
+            }
             if (isFlap || isBomb || isEnter) {
                 e.preventDefault();
                 this._triggerButtonExplosion();
@@ -250,6 +255,11 @@ class AdBird {
 
         // Splash screen — Option A keyboard nav
         if (!this.state.gameRunning) {
+            // Shop open — swallow game keys so Space/Enter doesn't start the game
+            if (this.state.shopOpen) {
+                if (isFlap || isBomb || isEnter || isFocusCycle) e.preventDefault();
+                return;
+            }
             // Any direction/WASD cycles focus
             if (isFocusCycle) {
                 e.preventDefault();
@@ -406,6 +416,8 @@ class AdBird {
         const hoveringRunBack = this._isOverRunItBack(x, y);
         const hoveringPlay = this._isOverPlayBtn(x, y);
         const hoveringRent = this._isOverRentBtn(x, y);
+        const hoveringSplashShop = this._isOverSplashShopBtn(x, y);
+        const hoveringGameOverShop = this._isOverGameOverShopBtn(x, y);
         const action = this._hitTest(x, y);
         const hoveringFS = action === 'fullscreen';
         const hoveringMute = action === 'mute';
@@ -420,7 +432,7 @@ class AdBird {
         if (hoveringPlay) this.state.splashFocus = 0;
         else if (hoveringRent) this.state.splashFocus = 1;
 
-        this.canvas.style.cursor = (hoveringRunBack || hoveringPlay || hoveringRent || hoveringFS || hoveringMute) ? 'pointer' : 'default';
+        this.canvas.style.cursor = (hoveringRunBack || hoveringPlay || hoveringRent || hoveringFS || hoveringMute || hoveringSplashShop || hoveringGameOverShop) ? 'pointer' : 'default';
     }
 
     _isOverRunItBack(x, y) {
@@ -443,6 +455,20 @@ class AdBird {
         if (this.state.gameRunning || this.state.isGameOver) return false;
         if (!this._playBtnRect) return false;
         const r = this._playBtnRect;
+        return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    }
+
+    _isOverSplashShopBtn(x, y) {
+        if (this.state.gameRunning || this.state.isGameOver) return false;
+        if (!this._shopBtnRect) return false;
+        const r = this._shopBtnRect;
+        return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    }
+
+    _isOverGameOverShopBtn(x, y) {
+        if (!this.state.isGameOver) return false;
+        if (!this._gameOverShopBtnRect) return false;
+        const r = this._gameOverShopBtnRect;
         return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
     }
 
@@ -569,7 +595,7 @@ class AdBird {
         if (this.state.bombTimer > 0) this.state.bombTimer -= effectiveDt;
 
         this._updateEntities(effectiveDt);
-        if (this._updateFloatingTexts) this._updateFloatingTexts(effectiveDt);
+        // Floating texts are updated inside _updateParticles (called from _loop)
 
         if (this.state.frameCount >= this.state.nextPipeFrame) {
             this._spawnPipe();
@@ -586,8 +612,8 @@ class AdBird {
             p.life -= (p.isDeath ? 0.005 : this.config.particleLifeDecay) * dt; // Death particles last longer
             if (p.life <= 0) this.state.particles.splice(i, 1); 
         }
-        if (this.state.particles.length > 200) {
-            this.state.particles.splice(0, this.state.particles.length - 200);
+        if (this.state.particles.length > 400) {
+            this.state.particles.splice(0, this.state.particles.length - 400);
         }
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) { 
             const t = this.floatingTexts[i]; t.age++; 
@@ -656,18 +682,14 @@ class AdBird {
                         });
                     }
                     const nearMissMsgs = ["NICE!", "THREADED IT", "TOO CLOSE", "DAMN", "CLUTCH"];
-                    this.floatingTexts.push({
+                    this._pushFloatingText({
                         x: this.player.x + this.player.w / 2,
                         y: this.player.y - 20,
                         text: nearMissMsgs[Math.floor(Math.random() * nearMissMsgs.length)],
                         color: "#22d3ee",
                         scale: 0.9,
                         glow: "#06b6d4",
-                        age: 0,
-                        alpha: 1,
-                        vy: -2,
-                        vx: 0,
-                        align: "center"
+                        vy: -2
                     });
                     this._playTone({ type: 'sine', freq: [600, 900], vol: 0.2, dur: 0.08 });
                 }
@@ -689,6 +711,8 @@ class AdBird {
         for (let i = this.bombs.length - 1; i >= 0; i--) { 
             const b = this.bombs[i]; b.y += b.speed * dt; let hit = false; 
             for (const p of this.pipes) { 
+                // Skip collapsing pipes — already destroyed, can't be re-bombed
+                if (p.collapsing) continue;
                 if (b.x > p.x && b.x < p.x + p.w && (b.y < p.y || b.y > p.y + p.gap)) { 
                     this._createSplat(p, b.x, b.y, b.scale); 
                     hit = true; break; 
@@ -703,18 +727,10 @@ class AdBird {
                 const isGiga = b.scale >= 5.0;
                 const msg = isGiga ? this._nextFromBag('megaMissMsgBag', 'megaMissMessages') : this._nextFromBag('missMsgBag', 'missMessages');
                 
-                // Stack miss text above any nearby existing floating texts in the same area
-                let targetY = this.canvas.height - 30;
-                this.floatingTexts.forEach(t => {
-                    if (Math.abs(t.x - b.x) < 150 && t.y < this.canvas.height && t.y > this.canvas.height - 300) {
-                        targetY = Math.min(targetY, t.y - (isGiga ? 50 : 35));
-                    }
-                });
-                
-                this.floatingTexts.push({ 
-                    x: b.x, y: targetY, text: msg, 
-                    color: "#9ca3af", age: 0, alpha: 1, vy: -0.5, vx: (Math.random() - 0.5) * 2,
-                    scale: isGiga ? 1.4 : 0.8, align: "center", 
+                this._pushFloatingText({
+                    x: b.x, y: this.canvas.height - 30, text: msg,
+                    color: "#9ca3af", vy: -0.5, vx: (Math.random() - 0.5) * 2,
+                    scale: isGiga ? 1.4 : 0.8,
                     isMega: isGiga, glow: isGiga ? "#4b5563" : null,
                     isShivering: isGiga
                 });
@@ -1176,18 +1192,14 @@ class AdBird {
                     }
                 });
                 if (chainedCount > 0) {
-                    this.floatingTexts.push({
+                    this._pushFloatingText({
                         x: this.canvas.width / 2,
                         y: this.canvas.height / 2 + 60,
                         text: "CHAIN REACTION!",
                         color: "#fbbf24",
                         scale: 1.6,
                         glow: "#f59e0b",
-                        age: 0,
-                        alpha: 1,
                         vy: -3,
-                        vx: 0,
-                        align: "center",
                         isMega: true,
                         isShivering: true
                     });
@@ -1252,28 +1264,27 @@ class AdBird {
                 w:(3+Math.random()*4) * scale
             })) 
         }); 
-        let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
-        
         let hitMsg, align = "center", tx = bx;
         if (isMega) {
             const mega = ["MEGA SPLAT", "GIGA SPLAT", "AD-POCALYPSE", "ULTRA-BILL", "MONSTER SPLAT", "SIGN DESTROYER", "MARKET CRASHED", "KPIs CRUSHED", "BRAND DESTRUCTION", "TOTAL COVERAGE"];
             hitMsg = mega[Math.floor(Math.random()*mega.length)];
-            // Smart Alignment Guard
             if (bx < 280) { align = "left"; tx = 20; }
             else if (bx > this.canvas.width - 280) { align = "right"; tx = this.canvas.width - 20; }
         } else {
             hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
         }
 
-        this.floatingTexts.push({ 
-            x: tx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
-            scale: isMega ? 1.4 : 1, vx: (Math.random()-0.5)*(isMega ? 4 : 2),
-            text: hitMsg, 
+        this._pushFloatingText({
+            x: tx, y: by - 40,
+            vy: isMega ? -4 : 0,
+            scale: isMega ? 1.4 : 1,
+            vx: (Math.random()-0.5)*(isMega ? 4 : 2),
+            text: hitMsg,
             color: isMega ? "#fff" : this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)],
             glow: isMega ? p.ad.color : null,
             isMega: isMega,
             align: align
-        }); 
+        });
         this.playSound('splat'); 
 
         // Floating combo text removed — combo indicator now lives in the HUD
@@ -1291,18 +1302,14 @@ class AdBird {
             }
             const voiceLine = this._nextFromBag('comboVoiceBag', 'comboVoiceLines');
             if (voiceLine) {
-                this.floatingTexts.push({
+                this._pushFloatingText({
                     x: this.canvas.width / 2,
                     y: this.canvas.height / 2 - 40,
                     text: voiceLine,
                     color: "#fff",
                     scale: 1.8,
                     glow: "#a855f7",
-                    age: 0,
-                    alpha: 1,
                     vy: -2,
-                    vx: 0,
-                    align: "center",
                     isMega: true,
                     isShivering: true
                 });
@@ -1338,23 +1345,24 @@ class AdBird {
             });
         }
         
-        // Fanfare floating text
-        this.floatingTexts.push({
+        this._pushFloatingText({
             x: this.canvas.width / 2,
             y: this.canvas.height / 2 - 20,
             text: "JACKPOT! +5",
             color: "#fff",
             scale: 2.2,
             glow: "#fbbf24",
-            age: 0, alpha: 1,
-            vy: -3, vx: 0,
-            align: "center",
+            vy: -3,
             isMega: true,
             isShivering: true
         });
         
+        // The +5 bump may have crossed a world-shift milestone (e.g. 8 → 13 crosses 10).
+        // Check milestone tiers rather than exact multiple.
+        const prevMilestone = Math.floor((this.state.score - 5) / this.config.worldShiftInterval);
+        const newMilestone = Math.floor(this.state.score / this.config.worldShiftInterval);
         this.playSound('shift');
-        if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld();
+        if (newMilestone > prevMilestone) this._shiftWorld();
     }
 
     gameOver() { 
@@ -1605,25 +1613,38 @@ class AdBird {
             }
         }
 
+        const selected = this.config.shopColors.find(c => c.id === this.state.selectedColor);
+
         this.ctx.save();
         this.ctx.translate(cx, cy);
         this.ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.player.velocity * this.config.birdRotationFactor)) + this.player.flipAngle);
         this.ctx.scale(-1, 1);
-        this.ctx.drawImage(this.assets.player, -this.player.w / 2, -this.player.h / 2, this.player.w, this.player.h);
 
-        const selected = this.config.shopColors.find(c => c.id === this.state.selectedColor);
         if (selected && selected.tint) {
-            // Step 1 — multiply blend tints the whole rect with the color, preserving the bird's
-            // shading and outlines (black stays black, white becomes the tint, greys become tinted greys)
-            this.ctx.globalCompositeOperation = 'multiply';
-            this.ctx.fillStyle = selected.tint;
-            this.ctx.fillRect(-this.player.w / 2, -this.player.h / 2, this.player.w, this.player.h);
-            
-            // Step 2 — the multiply leaked outside the bird's silhouette into transparent areas.
-            // destination-in with the original sprite clips the result back to the bird's shape.
-            this.ctx.globalCompositeOperation = 'destination-in';
+            // Composite the tinted bird on an offscreen canvas so destination-in
+            // stays isolated from the main canvas (otherwise it wipes the whole screen).
+            // Use 'color' blend instead of 'multiply' — preserves luminosity while applying hue.
+            if (!this._tintCanvas) {
+                this._tintCanvas = document.createElement('canvas');
+                this._tintCanvas.width = this.player.w;
+                this._tintCanvas.height = this.player.h;
+                this._tintCtx = this._tintCanvas.getContext('2d');
+            }
+            const tc = this._tintCtx;
+            tc.globalCompositeOperation = 'source-over';
+            tc.clearRect(0, 0, this.player.w, this.player.h);
+            tc.drawImage(this.assets.player, 0, 0, this.player.w, this.player.h);
+            tc.globalCompositeOperation = 'color';
+            tc.fillStyle = selected.tint;
+            tc.fillRect(0, 0, this.player.w, this.player.h);
+            tc.globalCompositeOperation = 'destination-in';
+            tc.drawImage(this.assets.player, 0, 0, this.player.w, this.player.h);
+
+            this.ctx.drawImage(this._tintCanvas, -this.player.w / 2, -this.player.h / 2, this.player.w, this.player.h);
+        } else {
             this.ctx.drawImage(this.assets.player, -this.player.w / 2, -this.player.h / 2, this.player.w, this.player.h);
         }
+
         this.ctx.restore();
     }
     _renderParticles() { 
@@ -1996,21 +2017,7 @@ class AdBird {
 
             this.ctx.save();
             this.ctx.globalAlpha = btnProgress;
-            this.ctx.fillStyle = "rgba(251, 191, 36, 0.15)";
-            this.ctx.beginPath();
-            this.ctx.roundRect(shopBtnX, shopBtnY, shopBtnW, shopBtnH, 10);
-            this.ctx.fill();
-            this.ctx.strokeStyle = "#fbbf24";
-            this.ctx.lineWidth = 2;
-            this.ctx.shadowBlur = 12;
-            this.ctx.shadowColor = "#fbbf24";
-            this.ctx.stroke();
-            this.ctx.shadowBlur = 0;
-            this.ctx.font = "900 16px 'Outfit', sans-serif";
-            this.ctx.fillStyle = "#fbbf24";
-            this.ctx.textAlign = "center";
-            this.ctx.textBaseline = "middle";
-            this.ctx.fillText(`🪙 SHOP  •  ${this.state.adCoins}`, shopBtnX + shopBtnW / 2, shopBtnY + shopBtnH / 2);
+            this._renderShopButton(this._gameOverShopBtnRect);
             this.ctx.restore();
         }
 
@@ -2409,7 +2416,13 @@ class AdBird {
         
         this.ctx.restore();
         
-        // --- KEYBOARD HINT ---
+        // --- SHOP BUTTON (shown on all devices) ---
+        if (this._shopBtnRect) this._renderShopButton(this._shopBtnRect);
+
+        // --- SHOP MODAL (renders on top of everything if open) ---
+        if (this.state.shopOpen) this._renderShop();
+
+        // --- KEYBOARD HINT (desktop only) ---
         if (!this.isMobile) {
             const hintText = "← → ARROWS TO SELECT  •  ENTER TO ACTIVATE";
             this.ctx.save();
@@ -2418,46 +2431,20 @@ class AdBird {
             const hintH = 24;
             const hintX = cx - hintW / 2;
             const hintY = rent.y + rent.h + 18;
-            
-            // --- SHOP BUTTON ---
-            this.ctx.save();
-            const shop = this._shopBtnRect;
-            const shopHover = this.state.mouseX >= shop.x && this.state.mouseX <= shop.x + shop.w &&
-                              this.state.mouseY >= shop.y && this.state.mouseY <= shop.y + shop.h;
-            
-            this.ctx.fillStyle = shopHover ? "rgba(251, 191, 36, 0.25)" : "rgba(251, 191, 36, 0.15)";
-            this.ctx.beginPath();
-            this.ctx.roundRect(shop.x, shop.y, shop.w, shop.h, 10);
-            this.ctx.fill();
-            this.ctx.strokeStyle = "#fbbf24";
-            this.ctx.lineWidth = shopHover ? 3 : 2;
-            this.ctx.shadowBlur = shopHover ? 20 : 12;
-            this.ctx.shadowColor = "#fbbf24";
-            this.ctx.stroke();
-            this.ctx.shadowBlur = 0;
-            this.ctx.font = "900 18px 'Outfit', sans-serif";
-            this.ctx.fillStyle = "#fbbf24";
-            this.ctx.textAlign = "center";
-            this.ctx.textBaseline = "middle";
-            this.ctx.fillText(`🪙 SHOP  •  ${this.state.adCoins}`, shop.x + shop.w / 2, shop.y + shop.h / 2);
-            this.ctx.restore();
 
-            if (this.state.shopOpen) this._renderShop();
-            
             // Dark backing pill
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.7)";
             this.ctx.beginPath();
             this.ctx.roundRect(hintX, hintY - hintH / 2, hintW, hintH, 12);
             this.ctx.fill();
-            
+
             // Subtle border
             this.ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
             this.ctx.lineWidth = 1;
             this.ctx.beginPath();
             this.ctx.roundRect(hintX, hintY - hintH / 2, hintW, hintH, 12);
             this.ctx.stroke();
-            
-            // Text
+
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "middle";
@@ -2670,10 +2657,97 @@ class AdBird {
         this._shopBtnRect = { x: shopX, y: shopY, w: shopBtnW, h: shopBtnH };
     }
 
+    _pushFloatingText(cfg) {
+        // Auto-adjusts y upward to avoid overlapping existing nearby floating texts.
+        // Bumps up by 50px at a time until the slot is clear (max 8 bumps).
+        let y = cfg.y;
+        let attempts = 0;
+        let overlapping = true;
+        while (overlapping && attempts < 8) {
+            overlapping = false;
+            for (const t of this.floatingTexts) {
+                if (Math.abs(t.x - cfg.x) < 150 && Math.abs(t.y - y) < 45) {
+                    y -= 50;
+                    overlapping = true;
+                    attempts++;
+                    break;
+                }
+            }
+        }
+        this.floatingTexts.push({
+            age: 0,
+            alpha: 1,
+            vx: 0,
+            vy: 0,
+            align: 'center',
+            ...cfg,
+            y: y
+        });
+    }
+
     _hexToRgb(hex) {
         const m = (hex || "").match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
         if (!m) return "255, 255, 255";
         return `${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}`;
+    }
+
+    _renderShopButton(rect) {
+        const hover = this.state.mouseX >= rect.x && this.state.mouseX <= rect.x + rect.w &&
+                      this.state.mouseY >= rect.y && this.state.mouseY <= rect.y + rect.h;
+        const pulse = Math.sin(this.state.frameCount * 0.08) * 0.5 + 0.5;
+        const hoverScale = hover ? 1.08 : 1.0;
+        const hoverLift = hover ? 3 : 0;
+        const glowIntensity = hover ? 25 + pulse * 10 : 12 + pulse * 5;
+
+        const cx = rect.x + rect.w / 2;
+        const cy = rect.y + rect.h / 2;
+
+        this.ctx.save();
+        // Hover lift + scale-about-center
+        this.ctx.translate(0, -hoverLift);
+        this.ctx.translate(cx, cy);
+        this.ctx.scale(hoverScale, hoverScale);
+        this.ctx.translate(-cx, -cy);
+
+        // Fill
+        this.ctx.fillStyle = hover ? "rgba(251, 191, 36, 0.3)" : "rgba(251, 191, 36, 0.15)";
+        this.ctx.beginPath();
+        this.ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 10);
+        this.ctx.fill();
+
+        // Glowing border
+        this.ctx.strokeStyle = "#fbbf24";
+        this.ctx.lineWidth = hover ? 3 : 2;
+        this.ctx.shadowBlur = glowIntensity;
+        this.ctx.shadowColor = "#fbbf24";
+        this.ctx.stroke();
+        this.ctx.shadowBlur = 0;
+
+        // Shimmer sweep on hover
+        if (hover) {
+            this.ctx.save();
+            this.ctx.beginPath();
+            this.ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 10);
+            this.ctx.clip();
+            const sPos = (this.state.frameCount * 0.02) % 1;
+            const sW = 50;
+            const sX = rect.x - sW + (rect.w + sW * 2) * sPos;
+            const sGrad = this.ctx.createLinearGradient(sX, 0, sX + sW, 0);
+            sGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+            sGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.45)");
+            sGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+            this.ctx.fillStyle = sGrad;
+            this.ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+            this.ctx.restore();
+        }
+
+        // Text
+        this.ctx.font = "900 18px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "#fbbf24";
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText(`🪙 SHOP  •  ${this.state.adCoins}`, cx, cy);
+        this.ctx.restore();
     }
 
     _renderShop() {
