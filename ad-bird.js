@@ -78,7 +78,23 @@ class AdBird {
                 score: { type: 'sine', freq: [800, 1200], vol: 0.4, dur: 0.1 },
                 crash: { type: 'sawtooth', freq: [100, 20], vol: 0.6, dur: 0.5 },
                 shift: { type: 'square', freq: [200, 800], vol: 0.5, dur: 0.3 }
-            }
+            },
+            difficultyGainPerHit: 0.025,
+            difficultyLossPerMiss: 0.04,
+            difficultyMin: 0.85,
+            difficultyMax: 1.65,
+            minPipeSpawnGap: 55,
+            slowMoDuration: 12,
+            slowMoFactor: 0.25,
+            comboVoiceLines: window.AdBirdContent.COMBO_VOICE_LINES,
+            shopColors: [
+                { id: 'default', name: 'DEFAULT', cost: 0, tint: null },
+                { id: 'cyan', name: 'CYAN NEON', cost: 50, tint: '#06b6d4' },
+                { id: 'magenta', name: 'HOT PINK', cost: 100, tint: '#ec4899' },
+                { id: 'gold', name: 'GOLD RUSH', cost: 200, tint: '#fbbf24' },
+                { id: 'purple', name: 'SYNERGY PURPLE', cost: 350, tint: '#a855f7' },
+                { id: 'red', name: 'MARKET RED', cost: 500, tint: '#f43f5e' }
+            ]
         };
         this.config = { ...this.config, ...options };
     }
@@ -117,9 +133,15 @@ class AdBird {
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: "",
             fullscreenHover: false, muteHover: false, fullscreenPressed: 0, mutePressed: 0,
-            // === NEW: Combo system for addiction ===
-            combo: 0,
-            lastHitFrame: 0
+            combo: 0, lastHitFrame: 0, missCombo: 0, difficultyMultiplier: 1.0, lastDifficultyChangeFrame: 0,
+            slowMoTimer: 0, slowMoStrength: 0,
+            comboVoiceBag: [],
+            adCoins: parseInt(this._safeStorage('get', 'adBirdCoins')) || 0,
+            ownedColors: JSON.parse(this._safeStorage('get', 'adBirdOwnedColors') || '["default"]'),
+            selectedColor: this._safeStorage('get', 'adBirdSelectedColor') || 'default',
+            shopOpen: false,
+            shopHoverIndex: -1,
+            lastCoinsEarned: 0
         };
         this.state.currentWorld = this._nextWorld();
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
@@ -305,6 +327,19 @@ class AdBird {
         
         // Splash screen
         if (!this.state.gameRunning) { 
+            if (this.state.shopOpen) {
+                if (this._handleShopClick(x, y)) return;
+            }
+
+            if (this._shopBtnRect && x >= this._shopBtnRect.x && x <= this._shopBtnRect.x + this._shopBtnRect.w &&
+                y >= this._shopBtnRect.y && y <= this._shopBtnRect.y + this._shopBtnRect.h) {
+                this.state.shopOpen = !this.state.shopOpen;
+                this.playSound('score');
+                return;
+            }
+
+            if (this.state.shopOpen) return;
+
             // RENT button is the ONLY exclusive button on splash — tap advances, rent opens Stripe
             if (this._isOverRentBtn(x, y)) {
                 this._triggerSplashButtonExplosion('rent');
@@ -453,7 +488,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0 });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0, combo: 0, lastHitFrame: 0, missCombo: 0, difficultyMultiplier: 1.0, comboVoiceBag: [] });
         this.canvas.style.cursor = 'default';
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = [];
@@ -472,35 +507,50 @@ class AdBird {
 
     // NEW:
     _update(dt) {
-        if (this.state.screenShake > 0) this.state.screenShake *= this.config.screenShakeDecay;
-        
-        if (!this.state.gameRunning) { 
-            if (!this.state.isGameOver) {
-                this.player.y = 150;
-                this.player.velocity = 0;
-            }
-            this.player.flipAngle += this.player.flipDirection * 0.2; 
-            // NEW:
+        if (!this.state.gameRunning || this.state.isGameOver) {
             this.state.frameCount += dt;
-            return; 
+            this._updateParticles(dt);
+            return;
         }
 
-        // NEW:
-        this.player.velocity += this.config.gravity * dt; 
-        this.player.y += this.player.velocity * dt;
-        this.state.bgX = (this.state.bgX - this.config.bgSpeed * dt) % this.canvas.width;
-        if (this.state.bombTimer > 0) this.state.bombTimer -= dt;
+        let effectiveDt = dt;
+        if (this.state.slowMoTimer > 0) {
+            const slowRatio = this.state.slowMoTimer / this.config.slowMoDuration;
+            const factor = this.state.slowMoStrength + (1 - this.state.slowMoStrength) * (1 - slowRatio);
+            effectiveDt = dt * factor;
+            this.state.slowMoTimer -= dt;
+        }
 
-        if (this.player.isFlipping) { this.player.flipAngle += this.player.flipDirection * this.player.flipSpeed; if (Math.abs(this.player.flipAngle) >= Math.PI * 2) { this.player.flipAngle = 0; this.player.isFlipping = false; } }
-        
-        // NEW:
-        if (this.state.frameCount >= this.state.nextPipeFrame) this._spawnPipe();
-        this._updateEntities(dt);
-
-        if (this.player.y + this.player.h > this.canvas.height || this.player.y < 0) this.gameOver();
-        
-        // NEW:
         this.state.frameCount += dt;
+        if (this.state.screenShake > 0) this.state.screenShake *= 0.9;
+        if (this.state.flashOpacity > 0) this.state.flashOpacity *= 0.92;
+
+        this.player.velocity += this.config.gravity * effectiveDt;
+        this.player.y += this.player.velocity * effectiveDt;
+
+        if (this.player.isFlipping) {
+            this.player.flipAngle += (this.player.flipDirection * this.player.flipSpeed) * (effectiveDt / dt);
+            if (Math.abs(this.player.flipAngle) >= Math.PI * 2) {
+                this.player.flipAngle = 0;
+                this.player.isFlipping = false;
+            }
+        }
+
+        if (this.player.y < 0 || this.player.y + this.player.h > this.canvas.height) {
+            this.gameOver();
+        }
+
+        this.state.bgX = (this.state.bgX - this.config.bgSpeed * effectiveDt) % this.canvas.width;
+        if (this.state.bombTimer > 0) this.state.bombTimer -= effectiveDt;
+
+        this._updateEntities(effectiveDt);
+        this._updateParticles(dt);
+        // NEW:
+        if (this._updateFloatingTexts) this._updateFloatingTexts(effectiveDt);
+
+        if (this.state.frameCount >= this.state.nextPipeFrame) {
+            this._spawnPipe();
+        }
     }
 
     // NEW:
@@ -528,29 +578,85 @@ class AdBird {
 
     // NEW:
     _updateEntities(dt) {
+        const scoreRamp = Math.floor(this.state.score / 10) * 0.25;
+        const dynamicSpeed = (this.config.pipeSpeed + scoreRamp) * this.state.difficultyMultiplier;
+
         for (let i = this.pipes.length - 1; i >= 0; i--) {
-            // NEW: Dynamic pipe speed — gets faster every 10 points
-            const dynamicSpeed = this.config.pipeSpeed + Math.floor(this.state.score / 10) * 0.4;
-            const p = this.pipes[i]; p.x -= dynamicSpeed * dt;
+            const p = this.pipes[i];
+            
+            if (p.shakeTimer > 0) p.shakeTimer -= dt;
+            if (p.collapsing && p.shakeTimer <= 0) {
+                p.collapseVel += 0.8 * dt;
+                p.collapseOffsetY += p.collapseVel * dt;
+            }
+
+            p.x -= dynamicSpeed * dt;
             if (p.highlight > 0) p.highlight *= 0.82;
             p.stains.forEach(s => s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; }));
+            
+            if (p.collapsing) continue;
+            
             const pd = 15; const bx = this.player.x+pd, bw = this.player.w-(pd*2), by = this.player.y+pd, bh = this.player.h-(pd*2);
+            
+            // NEAR-MISS DETECTION
+            if (!p.nearMissed && bx < p.x + p.w && bx + bw > p.x) {
+                const topGapEdge = p.y;
+                const bottomGapEdge = p.y + p.gap;
+                const distToTop = by - topGapEdge;
+                const distToBottom = bottomGapEdge - (by + bh);
+                const closestEdge = Math.min(distToTop, distToBottom);
+                if (closestEdge > 0 && closestEdge < 25) {
+                    p.nearMissed = true;
+                    const fxY = distToTop < distToBottom ? topGapEdge : bottomGapEdge;
+                    for (let k = 0; k < 10; k++) {
+                        this.state.particles.push({
+                            x: p.x + p.w / 2 + (Math.random() - 0.5) * p.w,
+                            y: fxY + (Math.random() - 0.5) * 20,
+                            vx: (Math.random() - 0.5) * 4,
+                            vy: (Math.random() - 0.5) * 4,
+                            size: Math.random() * 3 + 1,
+                            color: "#22d3ee",
+                            life: 0.8,
+                            isMega: true
+                        });
+                    }
+                    const nearMissMsgs = ["NICE!", "THREADED IT", "TOO CLOSE", "DAMN", "CLUTCH"];
+                    this.floatingTexts.push({
+                        x: this.player.x + this.player.w / 2,
+                        y: this.player.y - 20,
+                        text: nearMissMsgs[Math.floor(Math.random() * nearMissMsgs.length)],
+                        color: "#22d3ee",
+                        scale: 0.9,
+                        glow: "#06b6d4",
+                        age: 0,
+                        alpha: 1,
+                        vy: -2,
+                        vx: 0,
+                        align: "center"
+                    });
+                    this._playTone({ type: 'sine', freq: [600, 900], vol: 0.2, dur: 0.08 });
+                }
+            }
+
             if (bx < p.x+p.w && bx+bw > p.x && (by < p.y || by+bh > p.y+p.gap)) { this.gameOver(); return; }
             if (!p.scored && p.x + p.w < this.player.x) { 
                 p.scored = true; p.highlight = 1.0; this.state.score++; this.playSound('score'); 
                 if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld(); 
             }
-            if (p.x + p.w < -150) this.pipes.splice(i, 1);
+            if (p.x + p.w < -150 || p.collapseOffsetY > this.canvas.height + 200) this.pipes.splice(i, 1);
         }
         for (let i = this.bombs.length - 1; i >= 0; i--) { 
-            // NEW:
             const b = this.bombs[i]; b.y += b.speed * dt; let hit = false; 
             for (const p of this.pipes) { 
                 if (b.x > p.x && b.x < p.x + p.w && (b.y < p.y || b.y > p.y + p.gap)) { 
                     this._createSplat(p, b.x, b.y, b.scale); 
                     hit = true; break; 
                 } 
-            } if (hit) this.bombs.splice(i, 1);
+            } 
+            if (hit) {
+                this.state.directHits++;
+                this.bombs.splice(i, 1);
+            }
             else if (b.y > this.canvas.height) {
                 // MISS!
                 const isGiga = b.scale >= 5.0;
@@ -587,8 +693,10 @@ class AdBird {
 
                 if (isGiga) this.state.screenShake = 30;
                 this.state.totalMisses++;
-                this.state.combo = 0;  // reset combo on miss
                 this.state.lastMissFrame = this.state.frameCount;
+                this.state.combo = 0;
+                this.state.missCombo++;
+                this.state.difficultyMultiplier = Math.max(this.config.difficultyMin, this.state.difficultyMultiplier - this.config.difficultyLossPerMiss);
                 this.playSound(isGiga ? 'mega_miss' : 'miss');
                 this.bombs.splice(i, 1);
             }
@@ -606,12 +714,20 @@ class AdBird {
 
     _spawnPipe() {
         const ad = this._nextAd();
-        const gap = Math.floor(Math.random() * (this.config.maxGap - this.config.minGap)) + this.config.minGap;
+        const baseInterval = Math.floor(Math.random() * 80) + 80;
+        const scaledInterval = Math.max(this.config.minPipeSpawnGap, baseInterval / this.state.difficultyMultiplier);
+        this.state.nextPipeFrame = this.state.frameCount + scaledInterval;
+        
+        const gap = Math.random() * (this.config.maxGap - this.config.minGap) + this.config.minGap;
         const minH_top = this.config.minPipeHeightTop;
         const maxH_top = this.canvas.height - gap - this.config.minPipeHeightBottom;
         const h = Math.floor(Math.random() * (maxH_top - minH_top)) + minH_top;
-        this.pipes.push({ x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: gap, ad: ad, scored: false, highlight: 0, stains: [] });
-        this.state.nextPipeFrame = this.state.frameCount + Math.floor(Math.random() * 80) + 80;
+        this.pipes.push({ 
+            x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: gap, ad: ad, 
+            scored: false, highlight: 0, stains: [],
+            shakeTimer: 0, collapsing: false, collapseOffsetY: 0, collapseVel: 0,
+            nearMissed: false
+        });
     }
 
     /* --- RENDERING --- */
@@ -627,11 +743,21 @@ class AdBird {
 
     _renderPipes() {
         this.pipes.forEach(p => {
+            this.ctx.save();
+            let sx = 0, sy = 0;
+            if (p.shakeTimer > 0) {
+                sx = (Math.random() - 0.5) * 12;
+                sy = (Math.random() - 0.5) * 12;
+            }
+            sy += p.collapseOffsetY || 0;
+            this.ctx.translate(sx, sy);
+
             this._drawPipeBody(p);
             this._drawPipeBorders(p, p.ad.color, 3);
             this._drawPipeCaps(p, p.ad.color, 3, 18);
             this._drawPipeStains(p, 3);
             this._drawPipeLabel(p, p.ad.color);
+            this.ctx.restore();
         });
     }
 
@@ -727,6 +853,32 @@ class AdBird {
         this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
         this.ctx.restore();
 
+        // COMBO INDICATOR
+        if (this.state.combo >= 2) {
+            const comboText = `${this.state.combo}× COMBO ✨`;
+            this.ctx.save();
+            this.ctx.textAlign = "center";
+            this.ctx.font = "900 24px 'Outfit', sans-serif";
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = "#06b6d4";
+            this.ctx.fillStyle = "#fff";
+            this.ctx.fillText(comboText, this.ui.scoreCenter, 115);
+            this.ctx.restore();
+        }
+
+        // MISS COMBO
+        if (this.state.missCombo >= 2) {
+            const missText = `${this.state.missCombo}× MISSED 💸`;
+            this.ctx.save();
+            this.ctx.textAlign = "center";
+            this.ctx.font = "900 20px 'Outfit', sans-serif";
+            this.ctx.shadowBlur = 12;
+            this.ctx.shadowColor = "#f43f5e";
+            this.ctx.fillStyle = "#fca5a5";
+            this.ctx.fillText(missText, this.ui.scoreCenter, 145);
+            this.ctx.restore();
+        }
+
         // --- TOP LEFT DASHBOARD: IMPACT & MISSES ---
         this.ctx.save();
         const padding = 25;
@@ -768,6 +920,14 @@ class AdBird {
         this.ctx.strokeText(this.state.totalMisses, 0, 20);
         this.ctx.fillText(this.state.totalMisses, 0, 20);
         this.ctx.restore();
+
+        // DIFFICULTY INDICATOR
+        const diffX = padding + 180;
+        this.ctx.font = "bold 14px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        this.ctx.fillText("SPEED", diffX, padding);
+        this.ctx.fillStyle = "#fbbf24";
+        this.ctx.fillText(this.state.difficultyMultiplier.toFixed(2) + "x", diffX, padding + 20);
         
         this.ctx.restore();
         
@@ -837,19 +997,6 @@ class AdBird {
             this.ctx.fill();
         } 
         this.ctx.restore();
-
-        // === NEW: Combo/Streak HUD (top center, under score) ===
-        if (this.state.combo >= 2) {
-            const comboText = `${this.state.combo}× STREAK 🔥`;
-            this.ctx.save();
-            this.ctx.textAlign = "center";
-            this.ctx.font = "900 22px 'Outfit', sans-serif";
-            this.ctx.shadowBlur = 15;
-            this.ctx.shadowColor = "#a855f7";
-            this.ctx.fillStyle = "#fff";
-            this.ctx.fillText(comboText, this.ui.scoreCenter, 115);
-            this.ctx.restore();
-        }
     }
 
     /* --- ENTROPY & AD ENGINE --- */
@@ -893,36 +1040,70 @@ class AdBird {
         if (this.state.stockBag.length === 0) {
             this.state.stockBag = this._shuffle(this.config.stockAds);
         }
+        this.state.stockInARow++;
         return this.state.stockBag.pop();
     }
 
-    _createSplat(p, bx, by, scale = 1.0) {
+    _createSplat(p, bx, by, scale = 1.0) { 
         const isMega = scale >= 5.0;
-        this.state.screenShake = isMega ? 30 : 10 * scale;
-        if (isMega) this.state.flashOpacity = 0.4;
-        this.state.directHits++; 
+        
+        if (isMega) {
+            const shockwaveRadius = 400;
+            this.pipes.forEach(otherPipe => {
+                const dist = Math.abs(otherPipe.x - p.x);
+                if (dist < shockwaveRadius && otherPipe !== p) {
+                    otherPipe.shakeTimer = 18;  // 0.3s at 60fps
+                    otherPipe.collapsing = true;
+                }
+            });
+            this.state.slowMoTimer = this.config.slowMoDuration;
+            this.state.slowMoStrength = this.config.slowMoFactor;
+        }
 
-        // === NEW: Combo system ===
-        const wasRecentHit = this.state.frameCount - this.state.lastHitFrame < 90;
+        this.state.screenShake = isMega ? 30 : 10 * scale; 
+        if (isMega) this.state.flashOpacity = 0.6;
+        
+        const wasRecentHit = (this.state.frameCount - this.state.lastHitFrame) < 120;
         this.state.combo = wasRecentHit ? this.state.combo + 1 : 1;
+        this.state.missCombo = 0;
+        this.state.difficultyMultiplier = Math.min(this.config.difficultyMax, this.state.difficultyMultiplier + this.config.difficultyGainPerHit);
         this.state.lastHitFrame = this.state.frameCount;
-        const comboBonus = Math.max(0, this.state.combo - 1) * 8;
-        this.state.score += comboBonus;
 
-        this.player.isFlipping = true; this.player.flipAngle = 0;
-
-        const pCount = isMega ? 60 : 15;
-        for (let i=0; i<pCount; i++) {
+        this.player.isFlipping = true; this.player.flipAngle = 0; 
+        
+        const pCount = isMega ? 90 : 30;
+        for (let i = 0; i < pCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = isMega ? Math.random() * 22 + 8 : Math.random() * 12 + 4;
             this.state.particles.push({
-                x: bx, y: by,
-                vx: (Math.random()-0.5)*(isMega ? 25 : 10),
-                vy: (Math.random()-0.5)*(isMega ? 25 : 10)-2,
-                color: p.ad.color, life: 1.0 + (isMega ? Math.random() : 0),
-                size: isMega ? Math.random()*6+2 : 3,
+                x: bx,
+                y: by,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 2,
+                color: p.ad.color,
+                life: 1.0 + (isMega ? Math.random() : 0),
+                size: isMega ? Math.random() * 7 + 3 : Math.random() * 4 + 2,
                 isMega: isMega
             });
         }
 
+        // ADD a second ring of white sparks for extra pop
+        const sparkCount = isMega ? 30 : 10;
+        for (let i = 0; i < sparkCount; i++) {
+            const angle = (Math.PI * 2 * i) / sparkCount;
+            const speed = isMega ? 14 : 7;
+            this.state.particles.push({
+                x: bx,
+                y: by,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                color: "#fff",
+                life: 0.6,
+                size: isMega ? 4 : 2,
+                isMega: true
+            });
+        }
+        
         p.stains.push({ 
             relY: by, xOff: bx-p.x, 
             size: (Math.random()*8+12) * scale, 
@@ -933,48 +1114,59 @@ class AdBird {
                 speed:(1.0+Math.random()*1.5) * scale,
                 w:(3+Math.random()*4) * scale
             })) 
-        });
-
-        let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; });
-
+        }); 
+        let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
+        
         let hitMsg, align = "center", tx = bx;
         if (isMega) {
             const mega = ["MEGA SPLAT", "GIGA SPLAT", "AD-POCALYPSE", "ULTRA-BILL", "MONSTER SPLAT", "SIGN DESTROYER", "MARKET CRASHED", "KPIs CRUSHED", "BRAND DESTRUCTION", "TOTAL COVERAGE"];
             hitMsg = mega[Math.floor(Math.random()*mega.length)];
+            // Smart Alignment Guard
             if (bx < 280) { align = "left"; tx = 20; }
             else if (bx > this.canvas.width - 280) { align = "right"; tx = this.canvas.width - 20; }
         } else {
             hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
         }
 
-        this.floatingTexts.push({
-            x: tx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1,
+        this.floatingTexts.push({ 
+            x: tx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
             scale: isMega ? 1.4 : 1, vx: (Math.random()-0.5)*(isMega ? 4 : 2),
-            text: hitMsg,
+            text: hitMsg, 
             color: isMega ? "#fff" : this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)],
             glow: isMega ? p.ad.color : null,
             isMega: isMega,
             align: align
-        });
+        }); 
+        this.playSound('splat'); 
 
-        // === NEW: Big combo text on 3+ hits ===
+        let sy_combo = sy - 70;
         if (this.state.combo >= 3) {
+            this.floatingTexts.push({ 
+                x: tx, y: sy_combo, text: `${this.state.combo}x COMBO`, 
+                color: "#fbbf24", scale: 1.1, glow: "#f59e0b", age: 0, alpha: 1, vy: -2.5, vx: 0, align: "center" 
+            }); 
+        }
+
+        if (this.state.combo > 0 && this.state.combo % 5 === 0) {
+            const voiceLine = this._nextFromBag('comboVoiceBag', 'comboVoiceLines');
             this.floatingTexts.push({
-                x: bx + (Math.random() * 60 - 30),
-                y: sy - 70,
-                text: `${this.state.combo}× COMBO!`,
+                x: this.canvas.width / 2,
+                y: this.canvas.height / 2 - 40,
+                text: voiceLine,
                 color: "#fff",
-                scale: 1.35,
+                scale: 1.8,
                 glow: "#a855f7",
                 age: 0,
                 alpha: 1,
-                vy: -3.5,
-                vx: (Math.random() - 0.5) * 2,
-                isMega: true
+                vy: -2,
+                vx: 0,
+                align: "center",
+                isMega: true,
+                isShivering: true
             });
+            this.state.screenShake = Math.max(this.state.screenShake, 15);
+            this.playSound('shift');
         }
-
-        this.playSound('splat');
     }
 
     gameOver() { 
@@ -1028,6 +1220,12 @@ class AdBird {
                 this.state.highTotalMisses = this.state.totalMisses;
                 this._safeStorage('set', 'adBirdHighTotalMisses', this.state.highTotalMisses);
             }
+
+            const earned = Math.floor(this.state.score / 5) + (this.state.directHits * 2);
+            this.state.adCoins += earned;
+            this._safeStorage('set', 'adBirdCoins', this.state.adCoins);
+            this.state.lastCoinsEarned = earned;
+
             if (this.isMobile && this.overlay) this.overlay.classList.add('active'); 
         }, 1000);
     }
@@ -1121,37 +1319,118 @@ class AdBird {
         } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
     _renderBombs() {
         this.bombs.forEach(b => {
-            // Main bomb
-            this.ctx.fillStyle = "#fff";
-            this.ctx.shadowBlur = 20;
-            this.ctx.shadowColor = "#ec4899";
-            this.ctx.beginPath();
-            this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2);
-            this.ctx.fill();
-
-            // === NEW: Bomb trail (sparkly) ===
-            this.ctx.shadowBlur = 8;
-            this.ctx.shadowColor = "#f59e0b";
-            for (let i = 1; i < 6; i++) {
-                const alpha = (1 - i / 6) * 0.6;
+            // Trail — longer, denser, color-shifted
+            this.ctx.save();
+            for (let i = 1; i < 10; i++) {
+                const alpha = (1 - i / 10) * 0.75;
                 this.ctx.globalAlpha = alpha;
-                this.ctx.fillStyle = "#f59e0b";
+                const trailColor = i < 4 ? "#fbbf24" : i < 7 ? "#f59e0b" : "#ec4899";
+                this.ctx.fillStyle = trailColor;
+                this.ctx.shadowBlur = 12;
+                this.ctx.shadowColor = trailColor;
+                const trailSize = Math.max(1, (b.w / 2) * (1 - i / 10));
                 this.ctx.beginPath();
-                this.ctx.arc(b.x, b.y + (i * 12), 4 - i * 0.6, 0, Math.PI * 2);
+                this.ctx.arc(b.x + (Math.random() - 0.5) * 2, b.y - (i * 10), trailSize, 0, Math.PI * 2);
                 this.ctx.fill();
             }
-            this.ctx.globalAlpha = 1;
-            this.ctx.shadowBlur = 0;
+            this.ctx.restore();
+
+            // Main bomb
+            this.ctx.save();
+            this.ctx.fillStyle = "#fff";
+            this.ctx.shadowBlur = 25;
+            this.ctx.shadowColor = "#ec4899";
+            this.ctx.beginPath();
+            this.ctx.ellipse(b.x, b.y, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Giga bomb extra glow
+            if (b.scale >= 5.0) {
+                this.ctx.shadowBlur = 40;
+                this.ctx.shadowColor = "#f43f5e";
+                this.ctx.globalAlpha = 0.4 + Math.sin(this.state.frameCount * 0.3) * 0.2;
+                this.ctx.fillStyle = "#f43f5e";
+                this.ctx.beginPath();
+                this.ctx.ellipse(b.x, b.y, b.w / 2 + 6, b.h / 2 + 6, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            this.ctx.restore();
         });
     }
-    _renderPlayer() { 
-        if (this.state.isGameOver) return; // EXPLODED!
-        this.ctx.save(); 
-        this.ctx.translate(this.player.x+this.player.w/2, this.player.y+this.player.h/2); 
-        this.ctx.rotate(Math.min(Math.PI/4, Math.max(-Math.PI/4, this.player.velocity * this.config.birdRotationFactor)) + this.player.flipAngle); 
-        this.ctx.scale(-1, 1); 
-        this.ctx.drawImage(this.assets.player, -this.player.w/2, -this.player.h/2, this.player.w, this.player.h); 
-        this.ctx.restore(); 
+    _renderPlayer() {
+        if (this.state.isGameOver) return;
+
+        const combo = this.state.combo;
+        const cx = this.player.x + this.player.w / 2;
+        const cy = this.player.y + this.player.h / 2;
+
+        // Render combo aura BEHIND player
+        if (combo >= 3) {
+            const comboT = Math.min(1, (combo - 3) / 10);  // ramps 0 to 1 over combo 3-13
+            const pulse = Math.sin(this.state.frameCount * 0.2) * 0.15 + 0.85;
+            
+            // Color interpolates yellow -> orange -> red
+            let auraColor;
+            if (comboT < 0.5) {
+                // yellow to orange
+                const t = comboT * 2;
+                auraColor = `rgb(${255}, ${Math.floor(200 - t * 80)}, ${Math.floor(50 - t * 50)})`;
+            } else {
+                // orange to red
+                const t = (comboT - 0.5) * 2;
+                auraColor = `rgb(${255}, ${Math.floor(120 - t * 80)}, ${Math.floor(20 - t * 20)})`;
+            }
+
+            const auraRadius = (this.player.w / 2) * (1.3 + comboT * 0.5) * pulse;
+            
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.35 + comboT * 0.3;
+            this.ctx.shadowBlur = 25 + comboT * 35;
+            this.ctx.shadowColor = auraColor;
+            this.ctx.fillStyle = auraColor;
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, auraRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Inner brighter core
+            this.ctx.globalAlpha = 0.15 + comboT * 0.2;
+            this.ctx.fillStyle = "#fff";
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = auraColor;
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, auraRadius * 0.6, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+
+            // Spawn occasional ember particles at high combo
+            if (combo >= 6 && this.state.frameCount % 4 === 0) {
+                this.state.particles.push({
+                    x: cx + (Math.random() - 0.5) * this.player.w,
+                    y: cy + (Math.random() - 0.5) * this.player.h,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: -Math.random() * 2 - 1,
+                    size: Math.random() * 3 + 1,
+                    color: auraColor,
+                    life: 0.6,
+                    isMega: true
+                });
+            }
+        }
+
+        this.ctx.save();
+        this.ctx.translate(cx, cy);
+        this.ctx.rotate(Math.min(Math.PI / 4, Math.max(-Math.PI / 4, this.player.velocity * this.config.birdRotationFactor)) + this.player.flipAngle);
+        this.ctx.scale(-1, 1);
+        this.ctx.drawImage(this.assets.player, -this.player.w / 2, -this.player.h / 2, this.player.w, this.player.h);
+
+        const selected = this.config.shopColors.find(c => c.id === this.state.selectedColor);
+        if (selected && selected.tint) {
+            this.ctx.globalCompositeOperation = 'source-atop';
+            this.ctx.fillStyle = selected.tint;
+            this.ctx.globalAlpha = 0.45;
+            this.ctx.fillRect(-this.player.w / 2, -this.player.h / 2, this.player.w, this.player.h);
+        }
+        this.ctx.restore();
     }
     _renderParticles() { 
         this.state.particles.forEach(p => { 
@@ -1390,6 +1669,21 @@ class AdBird {
                 this.ctx.restore();
             }
         });
+
+        const coinT = Math.max(0, t - 55);
+        const coinProgress = ease(coinT, 20);
+        if (coinProgress > 0 && this.state.lastCoinsEarned > 0) {
+            this.ctx.save();
+            this.ctx.globalAlpha = coinProgress;
+            this.ctx.font = "bold 22px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "#fbbf24";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = "#fbbf24";
+            this.ctx.fillText(`+${this.state.lastCoinsEarned} AD COINS 🪙   (TOTAL: ${this.state.adCoins})`, this.canvas.width / 2, this.canvas.height / 2 + 150);
+            this.ctx.restore();
+        }
 
         // RUN IT BACK button with entrance animation
         const btnT = Math.max(0, t - 70);
@@ -1877,6 +2171,31 @@ class AdBird {
             const hintX = cx - hintW / 2;
             const hintY = rent.y + rent.h + 18;
             
+            // --- SHOP BUTTON ---
+            this.ctx.save();
+            const shop = this._shopBtnRect;
+            const shopHover = this.state.mouseX >= shop.x && this.state.mouseX <= shop.x + shop.w &&
+                              this.state.mouseY >= shop.y && this.state.mouseY <= shop.y + shop.h;
+            
+            this.ctx.fillStyle = shopHover ? "rgba(251, 191, 36, 0.25)" : "rgba(251, 191, 36, 0.15)";
+            this.ctx.beginPath();
+            this.ctx.roundRect(shop.x, shop.y, shop.w, shop.h, 10);
+            this.ctx.fill();
+            this.ctx.strokeStyle = "#fbbf24";
+            this.ctx.lineWidth = shopHover ? 3 : 2;
+            this.ctx.shadowBlur = shopHover ? 20 : 12;
+            this.ctx.shadowColor = "#fbbf24";
+            this.ctx.stroke();
+            this.ctx.shadowBlur = 0;
+            this.ctx.font = "900 18px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "#fbbf24";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText(`🪙 SHOP  •  ${this.state.adCoins}`, shop.x + shop.w / 2, shop.y + shop.h / 2);
+            this.ctx.restore();
+
+            if (this.state.shopOpen) this._renderShop();
+            
             // Dark backing pill
             this.ctx.fillStyle = "rgba(10, 10, 15, 0.7)";
             this.ctx.beginPath();
@@ -1912,6 +2231,11 @@ class AdBird {
         this.state.playBtnPressed = 0;
         this.state.rentBtnPressed = 0;
         this.state.splashFocus = 0;
+        this.state.combo = 0;
+        this.state.lastHitFrame = 0;
+        this.state.missCombo = 0;
+        this.state.difficultyMultiplier = 1.0;
+        this.state.comboVoiceBag = [];
         this.canvas.style.cursor = 'default';
         
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
@@ -2088,6 +2412,143 @@ class AdBird {
         const rentHoverLift = this.state.rentBtnHover ? 4 : 0;
         const rentY = rentBaseY - rentHoverLift;
         this._rentBtnRect = { x: rentX, y: rentY, w: rentBtnW, h: rentBtnH };
+
+        // SHOP
+        const shopBtnW = 180;
+        const shopBtnH = 44;
+        const shopX = cx - shopBtnW / 2;
+        const shopY = this._rentBtnRect.y + this._rentBtnRect.h + 55;
+        this._shopBtnRect = { x: shopX, y: shopY, w: shopBtnW, h: shopBtnH };
+    }
+
+    _renderShop() {
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height / 2;
+        const w = this.canvas.width * 0.7;
+        const h = 480;
+        const x = cx - w / 2;
+        const y = cy - h / 2;
+
+        this.ctx.save();
+        // Overlay
+        this.ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Modal bg
+        this.ctx.fillStyle = "#111827";
+        this.ctx.shadowBlur = 40;
+        this.ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, w, h, 24);
+        this.ctx.fill();
+        this.ctx.strokeStyle = "#374151";
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+
+        // Title
+        this.ctx.font = "900 32px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "#fff";
+        this.ctx.textAlign = "center";
+        this.ctx.fillText("BIRD COSMETICS", cx, y + 50);
+
+        this.ctx.font = "bold 18px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "#fbbf24";
+        this.ctx.fillText(`🪙 ${this.state.adCoins} AD COINS`, cx, y + 80);
+
+        // Color list
+        const rowH = 55;
+        const rowStartY = y + 120;
+        this.config.shopColors.forEach((c, i) => {
+            const rowY = rowStartY + i * rowH;
+            const isOwned = this.state.ownedColors.includes(c.id);
+            const isSelected = this.state.selectedColor === c.id;
+            const canAfford = this.state.adCoins >= c.cost;
+
+            // Row background if hovering (simplistic)
+            const isHover = this.state.mouseY >= rowY && this.state.mouseY <= rowY + rowH &&
+                           this.state.mouseX >= x && this.state.mouseX <= x + w;
+
+            if (isHover) {
+                this.ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+                this.ctx.fillRect(x + 10, rowY, w - 20, rowH - 5);
+            }
+
+            // Color swatch
+            this.ctx.fillStyle = c.tint || "#fff";
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = c.tint || "#fff";
+            this.ctx.beginPath();
+            this.ctx.arc(x + 40, rowY + rowH / 2 - 2, 12, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
+
+            // Name
+            this.ctx.font = "bold 18px 'Outfit', sans-serif";
+            this.ctx.fillStyle = isSelected ? "#fff" : "#9ca3af";
+            this.ctx.textAlign = "left";
+            this.ctx.fillText(c.name, x + 70, rowY + rowH / 2);
+
+            // Status / Action
+            this.ctx.textAlign = "right";
+            if (isSelected) {
+                this.ctx.fillStyle = "#10b981";
+                this.ctx.fillText("EQUIPPED", x + w - 30, rowY + rowH / 2);
+            } else if (isOwned) {
+                this.ctx.fillStyle = "#60a5fa";
+                this.ctx.fillText("SELECT", x + w - 30, rowY + rowH / 2);
+            } else {
+                this.ctx.fillStyle = canAfford ? "#fbbf24" : "#ef4444";
+                this.ctx.fillText(`BUY 🪙${c.cost}`, x + w - 30, rowY + rowH / 2);
+            }
+        });
+
+        // Close hint
+        this.ctx.font = "bold 14px 'Outfit', sans-serif";
+        this.ctx.fillStyle = "#4b5563";
+        this.ctx.textAlign = "center";
+        this.ctx.fillText("CLICK ANYWHERE OUTSIDE OR SHOP BUTTON TO CLOSE", cx, y + h - 30);
+
+        this.ctx.restore();
+    }
+
+    _handleShopClick(x, y) {
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height / 2;
+        const w = this.canvas.width * 0.7;
+        const h = 480;
+        const modalX = cx - w / 2;
+        const modalY = cy - h / 2;
+
+        // If click outside modal, close
+        if (x < modalX || x > modalX + w || y < modalY || y > modalY + h) {
+            this.state.shopOpen = false;
+            return true;
+        }
+
+        const rowH = 55;
+        const rowStartY = modalY + 120;
+        const clickedRowIndex = Math.floor((y - rowStartY) / rowH);
+
+        if (clickedRowIndex >= 0 && clickedRowIndex < this.config.shopColors.length) {
+            const color = this.config.shopColors[clickedRowIndex];
+            const isOwned = this.state.ownedColors.includes(color.id);
+
+            if (isOwned) {
+                this.state.selectedColor = color.id;
+                this._safeStorage('set', 'adBirdSelectedColor', color.id);
+                this.playSound('score');
+            } else if (this.state.adCoins >= color.cost) {
+                this.state.adCoins -= color.cost;
+                this.state.ownedColors.push(color.id);
+                this.state.selectedColor = color.id;
+                this._safeStorage('set', 'adBirdCoins', this.state.adCoins);
+                this._safeStorage('set', 'adBirdOwnedColors', JSON.stringify(this.state.ownedColors));
+                this._safeStorage('set', 'adBirdSelectedColor', color.id);
+                this.playSound('shift');
+            }
+            return true;
+        }
+        return false;
     }
 
     // NEW:
