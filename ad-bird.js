@@ -1652,9 +1652,6 @@ class AdBird {
         this.ctx.fillText(ctaText, cx, ctaY);
         this.ctx.restore();
         
-        this._recalculateSplashRects();
-    }
-        
         // --- RENT-A-PIPE™ BUTTON ---
         const rentBtnW = 260;
         const rentBtnH = 58;
@@ -1803,7 +1800,9 @@ class AdBird {
             this.ctx.fillText(hintText, cx, hintY);
             this.ctx.restore();
         }
+        this._recalculateSplashRects();
     }
+
     _resetToSplash() {
         this.state.isGameOver = false;
         this.state.score = 0;
