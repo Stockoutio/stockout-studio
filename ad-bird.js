@@ -116,7 +116,10 @@ class AdBird {
             splashFocus: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: "",
-            fullscreenHover: false, muteHover: false, fullscreenPressed: 0, mutePressed: 0
+            fullscreenHover: false, muteHover: false, fullscreenPressed: 0, mutePressed: 0,
+            // === NEW: Combo system for addiction ===
+            combo: 0,
+            lastHitFrame: 0
         };
         this.state.currentWorld = this._nextWorld();
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
@@ -526,8 +529,9 @@ class AdBird {
     // NEW:
     _updateEntities(dt) {
         for (let i = this.pipes.length - 1; i >= 0; i--) {
-            // NEW:
-            const p = this.pipes[i]; p.x -= this.config.pipeSpeed * dt;
+            // NEW: Dynamic pipe speed — gets faster every 10 points
+            const dynamicSpeed = this.config.pipeSpeed + Math.floor(this.state.score / 10) * 0.4;
+            const p = this.pipes[i]; p.x -= dynamicSpeed * dt;
             if (p.highlight > 0) p.highlight *= 0.82;
             p.stains.forEach(s => s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; }));
             const pd = 15; const bx = this.player.x+pd, bw = this.player.w-(pd*2), by = this.player.y+pd, bh = this.player.h-(pd*2);
@@ -583,6 +587,7 @@ class AdBird {
 
                 if (isGiga) this.state.screenShake = 30;
                 this.state.totalMisses++;
+                this.state.combo = 0;  // reset combo on miss
                 this.state.lastMissFrame = this.state.frameCount;
                 this.playSound(isGiga ? 'mega_miss' : 'miss');
                 this.bombs.splice(i, 1);
@@ -832,6 +837,19 @@ class AdBird {
             this.ctx.fill();
         } 
         this.ctx.restore();
+
+        // === NEW: Combo/Streak HUD (top center, under score) ===
+        if (this.state.combo >= 2) {
+            const comboText = `${this.state.combo}× STREAK 🔥`;
+            this.ctx.save();
+            this.ctx.textAlign = "center";
+            this.ctx.font = "900 22px 'Outfit', sans-serif";
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = "#a855f7";
+            this.ctx.fillStyle = "#fff";
+            this.ctx.fillText(comboText, this.ui.scoreCenter, 115);
+            this.ctx.restore();
+        }
     }
 
     /* --- ENTROPY & AD ENGINE --- */
@@ -875,28 +893,36 @@ class AdBird {
         if (this.state.stockBag.length === 0) {
             this.state.stockBag = this._shuffle(this.config.stockAds);
         }
-        this.state.stockInARow++;
         return this.state.stockBag.pop();
     }
 
-    _createSplat(p, bx, by, scale = 1.0) { 
+    _createSplat(p, bx, by, scale = 1.0) {
         const isMega = scale >= 5.0;
-        this.state.screenShake = isMega ? 30 : 10 * scale; 
+        this.state.screenShake = isMega ? 30 : 10 * scale;
         if (isMega) this.state.flashOpacity = 0.4;
-        this.state.directHits++; this.player.isFlipping = true; this.player.flipAngle = 0; 
-        
+        this.state.directHits++; 
+
+        // === NEW: Combo system ===
+        const wasRecentHit = this.state.frameCount - this.state.lastHitFrame < 90;
+        this.state.combo = wasRecentHit ? this.state.combo + 1 : 1;
+        this.state.lastHitFrame = this.state.frameCount;
+        const comboBonus = Math.max(0, this.state.combo - 1) * 8;
+        this.state.score += comboBonus;
+
+        this.player.isFlipping = true; this.player.flipAngle = 0;
+
         const pCount = isMega ? 60 : 15;
         for (let i=0; i<pCount; i++) {
-            this.state.particles.push({ 
-                x: bx, y: by, 
-                vx: (Math.random()-0.5)*(isMega ? 25 : 10), 
-                vy: (Math.random()-0.5)*(isMega ? 25 : 10)-2, 
+            this.state.particles.push({
+                x: bx, y: by,
+                vx: (Math.random()-0.5)*(isMega ? 25 : 10),
+                vy: (Math.random()-0.5)*(isMega ? 25 : 10)-2,
                 color: p.ad.color, life: 1.0 + (isMega ? Math.random() : 0),
                 size: isMega ? Math.random()*6+2 : 3,
                 isMega: isMega
-            }); 
+            });
         }
-        
+
         p.stains.push({ 
             relY: by, xOff: bx-p.x, 
             size: (Math.random()*8+12) * scale, 
@@ -907,30 +933,48 @@ class AdBird {
                 speed:(1.0+Math.random()*1.5) * scale,
                 w:(3+Math.random()*4) * scale
             })) 
-        }); 
-        let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; }); 
-        
+        });
+
+        let sy = by-40; this.floatingTexts.forEach(t => { if (Math.abs(t.x-bx)<50 && Math.abs(t.y-sy)<30) sy-=40; });
+
         let hitMsg, align = "center", tx = bx;
         if (isMega) {
             const mega = ["MEGA SPLAT", "GIGA SPLAT", "AD-POCALYPSE", "ULTRA-BILL", "MONSTER SPLAT", "SIGN DESTROYER", "MARKET CRASHED", "KPIs CRUSHED", "BRAND DESTRUCTION", "TOTAL COVERAGE"];
             hitMsg = mega[Math.floor(Math.random()*mega.length)];
-            // Smart Alignment Guard
             if (bx < 280) { align = "left"; tx = 20; }
             else if (bx > this.canvas.width - 280) { align = "right"; tx = this.canvas.width - 20; }
         } else {
             hitMsg = this._nextFromBag('hitMsgBag', 'hitMessages');
         }
 
-        this.floatingTexts.push({ 
-            x: tx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1, 
+        this.floatingTexts.push({
+            x: tx, y: sy, age: 0, vy: isMega ? -4 : 0, alpha: 1,
             scale: isMega ? 1.4 : 1, vx: (Math.random()-0.5)*(isMega ? 4 : 2),
-            text: hitMsg, 
+            text: hitMsg,
             color: isMega ? "#fff" : this.config.msgColors[Math.floor(Math.random()*this.config.msgColors.length)],
             glow: isMega ? p.ad.color : null,
             isMega: isMega,
             align: align
-        }); 
-        this.playSound('splat'); 
+        });
+
+        // === NEW: Big combo text on 3+ hits ===
+        if (this.state.combo >= 3) {
+            this.floatingTexts.push({
+                x: bx + (Math.random() * 60 - 30),
+                y: sy - 70,
+                text: `${this.state.combo}× COMBO!`,
+                color: "#fff",
+                scale: 1.35,
+                glow: "#a855f7",
+                age: 0,
+                alpha: 1,
+                vy: -3.5,
+                vx: (Math.random() - 0.5) * 2,
+                isMega: true
+            });
+        }
+
+        this.playSound('splat');
     }
 
     gameOver() { 
@@ -1075,7 +1119,31 @@ class AdBird {
             this.ctx.drawImage(bg, rx, 0, this.canvas.width + 2, this.canvas.height); 
             this.ctx.drawImage(bg, rx + this.canvas.width, 0, this.canvas.width, this.canvas.height); 
         } if (this.state.flashOpacity > 0) { this.ctx.fillStyle = `rgba(255, 255, 255, ${this.state.flashOpacity})`; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); this.state.flashOpacity -= 0.05; } }
-    _renderBombs() { this.ctx.fillStyle = "#fff"; this.bombs.forEach(b => { this.ctx.beginPath(); this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2); this.ctx.fill(); }); }
+    _renderBombs() {
+        this.bombs.forEach(b => {
+            // Main bomb
+            this.ctx.fillStyle = "#fff";
+            this.ctx.shadowBlur = 20;
+            this.ctx.shadowColor = "#ec4899";
+            this.ctx.beginPath();
+            this.ctx.ellipse(b.x, b.y, b.w/2, b.h/2, 0, 0, Math.PI*2);
+            this.ctx.fill();
+
+            // === NEW: Bomb trail (sparkly) ===
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = "#f59e0b";
+            for (let i = 1; i < 6; i++) {
+                const alpha = (1 - i / 6) * 0.6;
+                this.ctx.globalAlpha = alpha;
+                this.ctx.fillStyle = "#f59e0b";
+                this.ctx.beginPath();
+                this.ctx.arc(b.x, b.y + (i * 12), 4 - i * 0.6, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            this.ctx.globalAlpha = 1;
+            this.ctx.shadowBlur = 0;
+        });
+    }
     _renderPlayer() { 
         if (this.state.isGameOver) return; // EXPLODED!
         this.ctx.save(); 
