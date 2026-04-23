@@ -183,17 +183,7 @@ class AdBird {
             doubleBombArmed: false,
             shieldActive: false,
             activePowerupType: null,
-            activePowerupTimer: 0,
-            portals: [],
-            portalData: (() => {
-                const p = new URLSearchParams(window.location.search);
-                return {
-                    isEntry: p.get('portal') === 'true',
-                    username: p.get('username') || '',
-                    ref: p.get('ref') || '',
-                    color: p.get('color') || ''
-                };
-            })()
+            activePowerupTimer: 0
         };
         this.state.currentWorld = this._nextWorld();
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
@@ -201,7 +191,7 @@ class AdBird {
     }
 
     _initBuffers() {
-        this.pipes = []; this.bombs = []; this.bubbles = []; this.floatingTexts = []; this.coins = []; this.portals = [];
+        this.pipes = []; this.bombs = []; this.bubbles = []; this.floatingTexts = []; this.coins = [];
         this.assets = { player: new Image(), worlds: [], music: new Audio(this.config.musicSrc) };
         this.assets.music.loop = true;
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -670,12 +660,7 @@ class AdBird {
         Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, gameOverFocus: 0, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0, combo: 0, lastHitFrame: 0, missCombo: 0, difficultyMultiplier: 1.0, comboVoiceBag: [], paidAdsDestroyed: 0, coinMagnetTimer: 0, doubleBombArmed: false, shieldActive: false, activePowerupType: null, activePowerupTimer: 0 });
         this.canvas.style.cursor = 'default';
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
-        this.pipes = []; this.bombs = []; this.floatingTexts = []; this.coins = []; this.portals = [];
-        
-        // If coming from a portal, spawn a return portal immediately
-        if (this.state.portalData.isEntry && this.state.portalData.ref) {
-            this._spawnPortal(true); // isReturn = true
-        }
+        this.pipes = []; this.bombs = []; this.floatingTexts = []; this.coins = [];
         if (this.assets.music && !this.state.isMuted) { this.assets.music.currentTime = 0; this.assets.music.play().catch(() => {}); }
     }
 
@@ -746,11 +731,6 @@ class AdBird {
 
         if (this.state.frameCount >= this.state.nextPipeFrame) {
             this._spawnPipe();
-            
-            // Occasionally spawn an exit portal (every ~15 pipes)
-            if (this.state.score > 0 && this.state.score % 15 === 0 && this.portals.length === 0) {
-                this._spawnPortal(false); // isReturn = false (it's an exit)
-            }
         }
     }
 
@@ -1132,28 +1112,6 @@ class AdBird {
 
             if (c.x < -40 || c.y > this.canvas.height + 100) this.coins.splice(i, 1);
         }
-
-        // --- PORTAL UPDATES & COLLISIONS ---
-        for (let i = this.portals.length - 1; i >= 0; i--) {
-            const pr = this.portals[i];
-            pr.x -= dynamicSpeed * dt;
-            pr.angle += 0.05 * dt;
-
-            // Collision check
-            const pd = 20;
-            const px = this.player.x + pd, py = this.player.y + pd, pw = this.player.w - pd*2, ph = this.player.h - pd*2;
-            if (px < pr.x + pr.w && px + pw > pr.x && py < pr.y + pr.h && py + ph > pr.y) {
-                if (pr.isReturn) {
-                    // Back to sender!
-                    window.location.href = this.state.portalData.ref;
-                } else {
-                    // To the Jam Hub!
-                    this._triggerPortalExit();
-                }
-            }
-
-            if (pr.x < -200) this.portals.splice(i, 1);
-        }
     }
 
     _pickCoinType() {
@@ -1254,7 +1212,7 @@ class AdBird {
     _draw() {
         this.ctx.save(); if (this.state.screenShake > 0.5) this.ctx.translate((Math.random()-0.5)*this.state.screenShake, (Math.random()-0.5)*this.state.screenShake);
         this.ctx.clearRect(-40, -40, this.canvas.width+80, this.canvas.height+80);
-        this._renderWorld(); this._renderMidground(); this._renderPipes(); this._renderCoins(); this._renderBombs(); this._renderPortals(); 
+        this._renderWorld(); this._renderMidground(); this._renderPipes(); this._renderCoins(); this._renderBombs(); 
         if (this.state.gameRunning || this.state.isGameOver) this._renderPlayer();
         this._renderParticles(); this._renderFloatingTexts(); this._renderOverlay();
         this.ctx.restore();
@@ -4099,76 +4057,6 @@ class AdBird {
         it.removeEventListener('mousemove', this._handleMouseMove);
         it.removeEventListener('touchstart', this._handleTouchStart);
         if (this.assets && this.assets.music) this.assets.music.pause();
-    }
-
-    /* --- VIBE JAM PORTALS --- */
-
-    _spawnPortal(isReturn = false) {
-        const pW = 160;
-        const pH = 160;
-        this.portals.push({
-            x: isReturn ? 150 : this.canvas.width + 100,
-            y: this.canvas.height / 2 - pH / 2,
-            w: pW,
-            h: pH,
-            isReturn: isReturn,
-            angle: 0
-        });
-    }
-
-    _renderPortals() {
-        this.portals.forEach(pr => {
-            this.ctx.save();
-            this.ctx.translate(pr.x + pr.w / 2, pr.y + pr.h / 2);
-            this.ctx.rotate(pr.angle);
-
-            const col = pr.isReturn ? "#ec4899" : "#a855f7";
-            const glow = pr.isReturn ? "#f43f5e" : "#3b82f6";
-
-            // Portal Glow
-            this.ctx.shadowBlur = 40;
-            this.ctx.shadowColor = glow;
-            this.ctx.globalAlpha = 0.6 + Math.sin(this.state.frameCount * 0.1) * 0.2;
-            
-            // Outer ring
-            this.ctx.strokeStyle = col;
-            this.ctx.lineWidth = 12;
-            this.ctx.beginPath();
-            this.ctx.arc(0, 0, pr.w * 0.45, 0, Math.PI * 2);
-            this.ctx.stroke();
-
-            // Swirls
-            this.ctx.shadowBlur = 20;
-            for (let i = 0; i < 3; i++) {
-                this.ctx.rotate(Math.PI * 2 / 3);
-                this.ctx.beginPath();
-                this.ctx.moveTo(pr.w * 0.2, 0);
-                this.ctx.quadraticCurveTo(pr.w * 0.4, pr.h * 0.4, 0, pr.h * 0.3);
-                this.ctx.stroke();
-            }
-
-            // Text
-            this.ctx.rotate(-pr.angle); // Keep text upright
-            this.ctx.textAlign = "center";
-            this.ctx.fillStyle = "#fff";
-            this.ctx.font = "bold 16px 'Outfit', sans-serif";
-            this.ctx.fillText(pr.isReturn ? "RETURN PORTAL" : "VIBE JAM PORTAL", 0, pr.h * 0.6);
-
-            this.ctx.restore();
-        });
-    }
-
-    _triggerPortalExit() {
-        // Construct the Vibe Jam portal URL with player data
-        const baseUrl = "https://vibejam.cc/portal/2026";
-        const params = new URLSearchParams();
-        params.set('username', this.state.portalData.username || 'Ad-Bird Player');
-        params.set('color', this.state.selectedColor || '#3b82f6');
-        params.set('speed', (3.0 + Math.floor(this.state.score / 10) * 0.25).toFixed(2));
-        params.set('ref', window.location.origin + window.location.pathname);
-        params.set('portal', 'true');
-        
-        window.location.href = `${baseUrl}?${params.toString()}`;
     }
 }
 
