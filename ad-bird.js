@@ -825,18 +825,20 @@ class AdBird {
                         });
                         // Coin burst reward
                         const coinType = this._pickCoinType();
-                        for (let k = 0; k < 3; k++) {
+                        for (let k = 0; k < 4; k++) {
+                            const burstType = this._pickCoinType();
                             this.coins.push({
-                                x: this.player.x + this.player.w / 2 + (Math.random() - 0.5) * 80,
-                                y: this.player.y + (Math.random() - 0.5) * 80,
-                                r: coinType.r,
-                                value: coinType.value,
-                                coreColor: coinType.coreColor,
-                                edgeColor: coinType.edgeColor,
-                                face: coinType.face,
+                                x: this.player.x + this.player.w / 2 + (Math.random() - 0.5) * 60,
+                                y: this.player.y - 60 - Math.random() * 40,
+                                r: burstType.r,
+                                value: burstType.value,
+                                coreColor: burstType.coreColor,
+                                edgeColor: burstType.edgeColor,
+                                face: burstType.face,
                                 collected: false,
                                 spin: Math.random() * Math.PI * 2,
-                                bob: Math.random() * Math.PI * 2
+                                bob: Math.random() * Math.PI * 2,
+                                vy: 1 + Math.random() * 2
                             });
                         }
                         this._playTone({ type: 'sine', freq: [400, 1500], vol: 0.4, dur: 0.3 });
@@ -992,6 +994,10 @@ class AdBird {
         for (let i = this.coins.length - 1; i >= 0; i--) {
             const c = this.coins[i];
             c.x -= dynamicSpeedForCoins * dt;
+            if (c.vy !== undefined) {
+                c.y += c.vy * dt;
+                c.vy += 0.2 * dt;
+            }
             if (this.state.coinMagnetTimer > 0) {
                 const pcx = this.player.x + this.player.w / 2;
                 const pcy = this.player.y + this.player.h / 2;
@@ -1056,7 +1062,7 @@ class AdBird {
                 continue;
             }
 
-            if (c.x < -40) this.coins.splice(i, 1);
+            if (c.x < -40 || c.y > this.canvas.height + 100) this.coins.splice(i, 1);
         }
     }
 
@@ -1863,12 +1869,12 @@ class AdBird {
         if (newMilestone > prevMilestone) this._shiftWorld();
 
         // Coin shower — rain a burst of mid-value coins from the top
-        const showerCount = 8;
+        const showerCount = 10;
         for (let i = 0; i < showerCount; i++) {
             const coinType = this._pickCoinType();
             this.coins.push({
-                x: this.canvas.width * 0.5 + (Math.random() - 0.5) * 400,
-                y: -50 - i * 40,
+                x: this.canvas.width * 0.5 + (Math.random() - 0.5) * 500,
+                y: -50 - i * 30,
                 r: coinType.r,
                 value: coinType.value,
                 coreColor: coinType.coreColor,
@@ -1876,7 +1882,8 @@ class AdBird {
                 face: coinType.face,
                 collected: false,
                 spin: Math.random() * Math.PI * 2,
-                bob: Math.random() * Math.PI * 2
+                bob: Math.random() * Math.PI * 2,
+                vy: 3 + Math.random() * 3
             });
         }
     }
