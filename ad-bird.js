@@ -1906,9 +1906,9 @@ class AdBird {
             isShivering: true
         });
         
-        // The +5 bump may have crossed a world-shift milestone (e.g. 8 → 13 crosses 10).
+        // The +8 bump may have crossed a world-shift milestone (e.g. 7 → 15 crosses 10).
         // Check milestone tiers rather than exact multiple.
-        const prevMilestone = Math.floor((this.state.score - 5) / this.config.worldShiftInterval);
+        const prevMilestone = Math.floor((this.state.score - 8) / this.config.worldShiftInterval);
         const newMilestone = Math.floor(this.state.score / this.config.worldShiftInterval);
         this.playSound('shift');
         if (newMilestone > prevMilestone) this._shiftWorld();
