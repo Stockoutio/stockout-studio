@@ -1874,7 +1874,8 @@ class AdBird {
         if (newMilestone > prevMilestone) this._shiftWorld();
 
         // Coin shower — rain a burst of mid-value coins from the top
-        const showerCount = 10;
+        const comboShowerBonus = Math.min(20, Math.floor(this.state.combo / 2));
+        const showerCount = 10 + comboShowerBonus;
         for (let i = 0; i < showerCount; i++) {
             const coinType = this._pickCoinType();
             this.coins.push({
