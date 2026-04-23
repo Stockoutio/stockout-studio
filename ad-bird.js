@@ -95,8 +95,26 @@ class AdBird {
                 { id: 'purple', name: 'SYNERGY PURPLE', cost: 15000, tint: '#a855f7' },
                 { id: 'red', name: 'MARKET RED', cost: 50000, tint: '#f43f5e' }
             ],
-            // Coin denominations — higher values are rarer. weight = relative spawn chance.
-            // coreColor/edgeColor are used by _renderCoins. face is the character drawn on the coin.
+            shopTrails: [
+                { id: 'none', name: 'NO TRAIL', cost: 0, color: null },
+                { id: 'fire', name: 'FIRE', cost: 1500, color: '#f97316' },
+                { id: 'neon', name: 'NEON', cost: 4000, color: '#06b6d4' },
+                { id: 'money', name: 'MONEY', cost: 10000, color: '#22c55e' },
+                { id: 'feathers', name: 'FEATHERS', cost: 20000, color: '#e0e7ff' }
+            ],
+            shopBombs: [
+                { id: 'default', name: 'DEFAULT', cost: 0, tint: '#ffffff' },
+                { id: 'nuke', name: 'NUKE', cost: 2000, tint: '#84cc16' },
+                { id: 'confetti', name: 'CONFETTI', cost: 5000, tint: '#ec4899' },
+                { id: 'bitcoin', name: 'BITCOIN', cost: 12000, tint: '#f59e0b' },
+                { id: 'brand', name: 'BRAND DESTRUCTION', cost: 30000, tint: '#f43f5e' }
+            ],
+            shopPipes: [
+                { id: 'default', name: 'DEFAULT', cost: 0, color: null },
+                { id: 'gold', name: 'GILDED', cost: 3000, color: '#fbbf24' },
+                { id: 'lava', name: 'LAVA', cost: 8000, color: '#ef4444' },
+                { id: 'glitch', name: 'GLITCH', cost: 18000, color: '#a855f7' }
+            ],
             coinTypes: [
                 { value: 1,  weight: 60, coreColor: '#fbbf24', edgeColor: '#b45309', face: '$',  r: 14 },
                 { value: 2,  weight: 25, coreColor: '#e5e7eb', edgeColor: '#6b7280', face: '2',  r: 15 },
@@ -135,6 +153,8 @@ class AdBird {
             highScore: parseInt(this._safeStorage('get', 'adBirdHighScore')) || 0,
             highDirectHits: parseInt(this._safeStorage('get', 'adBirdHighDirectHits')) || 0,
             highTotalMisses: parseInt(this._safeStorage('get', 'adBirdHighTotalMisses')) || 0,
+            currentStreak: parseInt(this._safeStorage('get', 'adBirdStreak')) || 0,
+            highStreak: parseInt(this._safeStorage('get', 'adBirdHighStreak')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, assetsLoaded: 0, lastRect: null, waitingForGameOver: false, gameOverFrame: 0,
             mouseX: 0, mouseY: 0, runItBackHover: false, runItBackPressed: 0,
@@ -148,9 +168,22 @@ class AdBird {
             adCoins: parseInt(this._safeStorage('get', 'adBirdCoins')) || 0,
             ownedColors: JSON.parse(this._safeStorage('get', 'adBirdOwnedColors') || '["default"]'),
             selectedColor: this._safeStorage('get', 'adBirdSelectedColor') || 'default',
+            ownedTrails: JSON.parse(this._safeStorage('get', 'adBirdOwnedTrails') || '["none"]'),
+            selectedTrail: this._safeStorage('get', 'adBirdSelectedTrail') || 'none',
+            ownedBombs: JSON.parse(this._safeStorage('get', 'adBirdOwnedBombs') || '["default"]'),
+            selectedBomb: this._safeStorage('get', 'adBirdSelectedBomb') || 'default',
+            ownedPipes: JSON.parse(this._safeStorage('get', 'adBirdOwnedPipes') || '["default"]'),
+            selectedPipe: this._safeStorage('get', 'adBirdSelectedPipe') || 'default',
             shopOpen: false,
+            shopTab: 'birds',
             shopHoverIndex: -1,
-            lastCoinsEarned: 0
+            lastCoinsEarned: 0,
+            paidAdsDestroyed: 0,
+            coinMagnetTimer: 0,
+            doubleBombArmed: false,
+            shieldActive: false,
+            activePowerupType: null,
+            activePowerupTimer: 0
         };
         this.state.currentWorld = this._nextWorld();
         this.state.currentReadyMsg = this._nextFromBag('readyMsgBag', 'readyMessages');
@@ -586,7 +619,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0, combo: 0, lastHitFrame: 0, missCombo: 0, difficultyMultiplier: 1.0, comboVoiceBag: [] });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0, combo: 0, lastHitFrame: 0, missCombo: 0, difficultyMultiplier: 1.0, comboVoiceBag: [], paidAdsDestroyed: 0, coinMagnetTimer: 0, doubleBombArmed: false, shieldActive: false, activePowerupType: null, activePowerupTimer: 0 });
         this.canvas.style.cursor = 'default';
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = []; this.coins = [];
@@ -636,7 +669,21 @@ class AdBird {
         }
 
         if (this.player.y < 0 || this.player.y + this.player.h > this.canvas.height) {
-            this.gameOver();
+            if (this.state.shieldActive) {
+                this.state.shieldActive = false;
+                this.state.activePowerupType = null;
+                this.player.y = Math.max(20, Math.min(this.canvas.height - this.player.h - 20, this.player.y));
+                this.player.velocity = this.config.lift;
+                this.state.flashOpacity = 0.8;
+                this._pushFloatingText({
+                    x: this.canvas.width / 2, y: this.canvas.height / 2,
+                    text: "SHIELD BROKEN!", color: "#fff", scale: 1.6,
+                    glow: "#3b82f6", vy: -3, isMega: true, isShivering: true
+                });
+                this.playSound('shift');
+            } else {
+                this.gameOver();
+            }
         }
 
         this.state.bgX = (this.state.bgX - this.config.bgSpeed * effectiveDt) % this.canvas.width;
@@ -676,6 +723,11 @@ class AdBird {
 
     // NEW:
     _updateEntities(dt) {
+        if (this.state.coinMagnetTimer > 0) this.state.coinMagnetTimer -= dt;
+        if (this.state.activePowerupTimer > 0) {
+            this.state.activePowerupTimer -= dt;
+            if (this.state.activePowerupTimer <= 0) this.state.activePowerupType = null;
+        }
         const scoreRamp = Math.floor(this.state.score / 10) * 0.25;
         const dynamicSpeed = (this.config.pipeSpeed + scoreRamp) * this.state.difficultyMultiplier;
 
@@ -702,8 +754,29 @@ class AdBird {
                     isMega: true
                 });
             }
+            if (p.isPaid && !p.collapsing && Math.floor(this.state.frameCount) % 5 === 0) {
+                this.state.particles.push({
+                    x: p.x + p.w / 2 + (Math.random() - 0.5) * p.w,
+                    y: Math.random() > 0.5 ? p.y - 5 : p.y + p.gap + 5,
+                    vx: (Math.random() - 0.5) * 1,
+                    vy: (Math.random() - 0.5) * 1,
+                    size: Math.random() * 2 + 1,
+                    color: p.ad.color,
+                    life: 0.6,
+                    isMega: true
+                });
+            }
 
             p.x -= dynamicSpeed * dt;
+            if (p.isSuper && !p.collapsing) {
+                if (p.bobPhase === undefined) p.bobPhase = Math.random() * Math.PI * 2;
+                p.bobPhase += 0.04 * dt;
+                p.bobOffset = Math.sin(p.bobPhase) * 45;
+            }
+            if (p.shouldBob && !p.collapsing) {
+                p.regBobPhase += 0.03 * dt;
+                p.regBobOffset = Math.sin(p.regBobPhase) * 25;
+            }
             if (p.highlight > 0) p.highlight *= 0.82;
             p.stains.forEach(s => s.drips.forEach(d => { if (d.len < d.maxLen) d.len += d.speed; }));
             
@@ -711,49 +784,127 @@ class AdBird {
             
             // NEAR-MISS DETECTION — skip for collapsing pipes (they're not a threat anymore)
             if (!p.collapsing && !p.nearMissed && bx < p.x + p.w && bx + bw > p.x) {
-                const topGapEdge = p.y;
-                const bottomGapEdge = p.y + p.gap;
+                const topGapEdge = p.y + (p.isSuper ? p.bobOffset : 0) + (p.shouldBob ? p.regBobOffset : 0);
+                const bottomGapEdge = p.y + p.gap + (p.isSuper ? p.bobOffset : 0) + (p.shouldBob ? p.regBobOffset : 0);
                 const distToTop = by - topGapEdge;
                 const distToBottom = bottomGapEdge - (by + bh);
                 const closestEdge = Math.min(distToTop, distToBottom);
                 if (closestEdge > 0 && closestEdge < 25) {
                     p.nearMissed = true;
+                    const isClutch = closestEdge < 10;
                     const fxY = distToTop < distToBottom ? topGapEdge : bottomGapEdge;
-                    for (let k = 0; k < 10; k++) {
+                    const particleCount = isClutch ? 30 : 10;
+                    const particleColor = isClutch ? "#fbbf24" : "#22d3ee";
+                    for (let k = 0; k < particleCount; k++) {
                         this.state.particles.push({
                             x: p.x + p.w / 2 + (Math.random() - 0.5) * p.w,
                             y: fxY + (Math.random() - 0.5) * 20,
-                            vx: (Math.random() - 0.5) * 4,
-                            vy: (Math.random() - 0.5) * 4,
+                            vx: (Math.random() - 0.5) * (isClutch ? 8 : 4),
+                            vy: (Math.random() - 0.5) * (isClutch ? 8 : 4),
                             size: Math.random() * 3 + 1,
-                            color: "#22d3ee",
-                            life: 0.8,
+                            color: particleColor,
+                            life: isClutch ? 1.2 : 0.8,
                             isMega: true
                         });
                     }
-                    const nearMissMsgs = ["NICE!", "THREADED IT", "TOO CLOSE", "DAMN", "CLUTCH"];
-                    this._pushFloatingText({
-                        x: this.player.x + this.player.w / 2,
-                        y: this.player.y - 20,
-                        text: nearMissMsgs[Math.floor(Math.random() * nearMissMsgs.length)],
-                        color: "#22d3ee",
-                        scale: 0.9,
-                        glow: "#06b6d4",
-                        vy: -2
-                    });
-                    this._playTone({ type: 'sine', freq: [600, 900], vol: 0.2, dur: 0.08 });
+                    
+                    if (isClutch) {
+                        this.state.slowMoTimer = 48;
+                        this.state.slowMoStrength = 0.3;
+                        this.state.screenShake = Math.max(this.state.screenShake, 12);
+                        this._pushFloatingText({
+                            x: this.canvas.width / 2,
+                            y: this.canvas.height / 2 - 60,
+                            text: "CLUTCH!",
+                            color: "#fff",
+                            scale: 2.0,
+                            glow: "#fbbf24",
+                            vy: -3,
+                            isMega: true,
+                            isShivering: true
+                        });
+                        // Coin burst reward
+                        const coinType = this._pickCoinType();
+                        for (let k = 0; k < 3; k++) {
+                            this.coins.push({
+                                x: this.player.x + this.player.w / 2 + (Math.random() - 0.5) * 80,
+                                y: this.player.y + (Math.random() - 0.5) * 80,
+                                r: coinType.r,
+                                value: coinType.value,
+                                coreColor: coinType.coreColor,
+                                edgeColor: coinType.edgeColor,
+                                face: coinType.face,
+                                collected: false,
+                                spin: Math.random() * Math.PI * 2,
+                                bob: Math.random() * Math.PI * 2
+                            });
+                        }
+                        this._playTone({ type: 'sine', freq: [400, 1500], vol: 0.4, dur: 0.3 });
+                    } else {
+                        const nearMissMsgs = ["NICE!", "THREADED IT", "TOO CLOSE", "DAMN"];
+                        this._pushFloatingText({
+                            x: this.player.x + this.player.w / 2,
+                            y: this.player.y - 20,
+                            text: nearMissMsgs[Math.floor(Math.random() * nearMissMsgs.length)],
+                            color: "#22d3ee",
+                            scale: 0.9,
+                            glow: "#06b6d4",
+                            vy: -2
+                        });
+                        this._playTone({ type: 'sine', freq: [600, 900], vol: 0.2, dur: 0.08 });
+                    }
                 }
             }
 
             // Death collision — skip for collapsing pipes so bombed pipes never kill the player
-            if (!p.collapsing && bx < p.x+p.w && bx+bw > p.x && (by < p.y || by+bh > p.y+p.gap)) { this.gameOver(); return; }
-            if (!p.scored && p.x + p.w < this.player.x) { 
+            if (!p.collapsing && !p.isPowerup && bx < p.x+p.w && bx+bw > p.x && (by < (p.y + (p.isSuper ? p.bobOffset : 0) + (p.shouldBob ? p.regBobOffset : 0)) || by+bh > (p.y + p.gap + (p.isSuper ? p.bobOffset : 0) + (p.shouldBob ? p.regBobOffset : 0)))) {
+                if (this.state.shieldActive) {
+                    this.state.shieldActive = false;
+                    this.state.activePowerupType = null;
+                    this.state.screenShake = 25;
+                    this.state.flashOpacity = 0.8;
+                    p.shakeTimer = 18;
+                    p.collapsing = true;
+                    this._pushFloatingText({
+                        x: this.canvas.width / 2,
+                        y: this.canvas.height / 2,
+                        text: "SHIELD BROKEN!",
+                        color: "#fff",
+                        scale: 1.6,
+                        glow: "#3b82f6",
+                        vy: -3,
+                        isMega: true,
+                        isShivering: true
+                    });
+                    for (let k = 0; k < 40; k++) {
+                        const ang = Math.random() * Math.PI * 2;
+                        const sp = Math.random() * 14 + 4;
+                        this.state.particles.push({
+                            x: this.player.x + this.player.w / 2,
+                            y: this.player.y + this.player.h / 2,
+                            vx: Math.cos(ang) * sp,
+                            vy: Math.sin(ang) * sp,
+                            size: Math.random() * 5 + 2,
+                            color: Math.random() > 0.5 ? "#3b82f6" : "#60a5fa",
+                            life: 1.0,
+                            isMega: true
+                        });
+                    }
+                    this.playSound('shift');
+                } else {
+                    this.gameOver();
+                    return;
+                }
+            }
+            if (!p.scored && p.x + p.w < this.player.x) {
                 p.scored = true; p.highlight = 1.0;
-                if (p.isSuper) {
+                if (p.isPowerup) {
+                    this._activatePowerup(p.powerupType);
+                } else if (p.isSuper) {
                     this._triggerSuperPipePass();
                 } else {
-                    this.state.score++; this.playSound('score'); 
-                    if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld(); 
+                    this.state.score++; this.playSound('score');
+                    if (this.state.score % this.config.worldShiftInterval === 0) this._shiftWorld();
                 }
             }
             if (p.x + p.w < -150 || p.collapseOffsetY > this.canvas.height + 200) this.pipes.splice(i, 1);
@@ -776,7 +927,7 @@ class AdBird {
             for (const p of this.pipes) { 
                 // Skip collapsing pipes — already destroyed, can't be re-bombed
                 if (p.collapsing) continue;
-                if (b.x > p.x && b.x < p.x + p.w && (b.y < p.y || b.y > p.y + p.gap)) { 
+                if (b.x > p.x && b.x < p.x + p.w && (b.y < (p.y + (p.isSuper ? p.bobOffset : 0) + (p.shouldBob ? p.regBobOffset : 0)) || b.y > (p.y + p.gap + (p.isSuper ? p.bobOffset : 0) + (p.shouldBob ? p.regBobOffset : 0)))) { 
                     this._createSplat(p, b.x, b.y, b.scale); 
                     hit = true; break; 
                 } 
@@ -841,6 +992,18 @@ class AdBird {
         for (let i = this.coins.length - 1; i >= 0; i--) {
             const c = this.coins[i];
             c.x -= dynamicSpeedForCoins * dt;
+            if (this.state.coinMagnetTimer > 0) {
+                const pcx = this.player.x + this.player.w / 2;
+                const pcy = this.player.y + this.player.h / 2;
+                const dx = pcx - c.x;
+                const dy = pcy - c.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 0 && dist < 500) {
+                    const pull = 0.35 * dt * Math.min(1, 400 / dist);
+                    c.x += dx * pull;
+                    c.y += dy * pull;
+                }
+            }
             c.spin += 0.15 * dt;
             c.bob += 0.08 * dt;
 
@@ -920,15 +1083,35 @@ class AdBird {
         
         // Super pipe — rare (4%), only after the player has scored 10
         // Use a custom ad object so we don't burn through the normal ad bag
-        const isSuper = this.state.score >= 10 && Math.random() < 0.04;
-        const ad = isSuper ? { text: "JACKPOT", color: "#fbbf24" } : this._nextAd();
+        const isSuper = this.state.score >= 10 && Math.random() < 0.09;
+        const isPowerup = !isSuper && this.state.score >= 5 && Math.random() < 0.06;
+        const powerupTypes = ['magnet', 'doubleBomb', 'shield'];
+        const powerupType = isPowerup ? powerupTypes[Math.floor(Math.random() * powerupTypes.length)] : null;
+        
+        let ad;
+        if (isSuper) {
+            ad = { text: "JACKPOT", color: "#fbbf24" };
+        } else if (isPowerup) {
+            const labels = { magnet: "COIN MAGNET", doubleBomb: "DOUBLE BOMB", shield: "SHIELD" };
+            ad = { text: labels[powerupType], color: "#3b82f6" };
+        } else {
+            ad = this._nextAd();
+        }
         
         this.pipes.push({ 
             x: this.canvas.width, y: h, w: this.config.pipeWidth, gap: gap, ad: ad, 
             scored: false, highlight: 0, stains: [],
             shakeTimer: 0, collapsing: false, collapseOffsetY: 0, collapseVel: 0,
             nearMissed: false,
-            isSuper: isSuper
+            isSuper: isSuper,
+            isPowerup: isPowerup,
+            powerupType: powerupType,
+            bobOffset: 0,
+            bobPhase: Math.random() * Math.PI * 2,
+            isPaid: !isSuper && !!ad.isPaid,
+            shouldBob: !isSuper && Math.random() < 0.3,
+            regBobOffset: 0,
+            regBobPhase: Math.random() * Math.PI * 2,
         });
 
         // Spawn a coin mid-gap 60% of the time, between this pipe and the next
@@ -986,21 +1169,35 @@ class AdBird {
             const shakeX = p.shakeTimer > 0 ? (Math.random() - 0.5) * 12 : 0;
             const shakeY = p.shakeTimer > 0 ? (Math.random() - 0.5) * 12 : 0;
             const collapseY = p.collapseOffsetY || 0;
+            const bobY = (p.isSuper && !p.collapsing ? (p.bobOffset || 0) : 0) + (p.shouldBob && !p.collapsing ? (p.regBobOffset || 0) : 0);
 
             if (!p.collapsing) {
                 this.ctx.save();
-                this.ctx.translate(shakeX, shakeY);
+                this.ctx.translate(shakeX, shakeY + bobY);
                 if (p.isSuper) {
                     this._drawSuperPipeBody(p);
                     this._drawPipeBorders(p, "#fef3c7", 5);
                     this._drawPipeCaps(p, "#fbbf24", 5, 22);
                     this._drawPipeStains(p, 5);
                     this._drawSuperPipeLabel(p);
+                } else if (p.isPowerup) {
+                    const colors = { magnet: "#fbbf24", doubleBomb: "#f43f5e", shield: "#3b82f6" };
+                    const glowColor = colors[p.powerupType] || "#3b82f6";
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.45 + Math.sin(this.state.frameCount * 0.1) * 0.15;
+                    this.ctx.fillStyle = glowColor;
+                    this.ctx.fillRect(p.x, 0, p.w, p.y);
+                    this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height);
+                    this.ctx.restore();
+                    this._drawPipeBorders(p, glowColor, 4);
+                    this._drawPipeCaps(p, glowColor, 4, 20);
+                    this._drawPipeLabel(p, glowColor);
                 } else {
+                    const borderWidth = p.isPaid ? 5 : 3;
                     this._drawPipeBody(p);
-                    this._drawPipeBorders(p, p.ad.color, 3);
-                    this._drawPipeCaps(p, p.ad.color, 3, 18);
-                    this._drawPipeStains(p, 3);
+                    this._drawPipeBorders(p, p.ad.color, borderWidth);
+                    this._drawPipeCaps(p, p.ad.color, borderWidth, p.isPaid ? 22 : 18);
+                    this._drawPipeStains(p, borderWidth);
                     this._drawPipeLabel(p, p.ad.color);
                 }
                 this.ctx.restore();
@@ -1013,7 +1210,7 @@ class AdBird {
             // TOP HALF — stays in place, fades out as bottom clears the screen
             this.ctx.save();
             this.ctx.globalAlpha = Math.max(0, 1 - collapseY / 400);
-            this.ctx.translate(shakeX, shakeY);
+            this.ctx.translate(shakeX, shakeY + bobY);
             this.ctx.beginPath();
             this.ctx.rect(p.x - 30, 0, p.w + 60, p.y + 25);
             this.ctx.clip();
@@ -1025,7 +1222,7 @@ class AdBird {
 
             // BOTTOM HALF — shake + collapse offset, carries the label down with it
             this.ctx.save();
-            this.ctx.translate(shakeX, shakeY + collapseY);
+            this.ctx.translate(shakeX, shakeY + collapseY + bobY);
             this.ctx.beginPath();
             this.ctx.rect(p.x - 30, p.y + p.gap - 25, p.w + 60, this.canvas.height - (p.y + p.gap) + 60);
             this.ctx.clip();
@@ -1087,7 +1284,7 @@ class AdBird {
             this.ctx.rect(p.x - bW, sy, p.w + (bW * 2), sy === 0 ? p.y : this.canvas.height);
             this.ctx.clip();
             p.stains.forEach(s => {
-                this.ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+                this.ctx.fillStyle = s.tint ? s.tint : "rgba(255, 255, 255, 0.9)";
                 this.ctx.beginPath();
                 this.ctx.arc(p.x + s.xOff, s.relY, s.size, 0, Math.PI * 2);
                 this.ctx.fill();
@@ -1323,6 +1520,31 @@ class AdBird {
         this.ctx.shadowColor = "#fbbf24";
         this.ctx.fillText(this.state.adCoins, padding, padding + 180);
         this.ctx.shadowBlur = 0;
+
+        if (this.state.activePowerupType) {
+            const labels = { magnet: "🧲 COIN MAGNET", doubleBomb: "💣💣 DOUBLE BOMB", shield: "🛡️ SHIELD" };
+            const colors = { magnet: "#fbbf24", doubleBomb: "#f43f5e", shield: "#3b82f6" };
+            const lbl = labels[this.state.activePowerupType];
+            const col = colors[this.state.activePowerupType];
+            const pY = padding + 240;
+            this.ctx.font = "bold 14px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+            this.ctx.shadowBlur = 0;
+            this.ctx.fillText("ACTIVE POWER-UP", padding, pY);
+            this.ctx.font = "bold 20px 'Outfit', sans-serif";
+            this.ctx.fillStyle = col;
+            this.ctx.shadowBlur = 12;
+            this.ctx.shadowColor = col;
+            this.ctx.fillText(lbl, padding, pY + 20);
+            const barW = 200;
+            const barH = 6;
+            const progress = Math.max(0, Math.min(1, this.state.activePowerupTimer / 300));
+            this.ctx.shadowBlur = 0;
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+            this.ctx.fillRect(padding, pY + 50, barW, barH);
+            this.ctx.fillStyle = col;
+            this.ctx.fillRect(padding, pY + 50, barW * progress, barH);
+        }
         
         this.ctx.restore();
         
@@ -1441,6 +1663,7 @@ class AdBird {
 
     _createSplat(p, bx, by, scale = 1.0) { 
         const isMega = scale >= 5.0;
+        if (p.isPaid) this.state.paidAdsDestroyed++;
         
         if (isMega) {
             // The bombed pipe always collapses
@@ -1451,7 +1674,7 @@ class AdBird {
             
             // CHAIN REACTION — only triggers when player has built up a 10+ combo
             // Feels like a screen-clear reward for high streaks, not a constant chaos generator
-            if (this.state.combo >= 10) {
+            if (this.state.combo >= 10 || scale >= 5.0) {
                 const shockwaveRadius = 400;
                 let chainedCount = 0;
                 this.pipes.forEach(otherPipe => {
@@ -1525,9 +1748,12 @@ class AdBird {
             });
         }
         
+        const pipeSkin = this.config.shopPipes.find(s => s.id === this.state.selectedPipe);
+        const stainTint = pipeSkin && pipeSkin.color ? pipeSkin.color : null;
         p.stains.push({ 
             relY: by, xOff: bx-p.x, 
             size: (Math.random()*8+12) * scale, 
+            tint: stainTint,
             drips: Array.from({length:3},()=>({
                 xOff:(Math.random()-0.5)*20,
                 len:0,
@@ -1592,7 +1818,7 @@ class AdBird {
     }
 
     _triggerSuperPipePass() {
-        this.state.score += 5;
+        this.state.score += 8;
         this.state.directHits += 3;
         this.state.screenShake = 30;
         this.state.flashOpacity = 1.0;
@@ -1620,7 +1846,7 @@ class AdBird {
         this._pushFloatingText({
             x: this.canvas.width / 2,
             y: this.canvas.height / 2 - 20,
-            text: "JACKPOT! +5",
+            text: "JACKPOT! +8",
             color: "#fff",
             scale: 2.2,
             glow: "#fbbf24",
@@ -1635,10 +1861,55 @@ class AdBird {
         const newMilestone = Math.floor(this.state.score / this.config.worldShiftInterval);
         this.playSound('shift');
         if (newMilestone > prevMilestone) this._shiftWorld();
+
+        // Coin shower — rain a burst of mid-value coins from the top
+        const showerCount = 8;
+        for (let i = 0; i < showerCount; i++) {
+            const coinType = this._pickCoinType();
+            this.coins.push({
+                x: this.canvas.width * 0.5 + (Math.random() - 0.5) * 400,
+                y: -50 - i * 40,
+                r: coinType.r,
+                value: coinType.value,
+                coreColor: coinType.coreColor,
+                edgeColor: coinType.edgeColor,
+                face: coinType.face,
+                collected: false,
+                spin: Math.random() * Math.PI * 2,
+                bob: Math.random() * Math.PI * 2
+            });
+        }
+    }
+
+    _activatePowerup(type) {
+        this.state.activePowerupType = type;
+        this.state.activePowerupTimer = 300;
+        this.state.screenShake = 15;
+        this.state.flashOpacity = 0.5;
+        const labels = { magnet: "COIN MAGNET!", doubleBomb: "DOUBLE BOMB ARMED!", shield: "SHIELD UP!" };
+        const colors = { magnet: "#fbbf24", doubleBomb: "#f43f5e", shield: "#3b82f6" };
+        this._pushFloatingText({
+            x: this.canvas.width / 2,
+            y: this.canvas.height / 2 - 40,
+            text: labels[type],
+            color: "#fff",
+            scale: 1.8,
+            glow: colors[type],
+            vy: -3,
+            isMega: true,
+            isShivering: true
+        });
+        this.playSound('shift');
+        if (type === 'magnet') this.state.coinMagnetTimer = 300;
+        else if (type === 'doubleBomb') this.state.doubleBombArmed = true;
+        else if (type === 'shield') this.state.shieldActive = true;
     }
 
     gameOver() { 
         if (this.state.isGameOver || this.state.waitingForGameOver) return; 
+        if (navigator.vibrate) {
+            try { navigator.vibrate([50, 30, 100]); } catch(e) {}
+        } 
         this.state.waitingForGameOver = true;
         this.state.gameRunning = false; 
         
@@ -1688,6 +1959,17 @@ class AdBird {
                 this.state.highTotalMisses = this.state.totalMisses;
                 this._safeStorage('set', 'adBirdHighTotalMisses', this.state.highTotalMisses);
             }
+
+            if (this.state.score >= 5) {
+                this.state.currentStreak++;
+                if (this.state.currentStreak > this.state.highStreak) {
+                    this.state.highStreak = this.state.currentStreak;
+                    this._safeStorage('set', 'adBirdHighStreak', this.state.highStreak);
+                }
+            } else {
+                this.state.currentStreak = 0;
+            }
+            this._safeStorage('set', 'adBirdStreak', this.state.currentStreak);
 
             const earned = Math.floor(this.state.score / 5) + (this.state.directHits * 2);
             this.state.adCoins += earned;
@@ -1772,11 +2054,20 @@ class AdBird {
     toggleFullscreen() { const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); if (!isFS) { const c = this.canvas.parentElement; const r = c.requestFullscreen || c.webkitRequestFullscreen || c.mozRequestFullScreen || c.msRequestFullscreen; if (r) r.call(c); } else { const e = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen; if (e) e.call(document); } }
     _shiftWorld() { this.state.currentWorld = (this.state.currentWorld + 1) % this.assets.worlds.length; this.state.flashOpacity = 1; this.playSound('shift'); }
     flap() { this.player.velocity = this.config.lift; this.playSound('flap'); }
-    dropBomb() { 
-        if (this.state.bombTimer > 0) return; 
-        const scale = 0.5 + Math.pow(Math.random(), 2.5) * 5.5; 
-        this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15 * scale, h: 20 * scale, speed: 8, scale: scale }); 
-        this.state.bombTimer = this.config.bombCooldown; 
+    dropBomb() {
+        if (this.state.bombTimer > 0) return;
+        if (navigator.vibrate) { try { navigator.vibrate(20); } catch(e) {} }
+        let scale;
+        if (this.state.doubleBombArmed) {
+            scale = 5.5;
+            this.state.doubleBombArmed = false;
+        } else {
+            scale = 0.5 + Math.pow(Math.random(), 2.5) * 5.5;
+        }
+        const bombSkin = this.config.shopBombs.find(b => b.id === this.state.selectedBomb);
+        const bombTint = bombSkin && bombSkin.tint ? bombSkin.tint : null;
+        this.bombs.push({ x: this.player.x+this.player.w/2, y: this.player.y+this.player.h-10, w: 15 * scale, h: 20 * scale, speed: 8, scale: scale, tint: bombTint });
+        this.state.bombTimer = this.config.bombCooldown;
     }
     _renderWorld() { 
         const bg = this.assets.worlds[this.state.currentWorld]; 
@@ -1854,9 +2145,9 @@ class AdBird {
 
             // Main bomb
             this.ctx.save();
-            this.ctx.fillStyle = "#fff";
+            this.ctx.fillStyle = b.tint || "#fff";
             this.ctx.shadowBlur = 25;
-            this.ctx.shadowColor = "#ec4899";
+            this.ctx.shadowColor = b.tint || "#ec4899";
             this.ctx.beginPath();
             this.ctx.ellipse(b.x, b.y, b.w / 2, b.h / 2, 0, 0, Math.PI * 2);
             this.ctx.fill();
@@ -1880,6 +2171,41 @@ class AdBird {
         const combo = this.state.combo;
         const cx = this.player.x + this.player.w / 2;
         const cy = this.player.y + this.player.h / 2;
+
+        if (this.state.shieldActive) {
+            const shieldPulse = Math.sin(this.state.frameCount * 0.15) * 0.2 + 0.8;
+            const shieldR = (this.player.w / 2) * 1.4;
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.5 * shieldPulse;
+            this.ctx.shadowBlur = 30;
+            this.ctx.shadowColor = "#3b82f6";
+            this.ctx.strokeStyle = "#60a5fa";
+            this.ctx.lineWidth = 4;
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, shieldR, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.globalAlpha = 0.15 * shieldPulse;
+            this.ctx.fillStyle = "#3b82f6";
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+
+        const trailDef = this.config.shopTrails.find(t => t.id === this.state.selectedTrail);
+        if (trailDef && trailDef.color && this.state.gameRunning) {
+            if (Math.floor(this.state.frameCount) % 2 === 0) {
+                this.state.particles.push({
+                    x: cx - this.player.w * 0.3 + (Math.random() - 0.5) * 20,
+                    y: cy + (Math.random() - 0.5) * this.player.h * 0.4,
+                    vx: -(Math.random() * 2 + 1),
+                    vy: (Math.random() - 0.5) * 1.5,
+                    size: Math.random() * 4 + 2,
+                    color: trailDef.color,
+                    life: 0.7,
+                    isMega: true,
+                    isTrail: true
+                });
+            }
+        }
 
         // Render combo aura BEHIND player
         if (combo >= 3) {
@@ -2222,6 +2548,24 @@ class AdBird {
             this.ctx.restore();
         }
 
+        // Paid ads destroyed meter
+        if (this.state.paidAdsDestroyed > 0) {
+            const adT = Math.max(0, t - 60);
+            const adProgress = ease(adT, 20);
+            if (adProgress > 0) {
+                this.ctx.save();
+                this.ctx.globalAlpha = adProgress;
+                this.ctx.font = "bold 16px 'Outfit', sans-serif";
+                this.ctx.fillStyle = "#ec4899";
+                this.ctx.textAlign = "center";
+                this.ctx.textBaseline = "middle";
+                this.ctx.shadowBlur = 12;
+                this.ctx.shadowColor = "#ec4899";
+                this.ctx.fillText(`💥 ${this.state.paidAdsDestroyed} REAL BRANDS DESTROYED`, this.canvas.width / 2, this.canvas.height / 2 + 120);
+                this.ctx.restore();
+            }
+        }
+
         // RUN IT BACK button with entrance animation
         const btnT = Math.max(0, t - 70);
         const btnProgress = ease(btnT, 20);
@@ -2548,6 +2892,36 @@ class AdBird {
                 
                 this.ctx.restore();
             });
+        }
+
+        // Streak badge — center, below the triangle
+        if (this.state.currentStreak > 0 || this.state.highStreak > 0) {
+            const sBw = 240;
+            const sBh = 52;
+            const sBx = cx - sBw / 2;
+            const sBy = 150 + 70 + 10 + 70 + 15;  // below the triangle
+            this.ctx.save();
+            this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
+            this.ctx.beginPath();
+            this.ctx.roundRect(sBx, sBy, sBw, sBh, 14);
+            this.ctx.fill();
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = "#a855f7";
+            this.ctx.strokeStyle = "#a855f7";
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.roundRect(sBx, sBy, sBw, sBh, 14);
+            this.ctx.stroke();
+            this.ctx.shadowBlur = 0;
+            this.ctx.font = "bold 12px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText("🔥  STREAK", sBx + sBw / 2, sBy + 14);
+            this.ctx.font = "900 22px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "#fff";
+            this.ctx.fillText(`${this.state.currentStreak}  •  BEST ${this.state.highStreak}`, sBx + sBw / 2, sBy + 34);
+            this.ctx.restore();
         }
         
         // --- SPLASH LAYOUT ---
@@ -3029,6 +3403,62 @@ class AdBird {
         return `${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}`;
     }
 
+    _getShopItems() {
+        switch (this.state.shopTab) {
+            case 'trails': return this.config.shopTrails;
+            case 'bombs': return this.config.shopBombs;
+            case 'pipes': return this.config.shopPipes;
+            case 'birds':
+            default: return this.config.shopColors;
+        }
+    }
+
+    _getOwnershipState(item) {
+        switch (this.state.shopTab) {
+            case 'trails':
+                return { owned: this.state.ownedTrails.includes(item.id), selected: this.state.selectedTrail === item.id };
+            case 'bombs':
+                return { owned: this.state.ownedBombs.includes(item.id), selected: this.state.selectedBomb === item.id };
+            case 'pipes':
+                return { owned: this.state.ownedPipes.includes(item.id), selected: this.state.selectedPipe === item.id };
+            case 'birds':
+            default:
+                return { owned: this.state.ownedColors.includes(item.id), selected: this.state.selectedColor === item.id };
+        }
+    }
+
+    _applyShopPurchase(item) {
+        const cost = item.cost;
+        const id = item.id;
+        const tab = this.state.shopTab;
+        const ownedMap = {
+            birds: { arr: 'ownedColors', key: 'adBirdOwnedColors', sel: 'selectedColor', selKey: 'adBirdSelectedColor' },
+            trails: { arr: 'ownedTrails', key: 'adBirdOwnedTrails', sel: 'selectedTrail', selKey: 'adBirdSelectedTrail' },
+            bombs: { arr: 'ownedBombs', key: 'adBirdOwnedBombs', sel: 'selectedBomb', selKey: 'adBirdSelectedBomb' },
+            pipes: { arr: 'ownedPipes', key: 'adBirdOwnedPipes', sel: 'selectedPipe', selKey: 'adBirdSelectedPipe' }
+        };
+        const m = ownedMap[tab];
+        if (!m) return false;
+        const isOwned = this.state[m.arr].includes(id);
+        if (isOwned) {
+            this.state[m.sel] = id;
+            this._safeStorage('set', m.selKey, id);
+            this.playSound('score');
+            return true;
+        }
+        if (this.state.adCoins >= cost) {
+            this.state.adCoins -= cost;
+            this.state[m.arr].push(id);
+            this.state[m.sel] = id;
+            this._safeStorage('set', 'adBirdCoins', this.state.adCoins);
+            this._safeStorage('set', m.key, JSON.stringify(this.state[m.arr]));
+            this._safeStorage('set', m.selKey, id);
+            this.playSound('shift');
+            return true;
+        }
+        return false;
+    }
+
     _renderShopButton(rect) {
         const hover = this.state.mouseX >= rect.x && this.state.mouseX <= rect.x + rect.w &&
                       this.state.mouseY >= rect.y && this.state.mouseY <= rect.y + rect.h;
@@ -3105,19 +3535,17 @@ class AdBird {
     _renderShop() {
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
-        const w = Math.min(this.canvas.width * 0.75, 640);
-        const h = 580;
+        const w = Math.min(this.canvas.width * 0.78, 680);
+        const h = 620;
         const x = cx - w / 2;
         const y = cy - h / 2;
         const f = this.state.frameCount;
 
         this.ctx.save();
 
-        // Dim backdrop
-        this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        this.ctx.fillStyle = "rgba(0, 0, 0, 0.82)";
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Modal background — subtle vertical gradient
         const bgGrad = this.ctx.createLinearGradient(x, y, x, y + h);
         bgGrad.addColorStop(0, "#1f2937");
         bgGrad.addColorStop(1, "#0f172a");
@@ -3129,7 +3557,6 @@ class AdBird {
         this.ctx.fill();
         this.ctx.shadowBlur = 0;
 
-        // Pulsing outer border glow
         const borderGlow = 18 + Math.sin(f * 0.05) * 8;
         this.ctx.strokeStyle = "#a855f7";
         this.ctx.lineWidth = 3;
@@ -3140,206 +3567,155 @@ class AdBird {
         this.ctx.stroke();
         this.ctx.shadowBlur = 0;
 
-        // TITLE with gradient + shimmer sweep
-        const titleY = y + 55;
+        const titleY = y + 45;
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
-        this.ctx.font = "900 36px 'Outfit', sans-serif";
-        const titleText = "BIRD COSMETICS";
-        const titleW = this.ctx.measureText(titleText).width;
-
+        this.ctx.font = "900 32px 'Outfit', sans-serif";
+        const titleText = "COSMETICS SHOP";
         this.ctx.strokeStyle = "#000";
-        this.ctx.lineWidth = 5;
+        this.ctx.lineWidth = 4;
         this.ctx.strokeText(titleText, cx, titleY);
-
-        const titleGrad = this.ctx.createLinearGradient(cx - titleW/2, 0, cx + titleW/2, 0);
-        titleGrad.addColorStop(0, "#fbbf24");
-        titleGrad.addColorStop(0.5, "#f59e0b");
-        titleGrad.addColorStop(1, "#fbbf24");
-        this.ctx.fillStyle = titleGrad;
-        this.ctx.shadowBlur = 20;
+        this.ctx.fillStyle = "#fbbf24";
+        this.ctx.shadowBlur = 16;
         this.ctx.shadowColor = "#f59e0b";
         this.ctx.fillText(titleText, cx, titleY);
         this.ctx.shadowBlur = 0;
 
-        const titleShimPos = (f * 0.008) % 1.5 - 0.25;
-        this.ctx.save();
-        this.ctx.globalCompositeOperation = 'source-atop';
-        const titleShimX = cx - titleW/2 + titleW * titleShimPos;
-        const titleShimGrad = this.ctx.createLinearGradient(titleShimX - 60, 0, titleShimX + 60, 0);
-        titleShimGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-        titleShimGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.75)");
-        titleShimGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-        this.ctx.fillStyle = titleShimGrad;
-        this.ctx.fillText(titleText, cx, titleY);
-        this.ctx.restore();
-
-        // Coin counter with pulse
         const coinPulse = 1 + Math.sin(f * 0.08) * 0.04;
         this.ctx.save();
-        this.ctx.translate(cx, y + 100);
+        this.ctx.translate(cx, y + 75);
         this.ctx.scale(coinPulse, coinPulse);
-        this.ctx.font = "bold 20px 'Outfit', sans-serif";
+        this.ctx.font = "bold 16px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#fbbf24";
-        this.ctx.shadowBlur = 12;
+        this.ctx.shadowBlur = 10;
         this.ctx.shadowColor = "#fbbf24";
-        this.ctx.fillText(`💰 ${this.state.adCoins} AD COINS`, 0, 0);
+        this.ctx.fillText(`💰 ${this.state.adCoins} COINS`, 0, 0);
         this.ctx.restore();
 
-        // COLOR ROWS
-        const rowH = 58;
-        const rowStartY = y + 140;
+        const tabs = [
+            { id: 'birds', label: 'BIRDS' },
+            { id: 'trails', label: 'TRAILS' },
+            { id: 'bombs', label: 'BOMBS' },
+            { id: 'pipes', label: 'PIPES' }
+        ];
+        const tabY = y + 105;
+        const tabH = 36;
+        const tabGap = 8;
+        const tabTotalW = w - 40;
+        const tabW = (tabTotalW - tabGap * (tabs.length - 1)) / tabs.length;
+        this._shopTabRects = [];
+        tabs.forEach((t, i) => {
+            const tx = x + 20 + i * (tabW + tabGap);
+            const isActive = this.state.shopTab === t.id;
+            this._shopTabRects.push({ x: tx, y: tabY, w: tabW, h: tabH, id: t.id });
+            this.ctx.fillStyle = isActive ? "rgba(168, 85, 247, 0.3)" : "rgba(255, 255, 255, 0.04)";
+            this.ctx.beginPath();
+            this.ctx.roundRect(tx, tabY, tabW, tabH, 10);
+            this.ctx.fill();
+            if (isActive) {
+                this.ctx.strokeStyle = "#a855f7";
+                this.ctx.lineWidth = 2;
+                this.ctx.shadowBlur = 10;
+                this.ctx.shadowColor = "#a855f7";
+                this.ctx.beginPath();
+                this.ctx.roundRect(tx, tabY, tabW, tabH, 10);
+                this.ctx.stroke();
+                this.ctx.shadowBlur = 0;
+            }
+            this.ctx.font = "900 14px 'Outfit', sans-serif";
+            this.ctx.fillStyle = isActive ? "#fff" : "rgba(255, 255, 255, 0.5)";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText(t.label, tx + tabW / 2, tabY + tabH / 2);
+        });
+
+        const items = this._getShopItems();
+        const rowH = 54;
+        const rowStartY = tabY + tabH + 20;
         const rowPad = 20;
 
-        this.config.shopColors.forEach((c, i) => {
+        items.forEach((c, i) => {
             const rowY = rowStartY + i * rowH;
             const rowX = x + rowPad;
             const rowW = w - rowPad * 2;
-            const isOwned = this.state.ownedColors.includes(c.id);
-            const isSelected = this.state.selectedColor === c.id;
+            const { owned, selected } = this._getOwnershipState(c);
             const canAfford = this.state.adCoins >= c.cost;
-
-            // Single source of truth — shopHoverIndex is driven by BOTH mouse move and keyboard nav
             const isHover = this.state.shopHoverIndex === i;
-
             const rowPhase = f * 0.05 + i * 0.3;
-            const tintHex = c.tint || "#ffffff";
-            const tintRgb = this._hexToRgb(tintHex);
+            const accentHex = c.tint || c.color || "#ffffff";
+            const accentRgb = this._hexToRgb(accentHex);
 
             let rowBgAlpha = 0.05;
             let rowXOffset = 0;
-            if (isSelected) {
-                rowBgAlpha = 0.18 + Math.sin(rowPhase) * 0.04;
-            } else if (isHover) {
-                rowBgAlpha = 0.14;
-                rowXOffset = 8;
-            }
+            if (selected) rowBgAlpha = 0.18 + Math.sin(rowPhase) * 0.04;
+            else if (isHover) { rowBgAlpha = 0.14; rowXOffset = 8; }
 
-            // Row background
-            this.ctx.fillStyle = `rgba(${tintRgb}, ${rowBgAlpha})`;
+            this.ctx.fillStyle = `rgba(${accentRgb}, ${rowBgAlpha})`;
             this.ctx.beginPath();
             this.ctx.roundRect(rowX + rowXOffset, rowY, rowW, rowH - 6, 12);
             this.ctx.fill();
 
-            // Selected row — glowing border in tint color
-            if (isSelected) {
-                this.ctx.strokeStyle = tintHex;
+            if (selected) {
+                this.ctx.strokeStyle = accentHex;
                 this.ctx.lineWidth = 2;
-                this.ctx.shadowBlur = 14;
-                this.ctx.shadowColor = tintHex;
+                this.ctx.shadowBlur = 12;
+                this.ctx.shadowColor = accentHex;
                 this.ctx.beginPath();
                 this.ctx.roundRect(rowX + rowXOffset, rowY, rowW, rowH - 6, 12);
                 this.ctx.stroke();
                 this.ctx.shadowBlur = 0;
             }
 
-            // Hover shimmer
-            if (isHover && !isSelected) {
-                this.ctx.save();
-                this.ctx.beginPath();
-                this.ctx.roundRect(rowX + rowXOffset, rowY, rowW, rowH - 6, 12);
-                this.ctx.clip();
-                const rowShimPos = (f * 0.015) % 2 - 0.5;
-                const rowShimX = rowX + rowW * rowShimPos;
-                const rowShimGrad = this.ctx.createLinearGradient(rowShimX - 70, 0, rowShimX + 70, 0);
-                rowShimGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-                rowShimGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.18)");
-                rowShimGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
-                this.ctx.fillStyle = rowShimGrad;
-                this.ctx.fillRect(rowX, rowY, rowW, rowH);
-                this.ctx.restore();
-            }
-
-            // Swatch with glow + pulse
-            const swatchX = rowX + 34 + rowXOffset;
+            const swatchX = rowX + 30 + rowXOffset;
             const swatchY = rowY + (rowH - 6) / 2;
             const swatchPulse = 1 + Math.sin(rowPhase) * 0.1;
-            const swatchR = 14 * swatchPulse;
-
-            this.ctx.fillStyle = tintHex;
-            this.ctx.shadowBlur = 16 + (isHover ? 10 : 0);
-            this.ctx.shadowColor = tintHex;
+            const swatchR = 12 * swatchPulse;
+            this.ctx.fillStyle = accentHex;
+            this.ctx.shadowBlur = 14 + (isHover ? 8 : 0);
+            this.ctx.shadowColor = accentHex;
             this.ctx.beginPath();
             this.ctx.arc(swatchX, swatchY, swatchR, 0, Math.PI * 2);
             this.ctx.fill();
             this.ctx.shadowBlur = 0;
 
-            // Swatch inner highlight
-            this.ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
-            this.ctx.beginPath();
-            this.ctx.arc(swatchX - 4, swatchY - 4, swatchR * 0.3, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            // Name
-            this.ctx.font = "bold 20px 'Outfit', sans-serif";
-            this.ctx.fillStyle = (isSelected || isHover) ? "#fff" : "#9ca3af";
+            this.ctx.font = "bold 18px 'Outfit', sans-serif";
+            this.ctx.fillStyle = (selected || isHover) ? "#fff" : "#9ca3af";
             this.ctx.textAlign = "left";
             this.ctx.textBaseline = "middle";
-            this.ctx.fillText(c.name, swatchX + 30, swatchY);
+            this.ctx.fillText(c.name, swatchX + 26, swatchY);
 
-            // Right-side status/action
             this.ctx.textAlign = "right";
-            const rightX = rowX + rowW - 20 + rowXOffset;
-
-            if (isSelected) {
-                const badgeW = 120;
-                const badgeH = 28;
-                const badgeX = rightX - badgeW;
-                const badgeY = swatchY - badgeH / 2;
-                const badgePulse = 1 + Math.sin(rowPhase * 2) * 0.04;
-
-                this.ctx.save();
-                this.ctx.translate(badgeX + badgeW / 2, badgeY + badgeH / 2);
-                this.ctx.scale(badgePulse, badgePulse);
-                this.ctx.translate(-(badgeX + badgeW / 2), -(badgeY + badgeH / 2));
-
+            const rightX = rowX + rowW - 18 + rowXOffset;
+            if (selected) {
+                this.ctx.font = "900 13px 'Outfit', sans-serif";
                 this.ctx.fillStyle = "#10b981";
-                this.ctx.shadowBlur = 15;
+                this.ctx.shadowBlur = 10;
                 this.ctx.shadowColor = "#10b981";
-                this.ctx.beginPath();
-                this.ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 14);
-                this.ctx.fill();
+                this.ctx.fillText("EQUIPPED", rightX, swatchY);
                 this.ctx.shadowBlur = 0;
-
-                this.ctx.font = "900 14px 'Outfit', sans-serif";
-                this.ctx.fillStyle = "#064e3b";
-                this.ctx.textAlign = "center";
-                this.ctx.fillText("EQUIPPED", badgeX + badgeW / 2, swatchY);
-                this.ctx.restore();
-            } else if (isOwned) {
-                this.ctx.font = "900 18px 'Outfit', sans-serif";
+            } else if (owned) {
+                this.ctx.font = "900 16px 'Outfit', sans-serif";
                 this.ctx.fillStyle = isHover ? "#93c5fd" : "#3b82f6";
-                if (isHover) {
-                    this.ctx.shadowBlur = 12;
-                    this.ctx.shadowColor = "#60a5fa";
-                }
                 this.ctx.fillText("SELECT →", rightX, swatchY);
-                this.ctx.shadowBlur = 0;
             } else if (canAfford) {
-                const buyPulse = 1 + Math.sin(rowPhase * 1.5) * 0.04;
-                this.ctx.save();
-                this.ctx.translate(rightX, swatchY);
-                this.ctx.scale(buyPulse, buyPulse);
-                this.ctx.font = "900 18px 'Outfit', sans-serif";
+                this.ctx.font = "900 16px 'Outfit', sans-serif";
                 this.ctx.fillStyle = isHover ? "#fde047" : "#fbbf24";
-                this.ctx.textAlign = "right";
-                this.ctx.shadowBlur = isHover ? 16 : 10;
+                this.ctx.shadowBlur = isHover ? 14 : 8;
                 this.ctx.shadowColor = "#fbbf24";
-                this.ctx.fillText(`BUY 💰${c.cost}`, 0, 0);
-                this.ctx.restore();
+                this.ctx.fillText(`BUY 💰${c.cost}`, rightX, swatchY);
+                this.ctx.shadowBlur = 0;
             } else {
-                this.ctx.font = "900 18px 'Outfit', sans-serif";
+                this.ctx.font = "900 16px 'Outfit', sans-serif";
                 this.ctx.fillStyle = "#6b7280";
                 this.ctx.fillText(`🔒 ${c.cost}`, rightX, swatchY);
             }
         });
 
-        // Close hint
-        this.ctx.font = "bold 12px 'Outfit', sans-serif";
+        this.ctx.font = "bold 11px 'Outfit', sans-serif";
         this.ctx.fillStyle = "#6b7280";
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
-        this.ctx.fillText("CLICK OUTSIDE OR THE SHOP BUTTON TO CLOSE", cx, y + h - 25);
+        this.ctx.fillText("CLICK OUTSIDE OR SHOP BUTTON TO CLOSE  •  TAB/ARROWS TO NAVIGATE", cx, y + h - 22);
 
         this.ctx.restore();
     }
@@ -3352,6 +3728,9 @@ class AdBird {
         const isSpace = e.code === 'Space' || e.key === ' ';
         const isUp = ['ArrowUp', 'KeyW'].includes(e.code) || ['w', 'W'].includes(e.key);
         const isDown = ['ArrowDown', 'KeyS'].includes(e.code) || ['s', 'S'].includes(e.key);
+        const isLeft = ['ArrowLeft', 'KeyA'].includes(e.code) || ['a', 'A'].includes(e.key);
+        const isRight = ['ArrowRight', 'KeyD'].includes(e.code) || ['d', 'D'].includes(e.key);
+        const isTab = e.code === 'Tab' || e.key === 'Tab';
 
         if (isEscape) {
             e.preventDefault();
@@ -3361,12 +3740,25 @@ class AdBird {
             return true;
         }
 
+        const tabs = ['birds', 'trails', 'bombs', 'pipes'];
+        if (isTab || isLeft || isRight) {
+            e.preventDefault();
+            const currentIdx = tabs.indexOf(this.state.shopTab);
+            const delta = (isRight || (isTab && !e.shiftKey)) ? 1 : -1;
+            const newIdx = (currentIdx + delta + tabs.length) % tabs.length;
+            this.state.shopTab = tabs[newIdx];
+            this.state.shopHoverIndex = -1;
+            this.playSound('score');
+            return true;
+        }
+
         if (isUp || isDown) {
             e.preventDefault();
-            const len = this.config.shopColors.length;
+            const items = this._getShopItems();
+            const len = items.length;
             if (this.state.shopHoverIndex < 0) {
-                // First nav key seeds selection to the currently-equipped color's row
-                const idx = this.config.shopColors.findIndex(c => c.id === this.state.selectedColor);
+                const selectedId = this._getCurrentSelectedId();
+                const idx = items.findIndex(c => c.id === selectedId);
                 this.state.shopHoverIndex = idx >= 0 ? idx : 0;
             } else {
                 const delta = isUp ? -1 : 1;
@@ -3378,70 +3770,64 @@ class AdBird {
 
         if (isEnter || isSpace) {
             e.preventDefault();
+            const items = this._getShopItems();
             if (this.state.shopHoverIndex < 0) {
-                // No row picked yet — seed to currently-equipped, require a second press to act
-                const idx = this.config.shopColors.findIndex(c => c.id === this.state.selectedColor);
+                const selectedId = this._getCurrentSelectedId();
+                const idx = items.findIndex(c => c.id === selectedId);
                 this.state.shopHoverIndex = idx >= 0 ? idx : 0;
                 return true;
             }
-            const color = this.config.shopColors[this.state.shopHoverIndex];
-            const isOwned = this.state.ownedColors.includes(color.id);
-            if (isOwned) {
-                this.state.selectedColor = color.id;
-                this._safeStorage('set', 'adBirdSelectedColor', color.id);
-                this.playSound('score');
-            } else if (this.state.adCoins >= color.cost) {
-                this.state.adCoins -= color.cost;
-                this.state.ownedColors.push(color.id);
-                this.state.selectedColor = color.id;
-                this._safeStorage('set', 'adBirdCoins', this.state.adCoins);
-                this._safeStorage('set', 'adBirdOwnedColors', JSON.stringify(this.state.ownedColors));
-                this._safeStorage('set', 'adBirdSelectedColor', color.id);
-                this.playSound('shift');
-            }
+            this._applyShopPurchase(items[this.state.shopHoverIndex]);
             return true;
         }
 
-        // Swallow any other keys (flap/bomb/left/right) so they don't leak to game logic
         e.preventDefault();
         return true;
+    }
+
+    _getCurrentSelectedId() {
+        switch (this.state.shopTab) {
+            case 'trails': return this.state.selectedTrail;
+            case 'bombs': return this.state.selectedBomb;
+            case 'pipes': return this.state.selectedPipe;
+            default: return this.state.selectedColor;
+        }
     }
 
     _handleShopClick(x, y) {
         const cx = this.canvas.width / 2;
         const cy = this.canvas.height / 2;
-        const w = Math.min(this.canvas.width * 0.75, 640);
-        const h = 580;
+        const w = Math.min(this.canvas.width * 0.78, 680);
+        const h = 620;
         const modalX = cx - w / 2;
         const modalY = cy - h / 2;
 
-        // Click outside modal closes it
         if (x < modalX || x > modalX + w || y < modalY || y > modalY + h) {
             this.state.shopOpen = false;
             return true;
         }
 
-        const rowH = 58;
-        const rowStartY = modalY + 140;
-        const clickedRowIndex = Math.floor((y - rowStartY) / rowH);
-
-        if (clickedRowIndex >= 0 && clickedRowIndex < this.config.shopColors.length) {
-            const color = this.config.shopColors[clickedRowIndex];
-            const isOwned = this.state.ownedColors.includes(color.id);
-
-            if (isOwned) {
-                this.state.selectedColor = color.id;
-                this._safeStorage('set', 'adBirdSelectedColor', color.id);
-                this.playSound('score');
-            } else if (this.state.adCoins >= color.cost) {
-                this.state.adCoins -= color.cost;
-                this.state.ownedColors.push(color.id);
-                this.state.selectedColor = color.id;
-                this._safeStorage('set', 'adBirdCoins', this.state.adCoins);
-                this._safeStorage('set', 'adBirdOwnedColors', JSON.stringify(this.state.ownedColors));
-                this._safeStorage('set', 'adBirdSelectedColor', color.id);
-                this.playSound('shift');
+        if (this._shopTabRects) {
+            for (const tab of this._shopTabRects) {
+                if (x >= tab.x && x <= tab.x + tab.w && y >= tab.y && y <= tab.y + tab.h) {
+                    if (this.state.shopTab !== tab.id) {
+                        this.state.shopTab = tab.id;
+                        this.state.shopHoverIndex = -1;
+                        this.playSound('score');
+                    }
+                    return true;
+                }
             }
+        }
+
+        const tabY = modalY + 105;
+        const tabH = 36;
+        const rowH = 54;
+        const rowStartY = tabY + tabH + 20;
+        const clickedRowIndex = Math.floor((y - rowStartY) / rowH);
+        const items = this._getShopItems();
+        if (clickedRowIndex >= 0 && clickedRowIndex < items.length) {
+            this._applyShopPurchase(items[clickedRowIndex]);
             return true;
         }
         return false;
