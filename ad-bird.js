@@ -767,8 +767,15 @@ class AdBird {
             if (this.state.activePowerupTimer <= 0) {
                 if (this.state.activePowerupType === 'doubleBomb') {
                     this.state.doubleBombArmed = false;
+                    this.state.activePowerupType = null;
+                } else if (this.state.activePowerupType === 'shield') {
+                    // Keep the type showing as long as shield is still up, even though the timer expired.
+                    if (!this.state.shieldActive) {
+                        this.state.activePowerupType = null;
+                    }
+                } else {
+                    this.state.activePowerupType = null;
                 }
-                this.state.activePowerupType = null;
             }
         }
         const scoreRamp = Math.floor(this.state.score / 10) * 0.25;
@@ -1587,6 +1594,7 @@ class AdBird {
             const lbl = labels[this.state.activePowerupType];
             const col = colors[this.state.activePowerupType];
             const pY = padding + 240;
+            const isShieldPersistent = this.state.activePowerupType === 'shield' && this.state.activePowerupTimer <= 0 && this.state.shieldActive;
             this.ctx.font = "bold 14px 'Outfit', sans-serif";
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
             this.ctx.shadowBlur = 0;
@@ -1598,12 +1606,20 @@ class AdBird {
             this.ctx.fillText(lbl, padding, pY + 20);
             const barW = 200;
             const barH = 6;
-            const progress = Math.max(0, Math.min(1, this.state.activePowerupTimer / 300));
             this.ctx.shadowBlur = 0;
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
             this.ctx.fillRect(padding, pY + 50, barW, barH);
             this.ctx.fillStyle = col;
-            this.ctx.fillRect(padding, pY + 50, barW * progress, barH);
+            if (isShieldPersistent) {
+                // Shield is up, timer expired — show a solid "PERSISTENT" pulse bar instead of draining
+                const pulse = 0.6 + Math.sin(this.state.frameCount * 0.08) * 0.25;
+                this.ctx.globalAlpha = pulse;
+                this.ctx.fillRect(padding, pY + 50, barW, barH);
+                this.ctx.globalAlpha = 1;
+            } else {
+                const progress = Math.max(0, Math.min(1, this.state.activePowerupTimer / 300));
+                this.ctx.fillRect(padding, pY + 50, barW * progress, barH);
+            }
         }
         
         this.ctx.restore();
