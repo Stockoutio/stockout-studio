@@ -1395,20 +1395,23 @@ class AdBird {
     }
 
     _renderHUD() {
-        // --- MAIN SCORE: EPIC & GLOWING ---
-        this.ctx.save();
-        this.ctx.fillStyle = "#fff";
-        this.ctx.textAlign = "center";
-        this.ctx.textBaseline = "alphabetic";
-        this.ctx.font = "900 72px 'Outfit', sans-serif";
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
-        
-        this.ctx.strokeStyle = "#000";
-        this.ctx.lineWidth = 4; 
-        this.ctx.strokeText(this.state.score, this.ui.scoreCenter, 70);
-        this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
-        this.ctx.restore();
+        if (!this.state.gameRunning && !this.state.isGameOver) {
+            // Skip main score on splash — streak badge takes this slot
+        } else {
+            this.ctx.save();
+            this.ctx.fillStyle = "#fff";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "alphabetic";
+            this.ctx.font = "900 72px 'Outfit', sans-serif";
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
+            
+            this.ctx.strokeStyle = "#000";
+            this.ctx.lineWidth = 4; 
+            this.ctx.strokeText(this.state.score, this.ui.scoreCenter, 70);
+            this.ctx.fillText(this.state.score, this.ui.scoreCenter, 70);
+            this.ctx.restore();
+        }
 
         // COMBO INDICATOR — animated, scales and colors with combo tier
         if (this.state.combo >= 2) {
@@ -2901,18 +2904,18 @@ class AdBird {
             });
         }
 
-        // Streak badge — center, below the triangle
+        // Streak badge — top center, where main score sits during gameplay
         if (this.state.currentStreak > 0 || this.state.highStreak > 0) {
-            const sBw = 240;
-            const sBh = 52;
+            const sBw = 260;
+            const sBh = 50;
             const sBx = cx - sBw / 2;
-            const sBy = 150 + 70 + 10 + 70 + 15;  // below the triangle
+            const sBy = 45;
             this.ctx.save();
-            this.ctx.fillStyle = "rgba(10, 10, 15, 0.75)";
+            this.ctx.fillStyle = "rgba(10, 10, 15, 0.8)";
             this.ctx.beginPath();
             this.ctx.roundRect(sBx, sBy, sBw, sBh, 14);
             this.ctx.fill();
-            this.ctx.shadowBlur = 10;
+            this.ctx.shadowBlur = 12 + Math.sin(f * 0.08) * 6;
             this.ctx.shadowColor = "#a855f7";
             this.ctx.strokeStyle = "#a855f7";
             this.ctx.lineWidth = 2;
@@ -2920,14 +2923,14 @@ class AdBird {
             this.ctx.roundRect(sBx, sBy, sBw, sBh, 14);
             this.ctx.stroke();
             this.ctx.shadowBlur = 0;
-            this.ctx.font = "bold 12px 'Outfit', sans-serif";
-            this.ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+            this.ctx.font = "bold 11px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "middle";
-            this.ctx.fillText("🔥  STREAK", sBx + sBw / 2, sBy + 14);
+            this.ctx.fillText("🔥  STREAK", sBx + sBw / 2, sBy + 12);
             this.ctx.font = "900 22px 'Outfit', sans-serif";
             this.ctx.fillStyle = "#fff";
-            this.ctx.fillText(`${this.state.currentStreak}  •  BEST ${this.state.highStreak}`, sBx + sBw / 2, sBy + 34);
+            this.ctx.fillText(`${this.state.currentStreak}  •  BEST ${this.state.highStreak}`, sBx + sBw / 2, sBy + 33);
             this.ctx.restore();
         }
         
