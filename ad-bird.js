@@ -89,31 +89,31 @@ class AdBird {
             comboVoiceLines: window.AdBirdContent.COMBO_VOICE_LINES,
             shopColors: [
                 { id: 'default', name: 'DEFAULT', cost: 0, tint: null },
-                { id: 'cyan', name: 'EMERALD', cost: 750, tint: '#10b981' },
-                { id: 'magenta', name: 'HOT PINK', cost: 2500, tint: '#ec4899' },
-                { id: 'gold', name: 'GOLD RUSH', cost: 7500, tint: '#fbbf24' },
-                { id: 'purple', name: 'SYNERGY PURPLE', cost: 15000, tint: '#a855f7' },
-                { id: 'red', name: 'MARKET RED', cost: 50000, tint: '#f43f5e' }
+                { id: 'cyan', name: 'EMERALD', cost: 2500, tint: '#10b981' },
+                { id: 'magenta', name: 'HOT PINK', cost: 8000, tint: '#ec4899' },
+                { id: 'gold', name: 'GOLD RUSH', cost: 20000, tint: '#fbbf24' },
+                { id: 'purple', name: 'SYNERGY PURPLE', cost: 45000, tint: '#a855f7' },
+                { id: 'red', name: 'MARKET RED', cost: 120000, tint: '#f43f5e' }
             ],
             shopTrails: [
                 { id: 'none', name: 'NO TRAIL', cost: 0, color: null },
-                { id: 'fire', name: 'FIRE', cost: 1500, color: '#f97316' },
-                { id: 'neon', name: 'NEON', cost: 4000, color: '#06b6d4' },
-                { id: 'money', name: 'MONEY', cost: 10000, color: '#22c55e' },
-                { id: 'feathers', name: 'FEATHERS', cost: 20000, color: '#e0e7ff' }
+                { id: 'fire', name: 'FIRE', cost: 4500, color: '#f97316' },
+                { id: 'neon', name: 'NEON', cost: 12000, color: '#06b6d4' },
+                { id: 'money', name: 'MONEY', cost: 30000, color: '#22c55e' },
+                { id: 'feathers', name: 'FEATHERS', cost: 60000, color: '#e0e7ff' }
             ],
             shopBombs: [
                 { id: 'default', name: 'DEFAULT', cost: 0, tint: '#ffffff' },
-                { id: 'nuke', name: 'NUKE', cost: 2000, tint: '#84cc16' },
-                { id: 'confetti', name: 'CONFETTI', cost: 5000, tint: '#ec4899' },
-                { id: 'bitcoin', name: 'BITCOIN', cost: 12000, tint: '#f59e0b' },
-                { id: 'brand', name: 'BRAND DESTRUCTION', cost: 30000, tint: '#f43f5e' }
+                { id: 'nuke', name: 'NUKE', cost: 6000, tint: '#84cc16' },
+                { id: 'confetti', name: 'CONFETTI', cost: 15000, tint: '#ec4899' },
+                { id: 'bitcoin', name: 'BITCOIN', cost: 36000, tint: '#f59e0b' },
+                { id: 'brand', name: 'BRAND DESTRUCTION', cost: 90000, tint: '#f43f5e' }
             ],
             shopPipes: [
                 { id: 'default', name: 'DEFAULT', cost: 0, color: null },
-                { id: 'gold', name: 'GILDED', cost: 3000, color: '#fbbf24' },
-                { id: 'lava', name: 'LAVA', cost: 8000, color: '#ef4444' },
-                { id: 'glitch', name: 'GLITCH', cost: 18000, color: '#a855f7' }
+                { id: 'gold', name: 'GILDED', cost: 9000, color: '#fbbf24' },
+                { id: 'lava', name: 'LAVA', cost: 24000, color: '#ef4444' },
+                { id: 'glitch', name: 'GLITCH', cost: 54000, color: '#a855f7' }
             ],
             coinTypes: [
                 { value: 1,  weight: 60, coreColor: '#fbbf24', edgeColor: '#b45309', face: '$',  r: 14 },
