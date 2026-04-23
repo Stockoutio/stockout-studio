@@ -1748,9 +1748,9 @@ class AdBird {
             this.state.slowMoTimer = this.config.slowMoDuration;
             this.state.slowMoStrength = this.config.slowMoFactor;
             
-            // CHAIN REACTION — only triggers when player has built up a 10+ combo
-            // Feels like a screen-clear reward for high streaks, not a constant chaos generator
-            if (this.state.combo >= 10 || scale >= 5.0) {
+            // CHAIN REACTION — only triggers when player has built up a 10+ combo.
+            // Feels like a screen-clear reward for high streaks, not a constant chaos generator.
+            if (this.state.combo >= 10) {
                 const shockwaveRadius = 400;
                 let chainedCount = 0;
                 this.pipes.forEach(otherPipe => {
