@@ -45,13 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 const colors = ['#a855f7', '#06b6d4', '#f59e0b', '#22c55e', '#ec4899', '#f43f5e'];
                 paidAds = data.map(ad => {
-                    // Hash the ad text to pick a stable color when none is stored
-                    let hash = 0;
-                    for (let i = 0; i < ad.text.length; i++) {
-                        hash = ((hash << 5) - hash) + ad.text.charCodeAt(i);
-                        hash |= 0;
-                    }
-                    const color = ad.color || colors[Math.abs(hash) % colors.length];
+                    const color = ad.color || colors[Math.floor(Math.random() * colors.length)];
                     return { ...ad, isPaid: true, color };
                 });
             }

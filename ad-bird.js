@@ -44,18 +44,10 @@ class AdBird {
             paidAds: options.paidAds || [],
             stockAds: (() => {
                 const colors = ["#a855f7", "#06b6d4", "#f59e0b", "#22c55e", "#ec4899", "#f43f5e"];
-                return (options.stockAds || window.AdBirdContent.STOCK_ADS).map(text => {
-                    // Hash the ad text for stable color across sessions
-                    let hash = 0;
-                    for (let i = 0; i < text.length; i++) {
-                        hash = ((hash << 5) - hash) + text.charCodeAt(i);
-                        hash |= 0;
-                    }
-                    return { 
-                        text: text.toUpperCase(), 
-                        color: colors[Math.abs(hash) % colors.length]
-                    };
-                });
+                return (options.stockAds || window.AdBirdContent.STOCK_ADS).map(text => ({
+                    text: text.toUpperCase(),
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                }));
             })(),
             maxStockConsecutive: 3,
             hitMessages: window.AdBirdContent.HIT_MESSAGES,
