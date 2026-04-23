@@ -276,6 +276,14 @@ class AdBird {
             return;
         }
 
+        // Mute toggle always works — even during death pause
+        if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') {
+            e.preventDefault();
+            this.state.mutePressed = Date.now();
+            this.toggleMute();
+            return;
+        }
+
         // Block all other input during the death animation pause
         // (prevents space/enter from triggering splash logic mid-death)
         if (this.state.waitingForGameOver) {
