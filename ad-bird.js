@@ -1022,12 +1022,11 @@ class AdBird {
             }
         }
         this.bubbles.forEach(b => { 
-            // NEW:
             b.x -= b.speed * dt; 
-            b.bobPhase += b.bobSpeed;
+            b.bobPhase += b.bobSpeed * dt;
             if (b.x < -20) { 
                 b.x = this.canvas.width + 20; 
-                b.y = Math.random() * this.canvas.height;  // Rerandomize y on respawn
+                b.y = Math.random() * this.canvas.height;
             } 
         });
 
@@ -3387,8 +3386,7 @@ class AdBird {
         const bubbleCount = this.perfMode ? 8 : 15;
         const orbCount = this.perfMode ? 4 : 8;
         const dustCount = this.perfMode ? 3 : 6;
-        
-        // Layer A: Small bubbles (fastest, closest, most numerous)
+
         for (let i = 0; i < bubbleCount; i++) {
             this.bubbles.push({
                 type: 'bubble',
@@ -3396,11 +3394,12 @@ class AdBird {
                 y: Math.random() * this.canvas.height,
                 size: Math.random() * 2.5 + 1,
                 speed: Math.random() * 1.5 + 0.8,
-                opacity: Math.random() * 0.4 + 0.2
+                alpha: Math.random() * 0.4 + 0.2,
+                bobPhase: Math.random() * Math.PI * 2,
+                bobSpeed: 0.03 + Math.random() * 0.04
             });
         }
-        
-        // Layer B: Medium glow orbs (slower, atmospheric)
+
         const colors = ["#a855f7", "#06b6d4", "#ec4899"];
         for (let i = 0; i < orbCount; i++) {
             this.bubbles.push({
@@ -3409,18 +3408,23 @@ class AdBird {
                 y: Math.random() * this.canvas.height,
                 size: Math.random() * 8 + 4,
                 speed: Math.random() * 0.5 + 0.3,
-                color: colors[i % colors.length]
+                color: colors[i % colors.length],
+                alpha: 0.35 + Math.random() * 0.25,
+                bobPhase: Math.random() * Math.PI * 2,
+                bobSpeed: 0.015 + Math.random() * 0.025
             });
         }
-        
-        // Layer C: Large soft dust (slowest, background depth)
+
         for (let i = 0; i < dustCount; i++) {
             this.bubbles.push({
                 type: 'dust',
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
                 size: Math.random() * 20 + 15,
-                speed: Math.random() * 0.2 + 0.1
+                speed: Math.random() * 0.2 + 0.1,
+                alpha: 0.12 + Math.random() * 0.1,
+                bobPhase: Math.random() * Math.PI * 2,
+                bobSpeed: 0.008 + Math.random() * 0.015
             });
         }
     }
