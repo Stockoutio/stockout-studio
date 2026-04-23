@@ -1005,7 +1005,7 @@ class AdBird {
                 const dy = pcy - c.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist > 0 && dist < 500) {
-                    const pull = 0.35 * dt * Math.min(1, 400 / dist);
+                    const pull = 0.18 * dt * Math.min(1, 400 / dist);
                     c.x += dx * pull;
                     c.y += dy * pull;
                 }
