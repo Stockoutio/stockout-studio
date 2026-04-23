@@ -1945,7 +1945,46 @@ class AdBird {
         this.playSound('shift');
         if (type === 'magnet') this.state.coinMagnetTimer = 300;
         else if (type === 'doubleBomb') this.state.doubleBombArmed = true;
-        else if (type === 'shield') this.state.shieldActive = true;
+        else if (type === 'shield') {
+            if (this.state.shieldActive) {
+                // Already have shield — convert to coin rain instead
+                this.state.activePowerupType = 'shield';
+                this.state.activePowerupTimer = 300;
+                this._pushFloatingText({
+                    x: this.canvas.width / 2,
+                    y: this.canvas.height / 2 - 90,
+                    text: "DOUBLE SHIELD → COIN RAIN!",
+                    color: "#fff",
+                    scale: 1.6,
+                    glow: "#fbbf24",
+                    vy: -3,
+                    isMega: true,
+                    isShivering: true
+                });
+                const showerCount = 14;
+                for (let i = 0; i < showerCount; i++) {
+                    const coinType = this._pickCoinType();
+                    this.coins.push({
+                        x: this.canvas.width * 0.5 + (Math.random() - 0.5) * 550,
+                        y: -50 - i * 30,
+                        r: coinType.r,
+                        value: coinType.value,
+                        coreColor: coinType.coreColor,
+                        edgeColor: coinType.edgeColor,
+                        face: coinType.face,
+                        collected: false,
+                        spin: Math.random() * Math.PI * 2,
+                        bob: Math.random() * Math.PI * 2,
+                        vy: 3 + Math.random() * 3,
+                        noScroll: true
+                    });
+                }
+                this.state.flashOpacity = 0.9;
+                this.state.screenShake = 25;
+            } else {
+                this.state.shieldActive = true;
+            }
+        }
     }
 
     gameOver() { 
