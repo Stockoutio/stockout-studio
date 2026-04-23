@@ -107,6 +107,12 @@ class AdBird {
                 { id: 'lava', name: 'LAVA', cost: 24000, color: '#ef4444' },
                 { id: 'glitch', name: 'GLITCH', cost: 54000, color: '#a855f7' }
             ],
+            shopMagnets: [
+                { id: 'none', name: 'NO MAGNET', cost: 0, mult: 1.0, tint: '#6b7280' },
+                { id: 'small', name: 'POCKET MAGNET', cost: 5000, mult: 1.5, tint: '#60a5fa' },
+                { id: 'medium', name: 'HEAVY MAGNET', cost: 18000, mult: 2.2, tint: '#a855f7' },
+                { id: 'huge', name: 'MEGA MAGNET', cost: 50000, mult: 3.5, tint: '#fbbf24' }
+            ],
             coinTypes: [
                 { value: 1,  weight: 60, coreColor: '#fbbf24', edgeColor: '#b45309', face: '$',  r: 14 },
                 { value: 2,  weight: 25, coreColor: '#e5e7eb', edgeColor: '#6b7280', face: '2',  r: 15 },
@@ -166,6 +172,8 @@ class AdBird {
             selectedBomb: this._safeStorage('get', 'adBirdSelectedBomb') || 'default',
             ownedPipes: JSON.parse(this._safeStorage('get', 'adBirdOwnedPipes') || '["default"]'),
             selectedPipe: this._safeStorage('get', 'adBirdSelectedPipe') || 'default',
+            ownedMagnets: JSON.parse(this._safeStorage('get', 'adBirdOwnedMagnets') || '["none"]'),
+            selectedMagnet: this._safeStorage('get', 'adBirdSelectedMagnet') || 'none',
             shopOpen: false,
             shopTab: 'birds',
             shopHoverIndex: -1,
@@ -1054,7 +1062,10 @@ class AdBird {
             const pcy = this.player.y + this.player.h / 2;
             const dx = c.x - pcx;
             const dy = c.y - pcy;
-            if (dx * dx + dy * dy < (c.r + this.player.w / 2) * (c.r + this.player.w / 2)) {
+            const magnetDef = this.config.shopMagnets.find(m => m.id === this.state.selectedMagnet);
+            const magnetMult = magnetDef ? magnetDef.mult : 1.0;
+            const effectiveRadius = (c.r + this.player.w / 2) * magnetMult;
+            if (dx * dx + dy * dy < effectiveRadius * effectiveRadius) {
                 c.collected = true;
                 const comboMult = Math.max(1, this.state.combo);
                 const earned = (c.value || 1) * comboMult;
@@ -3503,6 +3514,7 @@ class AdBird {
             case 'trails': return this.config.shopTrails;
             case 'bombs': return this.config.shopBombs;
             case 'pipes': return this.config.shopPipes;
+            case 'magnets': return this.config.shopMagnets;
             case 'birds':
             default: return this.config.shopColors;
         }
@@ -3516,6 +3528,8 @@ class AdBird {
                 return { owned: this.state.ownedBombs.includes(item.id), selected: this.state.selectedBomb === item.id };
             case 'pipes':
                 return { owned: this.state.ownedPipes.includes(item.id), selected: this.state.selectedPipe === item.id };
+            case 'magnets':
+                return { owned: this.state.ownedMagnets.includes(item.id), selected: this.state.selectedMagnet === item.id };
             case 'birds':
             default:
                 return { owned: this.state.ownedColors.includes(item.id), selected: this.state.selectedColor === item.id };
@@ -3530,7 +3544,8 @@ class AdBird {
             birds: { arr: 'ownedColors', key: 'adBirdOwnedColors', sel: 'selectedColor', selKey: 'adBirdSelectedColor' },
             trails: { arr: 'ownedTrails', key: 'adBirdOwnedTrails', sel: 'selectedTrail', selKey: 'adBirdSelectedTrail' },
             bombs: { arr: 'ownedBombs', key: 'adBirdOwnedBombs', sel: 'selectedBomb', selKey: 'adBirdSelectedBomb' },
-            pipes: { arr: 'ownedPipes', key: 'adBirdOwnedPipes', sel: 'selectedPipe', selKey: 'adBirdSelectedPipe' }
+            pipes: { arr: 'ownedPipes', key: 'adBirdOwnedPipes', sel: 'selectedPipe', selKey: 'adBirdSelectedPipe' },
+            magnets: { arr: 'ownedMagnets', key: 'adBirdOwnedMagnets', sel: 'selectedMagnet', selKey: 'adBirdSelectedMagnet' }
         };
         const m = ownedMap[tab];
         if (!m) return false;
@@ -3733,7 +3748,8 @@ class AdBird {
             { id: 'birds', label: 'BIRDS' },
             { id: 'trails', label: 'TRAILS' },
             { id: 'bombs', label: 'BOMBS' },
-            { id: 'pipes', label: 'PIPES' }
+            { id: 'pipes', label: 'PIPES' },
+            { id: 'magnets', label: 'MAGNETS' }
         ];
         const tabY = y + 105;
         const tabH = 36;
@@ -3759,7 +3775,7 @@ class AdBird {
                 this.ctx.stroke();
                 this.ctx.shadowBlur = 0;
             }
-            this.ctx.font = "900 14px 'Outfit', sans-serif";
+            this.ctx.font = "900 12px 'Outfit', sans-serif";
             this.ctx.fillStyle = isActive ? "#fff" : "rgba(255, 255, 255, 0.5)";
             this.ctx.textAlign = "center";
             this.ctx.textBaseline = "middle";
@@ -3877,7 +3893,7 @@ class AdBird {
             return true;
         }
 
-        const tabs = ['birds', 'trails', 'bombs', 'pipes'];
+        const tabs = ['birds', 'trails', 'bombs', 'pipes', 'magnets'];
         if (isTab || isLeft || isRight) {
             e.preventDefault();
             const currentIdx = tabs.indexOf(this.state.shopTab);
@@ -3942,6 +3958,7 @@ class AdBird {
             case 'trails': return this.state.selectedTrail;
             case 'bombs': return this.state.selectedBomb;
             case 'pipes': return this.state.selectedPipe;
+            case 'magnets': return this.state.selectedMagnet;
             default: return this.state.selectedColor;
         }
     }
