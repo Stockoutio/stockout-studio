@@ -764,7 +764,12 @@ class AdBird {
         if (this.state.coinMagnetTimer > 0) this.state.coinMagnetTimer -= dt;
         if (this.state.activePowerupTimer > 0) {
             this.state.activePowerupTimer -= dt;
-            if (this.state.activePowerupTimer <= 0) this.state.activePowerupType = null;
+            if (this.state.activePowerupTimer <= 0) {
+                if (this.state.activePowerupType === 'doubleBomb') {
+                    this.state.doubleBombArmed = false;
+                }
+                this.state.activePowerupType = null;
+            }
         }
         const scoreRamp = Math.floor(this.state.score / 10) * 0.25;
         const dynamicSpeed = (this.config.pipeSpeed + scoreRamp) * this.state.difficultyMultiplier;
