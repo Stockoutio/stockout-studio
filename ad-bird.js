@@ -1237,8 +1237,8 @@ class AdBird {
 
     _drawPipeBody(p) {
         this.ctx.fillStyle = "rgba(10, 10, 15, 0.95)";
-        this.ctx.fillRect(p.x, 0, p.w, p.y);
-        this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height);
+        this.ctx.fillRect(p.x, -100, p.w, p.y + 100);
+        this.ctx.fillRect(p.x, p.y + p.gap, p.w, this.canvas.height + 100);
     }
 
     _drawPipeBorders(p, gc, bW) {
@@ -1247,16 +1247,16 @@ class AdBird {
             this.ctx.shadowBlur = 12 * p.highlight;
             this.ctx.shadowColor = "#fff";
             this.ctx.fillStyle = `rgba(255, 255, 255, ${p.highlight})`;
-            this.ctx.fillRect(p.x - bW - 2, 0, bW + 4, p.y);
-            this.ctx.fillRect(p.x + p.w - 2, 0, bW + 4, p.y);
-            this.ctx.fillRect(p.x - bW - 2, p.y + p.gap, bW + 4, this.canvas.height);
-            this.ctx.fillRect(p.x + p.w - 2, p.y + p.gap, bW + 4, this.canvas.height);
+            this.ctx.fillRect(p.x - bW - 2, -100, bW + 4, p.y + 100);
+            this.ctx.fillRect(p.x + p.w - 2, -100, bW + 4, p.y + 100);
+            this.ctx.fillRect(p.x - bW - 2, p.y + p.gap, bW + 4, this.canvas.height + 100);
+            this.ctx.fillRect(p.x + p.w - 2, p.y + p.gap, bW + 4, this.canvas.height + 100);
         }
         this.ctx.fillStyle = gc;
-        this.ctx.fillRect(p.x - bW, 0, bW, p.y);
-        this.ctx.fillRect(p.x + p.w, 0, bW, p.y);
-        this.ctx.fillRect(p.x - bW, p.y + p.gap, bW, this.canvas.height);
-        this.ctx.fillRect(p.x + p.w, p.y + p.gap, bW, this.canvas.height);
+        this.ctx.fillRect(p.x - bW, -100, bW, p.y + 100);
+        this.ctx.fillRect(p.x + p.w, -100, bW, p.y + 100);
+        this.ctx.fillRect(p.x - bW, p.y + p.gap, bW, this.canvas.height + 100);
+        this.ctx.fillRect(p.x + p.w, p.y + p.gap, bW, this.canvas.height + 100);
         this.ctx.restore();
     }
 
@@ -1324,8 +1324,8 @@ class AdBird {
             this.ctx.fillStyle = grad;
             this.ctx.fillRect(p.x, yStart, p.w, yEnd - yStart);
         };
-        drawHalf(0, p.y);
-        drawHalf(p.y + p.gap, this.canvas.height);
+        drawHalf(-100, p.y);
+        drawHalf(p.y + p.gap, this.canvas.height + 100);
 
         // Diagonal shimmer stripes overlay
         this.ctx.save();
