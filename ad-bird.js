@@ -529,19 +529,23 @@ class AdBird {
         else if (hoveringSplashShop) this.state.splashFocus = 2;
 
         // Sync shopHoverIndex to mouse position whenever shop is open.
-        // This unifies mouse + keyboard — whichever input was touched most recently drives the highlight.
+        // Geometry must match _renderShop exactly: w = min(canvas*0.78, 680), h = 620, rowH = 54,
+        // rowStartY = tabY(modalY+105) + tabH(36) + 20 = modalY + 161.
         if (this.state.shopOpen) {
-            const modalW = Math.min(this.canvas.width * 0.75, 640);
+            const modalW = Math.min(this.canvas.width * 0.78, 680);
             const modalX = this.canvas.width / 2 - modalW / 2;
-            const modalY = this.canvas.height / 2 - 290;  // modal h = 580
-            const rowH = 58;
-            const rowStartY = modalY + 140;
+            const modalY = this.canvas.height / 2 - 310;  // modal h = 620
+            const rowH = 54;
+            const rowStartY = modalY + 161;
             const rowX = modalX + 20;
             const rowW = modalW - 40;
+            const items = this._getShopItems();
 
-            if (y >= rowStartY && x >= rowX && x <= rowX + rowW) {
+            if (hoveringShopClose) {
+                this.state.shopHoverIndex = -2;
+            } else if (y >= rowStartY && x >= rowX && x <= rowX + rowW) {
                 const idx = Math.floor((y - rowStartY) / rowH);
-                if (idx >= 0 && idx < this.config.shopColors.length) {
+                if (idx >= 0 && idx < items.length) {
                     this.state.shopHoverIndex = idx;
                 }
             }
