@@ -864,7 +864,8 @@ class AdBird {
                                 collected: false,
                                 spin: Math.random() * Math.PI * 2,
                                 bob: Math.random() * Math.PI * 2,
-                                vy: 1 + Math.random() * 2
+                                vy: 1 + Math.random() * 2,
+                                noScroll: true
                             });
                         }
                         this._playTone({ type: 'sine', freq: [400, 1500], vol: 0.4, dur: 0.3 });
@@ -1019,7 +1020,7 @@ class AdBird {
         const dynamicSpeedForCoins = (this.config.pipeSpeed + Math.floor(this.state.score / 10) * 0.25) * this.state.difficultyMultiplier;
         for (let i = this.coins.length - 1; i >= 0; i--) {
             const c = this.coins[i];
-            c.x -= dynamicSpeedForCoins * dt;
+            if (!c.noScroll) c.x -= dynamicSpeedForCoins * dt;
             if (c.vy !== undefined) {
                 c.y += c.vy * dt;
                 c.vy += 0.2 * dt;
@@ -1903,7 +1904,7 @@ class AdBird {
         for (let i = 0; i < showerCount; i++) {
             const coinType = this._pickCoinType();
             this.coins.push({
-                x: this.canvas.width * 0.5 + (Math.random() - 0.5) * 500,
+                x: this.player.x + this.player.w / 2 + (Math.random() - 0.5) * 280,
                 y: -50 - i * 30,
                 r: coinType.r,
                 value: coinType.value,
@@ -1913,7 +1914,8 @@ class AdBird {
                 collected: false,
                 spin: Math.random() * Math.PI * 2,
                 bob: Math.random() * Math.PI * 2,
-                vy: 3 + Math.random() * 3
+                vy: 3 + Math.random() * 3,
+                noScroll: true
             });
         }
     }
