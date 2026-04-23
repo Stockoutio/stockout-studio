@@ -709,7 +709,6 @@ class AdBird {
         if (this.player.y < 0 || this.player.y + this.player.h > this.canvas.height) {
             if (this.state.shieldActive) {
                 this.state.shieldActive = false;
-                this.state.activePowerupType = null;
                 this.player.y = Math.max(20, Math.min(this.canvas.height - this.player.h - 20, this.player.y));
                 this.player.velocity = this.config.lift;
                 this.state.flashOpacity = 0.8;
@@ -767,15 +766,8 @@ class AdBird {
             if (this.state.activePowerupTimer <= 0) {
                 if (this.state.activePowerupType === 'doubleBomb') {
                     this.state.doubleBombArmed = false;
-                    this.state.activePowerupType = null;
-                } else if (this.state.activePowerupType === 'shield') {
-                    // Keep the type showing as long as shield is still up, even though the timer expired.
-                    if (!this.state.shieldActive) {
-                        this.state.activePowerupType = null;
-                    }
-                } else {
-                    this.state.activePowerupType = null;
                 }
+                this.state.activePowerupType = null;
             }
         }
         const scoreRamp = Math.floor(this.state.score / 10) * 0.25;
@@ -913,7 +905,6 @@ class AdBird {
             if (!p.collapsing && !p.isPowerup && bx < p.x+p.w && bx+bw > p.x && (by < (p.y + (p.isSuper ? p.bobOffset : 0) + (p.shouldBob ? p.regBobOffset : 0)) || by+bh > (p.y + p.gap + (p.isSuper ? p.bobOffset : 0) + (p.shouldBob ? p.regBobOffset : 0)))) {
                 if (this.state.shieldActive) {
                     this.state.shieldActive = false;
-                    this.state.activePowerupType = null;
                     this.state.screenShake = 25;
                     this.state.flashOpacity = 0.8;
                     p.shakeTimer = 18;
@@ -1588,38 +1579,48 @@ class AdBird {
         this.ctx.fillText(this.state.adCoins, padding, padding + 180);
         this.ctx.shadowBlur = 0;
 
-        if (this.state.activePowerupType) {
-            const labels = { magnet: "🧲 COIN MAGNET", doubleBomb: "💣💣 DOUBLE BOMB", shield: "🛡️ SHIELD" };
-            const colors = { magnet: "#fbbf24", doubleBomb: "#f43f5e", shield: "#3b82f6" };
+        let nextIndicatorY = padding + 240;
+
+        if (this.state.activePowerupType === 'magnet' || this.state.activePowerupType === 'doubleBomb') {
+            const labels = { magnet: "🧲 COIN MAGNET", doubleBomb: "💣💣 DOUBLE BOMB" };
+            const colors = { magnet: "#fbbf24", doubleBomb: "#f43f5e" };
             const lbl = labels[this.state.activePowerupType];
             const col = colors[this.state.activePowerupType];
-            const pY = padding + 240;
-            const isShieldPersistent = this.state.activePowerupType === 'shield' && this.state.activePowerupTimer <= 0 && this.state.shieldActive;
             this.ctx.font = "bold 14px 'Outfit', sans-serif";
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
             this.ctx.shadowBlur = 0;
-            this.ctx.fillText("ACTIVE POWER-UP", padding, pY);
+            this.ctx.fillText("ACTIVE POWER-UP", padding, nextIndicatorY);
             this.ctx.font = "bold 20px 'Outfit', sans-serif";
             this.ctx.fillStyle = col;
             this.ctx.shadowBlur = 12;
             this.ctx.shadowColor = col;
-            this.ctx.fillText(lbl, padding, pY + 20);
+            this.ctx.fillText(lbl, padding, nextIndicatorY + 20);
             const barW = 200;
             const barH = 6;
+            const progress = Math.max(0, Math.min(1, this.state.activePowerupTimer / 300));
             this.ctx.shadowBlur = 0;
             this.ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-            this.ctx.fillRect(padding, pY + 50, barW, barH);
+            this.ctx.fillRect(padding, nextIndicatorY + 50, barW, barH);
             this.ctx.fillStyle = col;
-            if (isShieldPersistent) {
-                // Shield is up, timer expired — show a solid "PERSISTENT" pulse bar instead of draining
-                const pulse = 0.6 + Math.sin(this.state.frameCount * 0.08) * 0.25;
-                this.ctx.globalAlpha = pulse;
-                this.ctx.fillRect(padding, pY + 50, barW, barH);
-                this.ctx.globalAlpha = 1;
-            } else {
-                const progress = Math.max(0, Math.min(1, this.state.activePowerupTimer / 300));
-                this.ctx.fillRect(padding, pY + 50, barW * progress, barH);
-            }
+            this.ctx.fillRect(padding, nextIndicatorY + 50, barW * progress, barH);
+            nextIndicatorY += 80;
+        }
+
+        if (this.state.shieldActive) {
+            const sCol = "#3b82f6";
+            const pulse = 0.75 + Math.sin(this.state.frameCount * 0.1) * 0.2;
+            this.ctx.font = "bold 14px 'Outfit', sans-serif";
+            this.ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+            this.ctx.shadowBlur = 0;
+            this.ctx.fillText("ACTIVE POWER-UP", padding, nextIndicatorY);
+            this.ctx.save();
+            this.ctx.globalAlpha = pulse;
+            this.ctx.font = "bold 20px 'Outfit', sans-serif";
+            this.ctx.fillStyle = sCol;
+            this.ctx.shadowBlur = 14;
+            this.ctx.shadowColor = sCol;
+            this.ctx.fillText("🛡️ SHIELD", padding, nextIndicatorY + 20);
+            this.ctx.restore();
         }
         
         this.ctx.restore();
@@ -1961,41 +1962,36 @@ class AdBird {
     }
 
     _activatePowerup(type) {
-        this.state.activePowerupType = type;
-        this.state.activePowerupTimer = 300;
         this.state.screenShake = 15;
         this.state.flashOpacity = 0.5;
         const labels = { magnet: "COIN MAGNET!", doubleBomb: "DOUBLE BOMB ARMED!", shield: "SHIELD UP!" };
         const colors = { magnet: "#fbbf24", doubleBomb: "#f43f5e", shield: "#3b82f6" };
-        this._pushFloatingText({
-            x: this.canvas.width / 2,
-            y: this.canvas.height / 2 - 40,
-            text: labels[type],
-            color: "#fff",
-            scale: 1.8,
-            glow: colors[type],
-            vy: -3,
-            isMega: true,
-            isShivering: true
-        });
-        this.playSound('shift');
-        if (type === 'magnet') this.state.coinMagnetTimer = 300;
-        else if (type === 'doubleBomb') this.state.doubleBombArmed = true;
-        else if (type === 'shield') {
+
+        if (type === 'magnet') {
+            this.state.activePowerupType = 'magnet';
+            this.state.activePowerupTimer = 300;
+            this.state.coinMagnetTimer = 300;
+            this._pushFloatingText({
+                x: this.canvas.width / 2, y: this.canvas.height / 2 - 40,
+                text: labels[type], color: "#fff", scale: 1.8,
+                glow: colors[type], vy: -3, isMega: true, isShivering: true
+            });
+        } else if (type === 'doubleBomb') {
+            this.state.activePowerupType = 'doubleBomb';
+            this.state.activePowerupTimer = 300;
+            this.state.doubleBombArmed = true;
+            this._pushFloatingText({
+                x: this.canvas.width / 2, y: this.canvas.height / 2 - 40,
+                text: labels[type], color: "#fff", scale: 1.8,
+                glow: colors[type], vy: -3, isMega: true, isShivering: true
+            });
+        } else if (type === 'shield') {
             if (this.state.shieldActive) {
-                // Already have shield — convert to coin rain instead
-                this.state.activePowerupType = 'shield';
-                this.state.activePowerupTimer = 300;
+                // Already have shield — convert to coin rain. Don't touch activePowerupType/Timer.
                 this._pushFloatingText({
-                    x: this.canvas.width / 2,
-                    y: this.canvas.height / 2 - 90,
-                    text: "DOUBLE SHIELD → COIN RAIN!",
-                    color: "#fff",
-                    scale: 1.6,
-                    glow: "#fbbf24",
-                    vy: -3,
-                    isMega: true,
-                    isShivering: true
+                    x: this.canvas.width / 2, y: this.canvas.height / 2 - 40,
+                    text: "DOUBLE SHIELD → COIN RAIN!", color: "#fff", scale: 1.6,
+                    glow: "#fbbf24", vy: -3, isMega: true, isShivering: true
                 });
                 const showerCount = 14;
                 for (let i = 0; i < showerCount; i++) {
@@ -2019,8 +2015,14 @@ class AdBird {
                 this.state.screenShake = 25;
             } else {
                 this.state.shieldActive = true;
+                this._pushFloatingText({
+                    x: this.canvas.width / 2, y: this.canvas.height / 2 - 40,
+                    text: labels[type], color: "#fff", scale: 1.8,
+                    glow: colors[type], vy: -3, isMega: true, isShivering: true
+                });
             }
         }
+        this.playSound('shift');
     }
 
     gameOver() { 
