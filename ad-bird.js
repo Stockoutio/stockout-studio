@@ -683,7 +683,7 @@ class AdBird {
 
         let effectiveDt = dt;
         if (this.state.slowMoTimer > 0) {
-            const slowRatio = this.state.slowMoTimer / this.config.slowMoDuration;
+            const slowRatio = Math.min(1, this.state.slowMoTimer / this.config.slowMoDuration);
             const factor = this.state.slowMoStrength + (1 - this.state.slowMoStrength) * (1 - slowRatio);
             effectiveDt = dt * factor;
             this.state.slowMoTimer -= dt;
