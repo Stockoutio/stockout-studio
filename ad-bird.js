@@ -2154,6 +2154,10 @@ class AdBird {
         if (this.state.doubleBombArmed) {
             scale = 5.5;
             this.state.doubleBombArmed = false;
+            if (this.state.activePowerupType === 'doubleBomb') {
+                this.state.activePowerupType = null;
+                this.state.activePowerupTimer = 0;
+            }
         } else {
             scale = 0.5 + Math.pow(Math.random(), 2.5) * 5.5;
         }
