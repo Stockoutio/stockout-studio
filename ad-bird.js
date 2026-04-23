@@ -3596,7 +3596,7 @@ class AdBird {
         const closeCX = x + w - 30;
         const closeCY = y + 30;
         this._shopCloseBtnRect = { cx: closeCX, cy: closeCY, r: closeR };
-        const closeHover = Math.hypot(this.state.mouseX - closeCX, this.state.mouseY - closeCY) < closeR + 4;
+        const closeHover = Math.hypot(this.state.mouseX - closeCX, this.state.mouseY - closeCY) < closeR + 4 || this.state.shopHoverIndex === -2;
         const closeScale = closeHover ? 1.15 : 1.0;
         const closePulse = closeHover ? (Math.sin(f * 0.15) * 0.15 + 0.85) : 1.0;
         this.ctx.save();
@@ -3613,7 +3613,14 @@ class AdBird {
         this.ctx.beginPath();
         this.ctx.arc(0, 0, closeR, 0, Math.PI * 2);
         this.ctx.stroke();
-        this.shadowBlur = 0;
+        this.ctx.shadowBlur = 0;
+        if (this.state.shopHoverIndex === -2) {
+            this.ctx.strokeStyle = "rgba(244, 63, 94, 0.5)";
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, closeR + 7, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
         this.ctx.strokeStyle = closeHover ? "#fff" : "rgba(255, 255, 255, 0.75)";
         this.ctx.lineWidth = 3;
         this.ctx.lineCap = "round";
@@ -3812,10 +3819,19 @@ class AdBird {
             e.preventDefault();
             const items = this._getShopItems();
             const len = items.length;
-            if (this.state.shopHoverIndex < 0) {
+            if (this.state.shopHoverIndex === -2) {
+                // Close X focused — Down goes to item 0, Up wraps to last item
+                this.state.shopHoverIndex = isDown ? 0 : len - 1;
+            } else if (this.state.shopHoverIndex < 0) {
                 const selectedId = this._getCurrentSelectedId();
                 const idx = items.findIndex(c => c.id === selectedId);
                 this.state.shopHoverIndex = idx >= 0 ? idx : 0;
+            } else if (isUp && this.state.shopHoverIndex === 0) {
+                // Up from item 0 focuses close X
+                this.state.shopHoverIndex = -2;
+            } else if (isDown && this.state.shopHoverIndex === len - 1) {
+                // Down from last item focuses close X
+                this.state.shopHoverIndex = -2;
             } else {
                 const delta = isUp ? -1 : 1;
                 this.state.shopHoverIndex = (this.state.shopHoverIndex + delta + len) % len;
@@ -3826,6 +3842,12 @@ class AdBird {
 
         if (isEnter || isSpace) {
             e.preventDefault();
+            if (this.state.shopHoverIndex === -2) {
+                this.state.shopOpen = false;
+                this.state.shopHoverIndex = -1;
+                this.playSound('score');
+                return true;
+            }
             const items = this._getShopItems();
             if (this.state.shopHoverIndex < 0) {
                 const selectedId = this._getCurrentSelectedId();
