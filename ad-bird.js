@@ -157,7 +157,7 @@ class AdBird {
             highStreak: parseInt(this._safeStorage('get', 'adBirdHighStreak')) || 0,
             frameCount: 0, nextPipeFrame: 40, currentWorld: 0, flashOpacity: 0, isMuted: false, bgX: 0, screenShake: 0,
             bombTimer: 0, assetsLoaded: 0, lastRect: null, waitingForGameOver: false, gameOverFrame: 0,
-            mouseX: 0, mouseY: 0, runItBackHover: false, runItBackPressed: 0,
+            mouseX: 0, mouseY: 0, runItBackHover: false, gameOverFocus: 0, runItBackPressed: 0,
             splashFocus: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0,
             paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0,
             particles: [], deathMsg: "", currentReadyMsg: "",
@@ -303,10 +303,34 @@ class AdBird {
         if (this.state.isGameOver) {
             // Shop open — delegate to shop keyboard handler (nav, select, close)
             if (this._handleShopKey(e)) return;
-            if (isFlap || isBomb || isEnter) {
+            
+            // Directional keys cycle focus between RUN IT BACK (0) and SHOP (1)
+            if (isFocusCycle) {
+                e.preventDefault();
+                this.state.gameOverFocus = (this.state.gameOverFocus + 1) % 2;
+                this.playSound('score');
+                return;
+            }
+            
+            // Flap/bomb keys are a fast path — always trigger RUN IT BACK
+            if (isFlap || isBomb) {
                 e.preventDefault();
                 this._triggerButtonExplosion();
                 this._resetToSplash();
+                return;
+            }
+            
+            // Enter activates whichever button is focused
+            if (isEnter || e.code === 'Space' || e.key === ' ') {
+                e.preventDefault();
+                if (this.state.gameOverFocus === 0) {
+                    this._triggerButtonExplosion();
+                    this._resetToSplash();
+                } else {
+                    this.state.shopOpen = !this.state.shopOpen;
+                    this.playSound('score');
+                }
+                return;
             }
             return;
         }
@@ -629,7 +653,7 @@ class AdBird {
         if (this.state.assetsLoaded < this.config.worlds.length + 1) return;
         if (this.overlay) this.overlay.classList.remove('active');
         if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0, combo: 0, lastHitFrame: 0, missCombo: 0, difficultyMultiplier: 1.0, comboVoiceBag: [], paidAdsDestroyed: 0, coinMagnetTimer: 0, doubleBombArmed: false, shieldActive: false, activePowerupType: null, activePowerupTimer: 0 });
+        Object.assign(this.state, { gameRunning: true, isGameOver: false, waitingForGameOver: false, score: 0, directHits: 0, totalMisses: 0, lastMissFrame: 0, frameCount: 0, nextPipeFrame: 40, bgX: 0, screenShake: 0, bombTimer: 0, paidBag: [], stockBag: [], hitMsgBag: [], gameOverMsgBag: [], readyMsgBag: [], missMsgBag: [], megaMissMsgBag: [], worldBag: [], stockInARow: 0, particles: [], gameOverFrame: 0, runItBackHover: false, gameOverFocus: 0, runItBackPressed: 0, playBtnHover: false, rentBtnHover: false, playBtnPressed: 0, rentBtnPressed: 0, combo: 0, lastHitFrame: 0, missCombo: 0, difficultyMultiplier: 1.0, comboVoiceBag: [], paidAdsDestroyed: 0, coinMagnetTimer: 0, doubleBombArmed: false, shieldActive: false, activePowerupType: null, activePowerupTimer: 0 });
         this.canvas.style.cursor = 'default';
         Object.assign(this.player, { y: 150, velocity: 0, flipAngle: 0, isFlipping: false });
         this.pipes = []; this.bombs = []; this.floatingTexts = []; this.coins = [];
@@ -2599,7 +2623,7 @@ class AdBird {
             const btnRadius = 14;
             
             // Hover lift
-            const hoverLift = this.state.runItBackHover ? 4 : 0;
+            const hoverLift = (this.state.runItBackHover || this.state.gameOverFocus === 0) ? 4 : 0;
             const btnY = btnYBase - hoverLift;
             
             // Click compression — button briefly squishes down and fades out on click
@@ -2610,7 +2634,7 @@ class AdBird {
             // Pulse
             const pulse = Math.sin(this.state.frameCount * 0.06) * 0.5 + 0.5;
             const baseGlow = 20 + (pulse * 20);
-            const hoverGlow = this.state.runItBackHover ? 20 : 0;
+            const hoverGlow = (this.state.runItBackHover || this.state.gameOverFocus === 0) ? 20 : 0;
             const glowIntensity = baseGlow + hoverGlow;
             
             // Flowing shimmer position (for hover effect)
@@ -2665,8 +2689,9 @@ class AdBird {
             }
 
             // Border (brighter on hover)
-            this.ctx.strokeStyle = this.state.runItBackHover ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.4)";
-            this.ctx.lineWidth = this.state.runItBackHover ? 3 : 2;
+            const runFocused = this.state.runItBackHover || this.state.gameOverFocus === 0;
+            this.ctx.strokeStyle = runFocused ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.4)";
+            this.ctx.lineWidth = runFocused ? 3 : 2;
             this.ctx.beginPath();
             this.ctx.roundRect(btnX, btnY, btnW, btnH, btnRadius);
             this.ctx.stroke();
@@ -2701,6 +2726,17 @@ class AdBird {
             const shopBtnX = (this.canvas.width - shopBtnW) / 2;
             const shopBtnY = btnYBase + btnH + 50;
             this._gameOverShopBtnRect = { x: shopBtnX, y: shopBtnY, w: shopBtnW, h: shopBtnH };
+
+            // Focus ring for keyboard focus on game over SHOP button
+            if (this.state.gameOverFocus === 1) {
+                this.ctx.save();
+                this.ctx.strokeStyle = "rgba(251, 191, 36, 0.5)";
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.roundRect(shopBtnX - 5, shopBtnY - 5, shopBtnW + 10, shopBtnH + 10, 14);
+                this.ctx.stroke();
+                this.ctx.restore();
+            }
 
             this.ctx.save();
             this.ctx.globalAlpha = btnProgress;
@@ -3184,6 +3220,7 @@ class AdBird {
         this.state.playBtnPressed = 0;
         this.state.rentBtnPressed = 0;
         this.state.splashFocus = 0;
+        this.state.gameOverFocus = 0;
         this.state.shopOpen = false;
         this.state.shopHoverIndex = -1;
         this.state.combo = 0;
