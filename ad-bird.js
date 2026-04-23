@@ -524,7 +524,7 @@ class AdBird {
         const btnW = 280;
         const btnH = 64;
         const btnX = (this.canvas.width - btnW) / 2;
-        const btnY = this.canvas.height / 2 + 180;
+        const btnY = this.canvas.height / 2 + 220;
         
         return x >= btnX && x <= btnX + btnW && y >= btnY && y <= btnY + btnH;
     }
@@ -2556,7 +2556,7 @@ class AdBird {
             this.ctx.textBaseline = "middle";
             this.ctx.shadowBlur = 15;
             this.ctx.shadowColor = "#fbbf24";
-            this.ctx.fillText(`+${this.state.lastCoinsEarned} AD COINS 💰   (TOTAL: ${this.state.adCoins})`, this.canvas.width / 2, this.canvas.height / 2 + 150);
+            this.ctx.fillText(`+${this.state.lastCoinsEarned} AD COINS 💰   (TOTAL: ${this.state.adCoins})`, this.canvas.width / 2, this.canvas.height / 2 + 158);
             this.ctx.restore();
         }
 
@@ -2573,7 +2573,7 @@ class AdBird {
                 this.ctx.textBaseline = "middle";
                 this.ctx.shadowBlur = 12;
                 this.ctx.shadowColor = "#ec4899";
-                this.ctx.fillText(`💥 ${this.state.paidAdsDestroyed} REAL BRANDS DESTROYED`, this.canvas.width / 2, this.canvas.height / 2 + 120);
+                this.ctx.fillText(`💥 ${this.state.paidAdsDestroyed} REAL BRANDS DESTROYED`, this.canvas.width / 2, this.canvas.height / 2 + 188);
                 this.ctx.restore();
             }
         }
@@ -2586,7 +2586,7 @@ class AdBird {
             const btnW = 280;
             const btnH = 64;
             const btnX = (this.canvas.width - btnW) / 2;
-            const btnYBase = this.canvas.height / 2 + 180 + ((1 - btnProgress) * 20);
+            const btnYBase = this.canvas.height / 2 + 220 + ((1 - btnProgress) * 20);
             const btnRadius = 14;
             
             // Hover lift
@@ -3213,7 +3213,7 @@ class AdBird {
         const btnW = 280;
         const btnH = 64;
         const cx = this.canvas.width / 2;
-        const cy = this.canvas.height / 2 + 180 + btnH / 2;
+        const cy = this.canvas.height / 2 + 220 + btnH / 2;
         
         // Explosive burst of neon particles in cyan/blue
         const burstColors = ["#06b6d4", "#3b82f6", "#22d3ee", "#fff"];
