@@ -479,6 +479,8 @@ class AdBird {
         const hoveringRent = this._isOverRentBtn(x, y);
         const hoveringSplashShop = this._isOverSplashShopBtn(x, y);
         const hoveringGameOverShop = this._isOverGameOverShopBtn(x, y);
+        const hoveringShopClose = this.state.shopOpen && this._shopCloseBtnRect &&
+            Math.hypot(x - this._shopCloseBtnRect.cx, y - this._shopCloseBtnRect.cy) < this._shopCloseBtnRect.r + 4;
         const action = this._hitTest(x, y);
         const hoveringFS = action === 'fullscreen';
         const hoveringMute = action === 'mute';
@@ -513,7 +515,7 @@ class AdBird {
             }
         }
 
-        this.canvas.style.cursor = (hoveringRunBack || hoveringPlay || hoveringRent || hoveringFS || hoveringMute || hoveringSplashShop || hoveringGameOverShop) ? 'pointer' : 'default';
+        this.canvas.style.cursor = (hoveringRunBack || hoveringPlay || hoveringRent || hoveringFS || hoveringMute || hoveringSplashShop || hoveringGameOverShop || hoveringShopClose) ? 'pointer' : 'default';
     }
 
     _isOverRunItBack(x, y) {
@@ -3580,6 +3582,41 @@ class AdBird {
         const titleY = y + 45;
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
+        // CLOSE BUTTON — top right corner
+        const closeR = 22;
+        const closeCX = x + w - 30;
+        const closeCY = y + 30;
+        this._shopCloseBtnRect = { cx: closeCX, cy: closeCY, r: closeR };
+        const closeHover = Math.hypot(this.state.mouseX - closeCX, this.state.mouseY - closeCY) < closeR + 4;
+        const closeScale = closeHover ? 1.15 : 1.0;
+        const closePulse = closeHover ? (Math.sin(f * 0.15) * 0.15 + 0.85) : 1.0;
+        this.ctx.save();
+        this.ctx.translate(closeCX, closeCY);
+        this.ctx.scale(closeScale, closeScale);
+        this.ctx.fillStyle = closeHover ? "rgba(244, 63, 94, 0.35)" : "rgba(255, 255, 255, 0.08)";
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, closeR, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.strokeStyle = closeHover ? "#f43f5e" : "rgba(255, 255, 255, 0.4)";
+        this.ctx.lineWidth = 2;
+        this.ctx.shadowBlur = closeHover ? 18 * closePulse : 0;
+        this.ctx.shadowColor = "#f43f5e";
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, closeR, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.shadowBlur = 0;
+        this.ctx.strokeStyle = closeHover ? "#fff" : "rgba(255, 255, 255, 0.75)";
+        this.ctx.lineWidth = 3;
+        this.ctx.lineCap = "round";
+        const xOff = 8;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-xOff, -xOff);
+        this.ctx.lineTo(xOff, xOff);
+        this.ctx.moveTo(xOff, -xOff);
+        this.ctx.lineTo(-xOff, xOff);
+        this.ctx.stroke();
+        this.ctx.restore();
+
         this.ctx.font = "900 32px 'Outfit', sans-serif";
         const titleText = "COSMETICS SHOP";
         this.ctx.strokeStyle = "#000";
@@ -3815,6 +3852,16 @@ class AdBird {
         if (x < modalX || x > modalX + w || y < modalY || y > modalY + h) {
             this.state.shopOpen = false;
             return true;
+        }
+
+        if (this._shopCloseBtnRect) {
+            const c = this._shopCloseBtnRect;
+            if (Math.hypot(x - c.cx, y - c.cy) < c.r + 4) {
+                this.state.shopOpen = false;
+                this.state.shopHoverIndex = -1;
+                this.playSound('score');
+                return true;
+            }
         }
 
         if (this._shopTabRects) {
