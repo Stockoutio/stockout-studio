@@ -1020,7 +1020,11 @@ class AdBird {
         const dynamicSpeedForCoins = (this.config.pipeSpeed + Math.floor(this.state.score / 10) * 0.25) * this.state.difficultyMultiplier;
         for (let i = this.coins.length - 1; i >= 0; i--) {
             const c = this.coins[i];
-            if (!c.noScroll) c.x -= dynamicSpeedForCoins * dt;
+            if (c.noScroll) {
+                c.x -= 1.5 * dt;
+            } else {
+                c.x -= dynamicSpeedForCoins * dt;
+            }
             if (c.vy !== undefined) {
                 c.y += c.vy * dt;
                 c.vy += 0.2 * dt;
@@ -1904,7 +1908,7 @@ class AdBird {
         for (let i = 0; i < showerCount; i++) {
             const coinType = this._pickCoinType();
             this.coins.push({
-                x: this.player.x + this.player.w / 2 + (Math.random() - 0.5) * 280,
+                x: this.canvas.width * 0.5 + (Math.random() - 0.5) * 550,
                 y: -50 - i * 30,
                 r: coinType.r,
                 value: coinType.value,
