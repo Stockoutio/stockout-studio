@@ -113,6 +113,14 @@
   function openModal() { if (!modal) return; lastFocus = document.activeElement; modal.classList.add('open'); if (emailInput) setTimeout(function () { emailInput.focus(); }, 30); }
   function closeModal() { if (!modal) return; modal.classList.remove('open'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
 
+  // Shield the email field from the embedded game's global keydown handler
+  // (it preventDefaults Space/Enter/arrows/M/F/W/K, which otherwise eats keystrokes).
+  if (emailInput) {
+    emailInput.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeModal(); } e.stopPropagation(); });
+    emailInput.addEventListener('keyup', function (e) { e.stopPropagation(); });
+    emailInput.addEventListener('keypress', function (e) { e.stopPropagation(); });
+  }
+
   function wireCTAs() {
     var url = steamUrl('cta');
     document.querySelectorAll('[data-notify]').forEach(function (btn) {
@@ -181,6 +189,7 @@
         if (ph) ph.style.display = 'none';
         if (canvas) canvas.style.display = 'block';
         window.adBirdGame = new AdBird('adBirdCanvas', { paidAds: paidAds });
+        try { if (window.adBirdGame && window.adBirdGame._handleKeydown) window.removeEventListener('keydown', window.adBirdGame._handleKeydown); } catch (e) {}
       });
     }).catch(function (err) {
       gwLoaded = false;

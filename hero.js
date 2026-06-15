@@ -5,12 +5,13 @@
   var instr = document.getElementById('heroInstr');
   var rev = document.getElementById('heroReveal');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var PHOS = '#00ffaa', DIM = '#00cc88', ALERT = '#ff2233', INK = '#e8fff5', GR = '#ff3366', GB = '#33ccff', AMBER = '#ffb000';
+  var PHOS = '#00ffaa', DIM = '#00cc88', ALERT = '#ff2233', INK = '#e8fff5', GR = '#ff3366', GB = '#33ccff';
   var W = 0, H = 0, DPR = Math.min(2, window.devicePixelRatio || 1);
   var overlay = document.createElement('canvas');
   var mouse = { x: 0, y: 0, on: false };
   var enemies = [], pellets = [], bursts = [];
-  var kills = 0, heat = 0, HMAX = 22, phase = 'idle', revealed = false;
+  var kills = 0, heat = 0, HMAX = 24, phase = 'idle';
+  var ended = false, endAt = 0, flashAt = -9999, seeded = false;
   var lastFire = 0, lastSpawn = 0, running = false, runId = 0, started = false, last = 0;
 
   function ff(px) { return px + 'px "PressStart", ui-monospace, monospace'; }
@@ -33,18 +34,26 @@
     o.fillStyle = g; o.fillRect(0, 0, W, H);
   }
   function spawn() {
-    if (enemies.length > 40) return;
+    if (enemies.length > 44) return;
     var s = Math.floor(rnd(0, 4)), x, y;
     if (s === 0) { x = rnd(0, W); y = -20; } else if (s === 1) { x = rnd(0, W); y = H + 20; }
     else if (s === 2) { x = -20; y = rnd(0, H); } else { x = W + 20; y = rnd(0, H); }
     enemies.push({ x: x, y: y, type: Math.floor(rnd(0, 3)), r: 6, s: rnd(34, 64) });
   }
   function nearest(x, y) { var b = null, bd = 1e9; for (var i = 0; i < enemies.length; i++) { var e = enemies[i], d = (e.x - x) * (e.x - x) + (e.y - y) * (e.y - y); if (d < bd) { bd = d; b = e; } } return b; }
+  function explode(x, y, n) { var cols = [PHOS, GR, GB, INK]; for (var k = 0; k < (n || 7); k++) { var a = rnd(0, 6.28), sp = rnd(50, 200); bursts.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, c: cols[Math.floor(rnd(0, cols.length))] }); } }
   function kill(e) {
     var i = enemies.indexOf(e); if (i < 0) return; enemies.splice(i, 1); kills++; if (heat < HMAX) heat++;
-    var cols = [PHOS, GR, GB, INK];
-    for (var k = 0; k < 7; k++) { var a = rnd(0, 6.28), sp = rnd(40, 150); bursts.push({ x: e.x, y: e.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, c: cols[Math.floor(rnd(0, cols.length))] }); }
-    if (phase === 'playing' && heat >= HMAX) phase = 'win';
+    explode(e.x, e.y, 7);
+    if (heat >= HMAX) endGame();
+  }
+  function endGame() {
+    if (ended) return; ended = true;
+    if (rev) rev.classList.add('show'); if (instr) instr.style.opacity = '0.25';
+    cv.style.cursor = 'auto';
+    for (var i = 0; i < enemies.length; i++) explode(enemies[i].x, enemies[i].y, 6);
+    enemies = []; pellets = [];
+    flashAt = performance.now(); endAt = performance.now();
   }
   function arrow(x, y) {
     ctx.save(); ctx.translate(x, y); ctx.beginPath();
@@ -57,10 +66,10 @@
     else { ctx.strokeStyle = DIM; ctx.lineWidth = 1.5; ctx.strokeRect(e.x - 6, e.y - 6, 12, 12); ctx.beginPath(); ctx.moveTo(e.x - 6, e.y - 6); ctx.lineTo(e.x, e.y); ctx.lineTo(e.x + 6, e.y - 6); ctx.stroke(); }
   }
   function feedNode(now) {
-    var f = feed(), p = 4 * Math.sin(now / 420);
-    ctx.strokeStyle = 'rgba(255,34,51,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x, f.y, 22 + p, 0, 6.28); ctx.stroke();
+    var f = feed(), p = ended ? 0 : 4 * Math.sin(now / 420);
+    ctx.strokeStyle = 'rgba(255,34,51,' + (ended ? 0.35 : 0.6) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x, f.y, 22 + p, 0, 6.28); ctx.stroke();
     ctx.fillStyle = 'rgba(255,34,51,0.1)'; ctx.beginPath(); ctx.arc(f.x, f.y, 16 + p, 0, 6.28); ctx.fill();
-    ctx.fillStyle = ALERT; ctx.font = ff(8); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('THE', f.x, f.y - 4); ctx.fillText('FEED', f.x, f.y + 6);
+    ctx.fillStyle = ALERT; ctx.font = ff(8); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = ended ? 0.5 : 1; ctx.fillText('THE', f.x, f.y - 4); ctx.fillText('FEED', f.x, f.y + 6); ctx.globalAlpha = 1;
   }
   function hud() {
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = ff(11);
@@ -70,53 +79,62 @@
     ctx.strokeStyle = DIM; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 10);
     var f = Math.min(1, heat / HMAX); ctx.fillStyle = f >= 1 ? ALERT : PHOS; ctx.fillRect(bx + 1, by + 1, (bw - 2) * f, 8);
   }
+  function drawBursts(d) {
+    for (var b = bursts.length - 1; b >= 0; b--) { var br = bursts[b]; br.x += br.vx * d; br.y += br.vy * d; br.life -= d * 1.8; if (br.life <= 0) { bursts.splice(b, 1); continue; } ctx.globalAlpha = Math.max(0, br.life); ctx.fillStyle = br.c; ctx.fillRect(br.x - 2, br.y - 2, 4, 4); ctx.globalAlpha = 1; }
+  }
+
+  function draw(now) {
+    var d = Math.min(0.05, (now - (last || now)) / 1000); last = now;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    feedNode(now);
+    if (!ended) {
+      if (phase === 'playing') {
+        if (now - lastSpawn > 200) { lastSpawn = now; spawn(); }
+        if (now - lastFire > 140) { lastFire = now; var tg = nearest(mouse.x, mouse.y); if (tg) { var a = Math.atan2(tg.y - mouse.y, tg.x - mouse.x); pellets.push({ x: mouse.x, y: mouse.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480, life: 1.4 }); } }
+      }
+      var tgt = phase === 'idle' ? feed() : mouse;
+      for (var i = enemies.length - 1; i >= 0; i--) { var e = enemies[i], a2 = Math.atan2(tgt.y - e.y, tgt.x - e.x); e.x += Math.cos(a2) * e.s * d; e.y += Math.sin(a2) * e.s * d; drawEnemy(e); }
+      for (var j = pellets.length - 1; j >= 0; j--) {
+        var p = pellets[j]; p.x += p.vx * d; p.y += p.vy * d; p.life -= d; var hit = null;
+        for (var m = 0; m < enemies.length; m++) { var e2 = enemies[m]; if ((e2.x - p.x) * (e2.x - p.x) + (e2.y - p.y) * (e2.y - p.y) < (e2.r + 4) * (e2.r + 4)) { hit = e2; break; } }
+        if (hit) { kill(hit); pellets.splice(j, 1); continue; }
+        if (p.life <= 0 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) { pellets.splice(j, 1); continue; }
+        ctx.fillStyle = PHOS; ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      }
+      drawBursts(d);
+      if (phase !== 'idle') { hud(); arrow(mouse.x, mouse.y); } else { idleText(now); }
+    } else {
+      drawBursts(d);
+      if (!reduce && now - flashAt < 200) { ctx.fillStyle = 'rgba(255,255,255,' + (1 - (now - flashAt) / 200) * 0.8 + ')'; ctx.fillRect(0, 0, W, H); }
+    }
+    ctx.drawImage(overlay, 0, 0, W, H);
+    if (ended && bursts.length === 0 && now - endAt > 300) running = false;
+  }
   function idleText(now) {
     var f = feed(); var b = Math.floor(now / 520) % 2;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = ff(10); ctx.fillStyle = b ? PHOS : 'rgba(0,255,170,0.3)';
     ctx.fillText('CLEAR THE SWARM', f.x, f.y + 64);
   }
-  function reveal() { if (revealed) return; revealed = true; if (rev) rev.classList.add('show'); if (instr) instr.style.opacity = '0.25'; }
-
-  function draw(now) {
-    var d = Math.min(0.05, (now - (last || now)) / 1000); last = now;
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    feedNode(now);
-    if (phase === 'playing') {
-      if (now - lastSpawn > 250) { lastSpawn = now; spawn(); spawn(); }
-      if (now - lastFire > 150) { lastFire = now; var tg = nearest(mouse.x, mouse.y); if (tg) { var a = Math.atan2(tg.y - mouse.y, tg.x - mouse.x); pellets.push({ x: mouse.x, y: mouse.y, vx: Math.cos(a) * 460, vy: Math.sin(a) * 460, life: 1.4 }); } }
-    }
-    var tgt = phase === 'idle' ? feed() : mouse;
-    for (var i = enemies.length - 1; i >= 0; i--) { var e = enemies[i], a = Math.atan2(tgt.y - e.y, tgt.x - e.x); e.x += Math.cos(a) * e.s * d; e.y += Math.sin(a) * e.s * d; drawEnemy(e); }
-    for (var j = pellets.length - 1; j >= 0; j--) {
-      var p = pellets[j]; p.x += p.vx * d; p.y += p.vy * d; p.life -= d; var hit = null;
-      for (var m = 0; m < enemies.length; m++) { var e2 = enemies[m]; if ((e2.x - p.x) * (e2.x - p.x) + (e2.y - p.y) * (e2.y - p.y) < (e2.r + 4) * (e2.r + 4)) { hit = e2; break; } }
-      if (hit) { kill(hit); pellets.splice(j, 1); continue; }
-      if (p.life <= 0 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) { pellets.splice(j, 1); continue; }
-      ctx.fillStyle = PHOS; ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
-    }
-    for (var b = bursts.length - 1; b >= 0; b--) { var br = bursts[b]; br.x += br.vx * d; br.y += br.vy * d; br.life -= d * 1.8; if (br.life <= 0) { bursts.splice(b, 1); continue; } ctx.globalAlpha = Math.max(0, br.life); ctx.fillStyle = br.c; ctx.fillRect(br.x - 2, br.y - 2, 4, 4); ctx.globalAlpha = 1; }
-    if (phase === 'win' && enemies.length && Math.random() < 0.05) enemies.pop();
-    if (phase !== 'idle') { hud(); arrow(mouse.x, mouse.y); } else { idleText(now); }
-    ctx.drawImage(overlay, 0, 0, W, H);
-    if (heat >= HMAX && !revealed) reveal();
-  }
   function staticFrame() {
-    enemies = []; for (var i = 0; i < 13; i++) enemies.push({ x: rnd(40, W - 40), y: rnd(40, H - 60), type: i % 3, r: 6, s: 0 });
-    last = 0; phase = 'win'; kills = 14; heat = HMAX;
+    resize();
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    feedNode(0); for (var k = 0; k < enemies.length; k++) drawEnemy(enemies[k]); hud(); arrow(W / 2, H * 0.6); ctx.drawImage(overlay, 0, 0, W, H);
+    ended = true; feedNode(0); ctx.drawImage(overlay, 0, 0, W, H);
+    cv.style.cursor = 'auto'; if (rev) rev.classList.add('show'); if (instr) instr.style.opacity = '0.25';
   }
   function tick(id) { return function f(now) { if (id !== runId || !running) return; draw(now); requestAnimationFrame(f); }; }
-  function resume() { if (reduce || running || !W) return; running = true; runId++; requestAnimationFrame(tick(runId)); }
+  function resume() { if (reduce || running || ended || !W) return; running = true; runId++; requestAnimationFrame(tick(runId)); }
   function pause() { running = false; }
-  function start() { if (started) return; started = true; resize(); if (reduce) { staticFrame(); reveal(); return; } resume(); }
+  function start() { if (started) return; started = true; resize(); if (reduce) { staticFrame(); return; } resume(); }
 
-  cv.addEventListener('pointermove', function (e) { var r = cv.getBoundingClientRect(); mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; mouse.on = true; if (phase === 'idle') phase = 'playing'; });
+  cv.addEventListener('pointermove', function (e) {
+    var r = cv.getBoundingClientRect(); mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; mouse.on = true;
+    if (phase === 'idle' && !ended) { phase = 'playing'; if (!seeded) { seeded = true; for (var i = 0; i < 12; i++) spawn(); } }
+  });
   window.addEventListener('resize', function () { resize(); });
   document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); else if (started) resume(); });
   var io = new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) start(); else pause(); }); }, { threshold: 0.12 });
   io.observe(cv);
-  setTimeout(reveal, 9000);
-  window.addEventListener('scroll', function () { if (window.scrollY > (H || 400) * 0.55) reveal(); }, { passive: true });
+  setTimeout(endGame, 9000);
+  window.addEventListener('scroll', function () { if (window.scrollY > (H || 400) * 0.55) endGame(); }, { passive: true });
 })();
