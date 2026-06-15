@@ -15,16 +15,19 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="crt-boot" id="crtBoot" aria-hidden="true"></div>
   <div class="scanlines" aria-hidden="true"></div>
+  <div class="tracking" aria-hidden="true"></div>
   <div class="vignette" aria-hidden="true"></div>
   <div class="frame" aria-hidden="true"></div>
+  <canvas class="fx" id="fxCanvas" aria-hidden="true"></canvas>
 
   <header class="topbar">
     <div class="sys">&#9679; stockout.studio<span class="sysx">&nbsp;&mdash; SECURE SHELL &mdash; CH.SCRUMBAG &middot; <span data-clock>00:00</span></span></div>
     <nav>
       <a class="navlink" href="#pitch">SCRUMBAG</a>
       <a class="navlink" href="#roster">ROSTER</a>
-      <a class="navlink" href="#gridwing">GRIDWING</a>
+      <a class="navlink" href="#games">GAMES</a>
       <a class="navlink" href="https://x.com/stockoutio" target="_blank" rel="noopener">X</a>
       <span class="status-chip">IN DEVELOPMENT</span>
       <button class="cmd" data-notify>GET NOTIFIED</button>
@@ -41,12 +44,13 @@
           <p class="hero-sub">A horde-survival bullet-heaven about clicking your way out of corporate-tech hell.</p>
           <div class="hero-cta-row">
             <button class="cmd pulse" data-notify>GET NOTIFIED &#9656;</button>
-            <a class="cmd ghostbtn" href="#gridwing">PLAY GRIDWING NOW</a>
+            <a class="cmd ghostbtn" href="#games">PLAY OUR GAMES</a>
           </div>
           <p class="hero-note">In development. No launch date yet. Be the first to know when the shift starts.</p>
           <p class="legal" style="margin-top:10px">Cursor employment is at-will and ends in HR Termination.</p>
         </div>
       </div>
+      <a class="scroll-cue" id="scrollCue" href="#pitch" aria-label="Scroll for more">SCROLL &#9660;</a>
     </section>
 
     <section id="pitch">
@@ -65,82 +69,100 @@
     <section id="roster">
       <div class="wrap">
         <div class="section-head reveal">
+          <span class="kicker">// THE ROSTER</span>
           <h2 class="chroma" data-text="PICK YOUR ARCHETYPE.">PICK YOUR ARCHETYPE.</h2>
           <p>The roster is the comedy. Seventeen cursors, each a different way to be online. Here are a few of them.</p>
         </div>
-        <div class="roster reveal">
-          <div class="card" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ffffff">
+        <div class="roster">
+          <div class="card reveal" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ffffff">
             <svg class="av" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11,24l-2.4-5.8l-4.6,4V0l16,15.1l-6.2,0.8l2.4,5.9L11,24z"/></svg>
             <h3>THE USER</h3>
             <div class="flavor"><span class="main">Hasn't opted out of anything.</span><span class="alt">Default settings. Default everything.</span></div>
             <div class="spec">REGION: NA-EAST &middot; UNINSTALLS: 0</div>
           </div>
-          <div class="card" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#33ff33">
+          <div class="card reveal" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#33ff33">
             <svg class="av" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11,24l-2.4-5.8l-4.6,4V0l16,15.1l-6.2,0.8l2.4,5.9L11,24z"/></svg>
             <h3>THE LURKER</h3>
             <div class="flavor"><span class="main">Compiled their own kernel just to avoid ads.</span><span class="alt">Reads every thread. Posts in none.</span></div>
             <div class="spec">KERNEL: 6.6.0 &middot; POSTS: 14,402</div>
           </div>
-          <div class="card" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#88bbff">
+          <div class="card reveal" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#88bbff">
             <svg class="av" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11,24l-2.4-5.8l-4.6,4V0l16,15.1l-6.2,0.8l2.4,5.9L11,24z"/></svg>
             <h3>THE DOOMSCROLLER</h3>
             <div class="flavor"><span class="main">Eighteen hours of screen time. Says it feels like four.</span><span class="alt">Refreshed the feed. Refreshed the feed. Refreshed the feed.</span></div>
             <div class="spec">SCREEN TIME: 18.3 hrs &middot; UNREAD: 9999+</div>
           </div>
-          <div class="card" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#eed14d">
+          <div class="card reveal" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#eed14d">
             <svg class="av" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11,24l-2.4-5.8l-4.6,4V0l16,15.1l-6.2,0.8l2.4,5.9L11,24z"/></svg>
             <h3>THE COMPLIANCE OFFICER</h3>
             <div class="flavor"><span class="main">Has read every Terms of Service. Yes, all of them.</span><span class="alt">Filed the addendum to the addendum.</span></div>
             <div class="spec">STATUTES READ: 14,022 &middot; BANNERS DISMISSED: 0</div>
           </div>
-          <div class="card" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ccaaff">
+          <div class="card reveal" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ccaaff">
             <svg class="av" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11,24l-2.4-5.8l-4.6,4V0l16,15.1l-6.2,0.8l2.4,5.9L11,24z"/></svg>
             <h3>THE GHOST</h3>
             <div class="flavor"><span class="main">Read 7:42 PM. Replied never.</span><span class="alt">Typing... Typing... Stopped typing.</span></div>
             <div class="spec">LAST SEEN: 3h AGO &middot; DRAFTS: 47</div>
           </div>
-          <div class="card" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ff22ff">
+          <div class="card reveal" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ff22ff">
             <svg class="av" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11,24l-2.4-5.8l-4.6,4V0l16,15.1l-6.2,0.8l2.4,5.9L11,24z"/></svg>
             <h3>THE PROVOCATEUR</h3>
             <div class="flavor"><span class="main">The post is bad. The numbers are good.</span><span class="alt">Was correct. Got banned anyway.</span></div>
             <div class="spec">REPLIES: 38K &middot; RATIO: -981</div>
           </div>
-          <div class="card" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ff9900">
+          <div class="card reveal" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ff9900">
             <svg class="av" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11,24l-2.4-5.8l-4.6,4V0l16,15.1l-6.2,0.8l2.4,5.9L11,24z"/></svg>
             <h3>THE ON-CALL</h3>
             <div class="flavor"><span class="main">Pager went off at 3:14am. East-one again.</span><span class="alt">Sev-1. Sev-1. Sev-1. Coffee.</span></div>
             <div class="spec">REGION: EAST-ONE &middot; COFFEE: 6</div>
           </div>
-          <div class="card" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ddaa44">
+          <div class="card reveal" role="button" tabindex="0" aria-pressed="false" data-flip style="--tint:#ddaa44">
             <svg class="av" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11,24l-2.4-5.8l-4.6,4V0l16,15.1l-6.2,0.8l2.4,5.9L11,24z"/></svg>
             <h3>THE HUSTLER</h3>
             <div class="flavor"><span class="main">Side hustle, main hustle, sleep hustle.</span><span class="alt">Quitting their day job to monetize their morning routine.</span></div>
             <div class="spec">CONNECTIONS: 4,288 &middot; OPEN TO WORK</div>
           </div>
-          <div class="card locked"><div class="lk">[ REDACTED ]<br />pending background check<br />+ 9 more on the roster</div></div>
+          <div class="card locked reveal"><div class="lk">[ REDACTED ]<br />pending background check<br />+ 9 more on the roster</div></div>
         </div>
       </div>
     </section>
 
-    <section id="gridwing">
+    <section id="games">
       <div class="wrap">
         <div class="section-head reveal">
-          <span class="kicker">// EMPLOYEE PERK</span>
-          <h2 class="chroma" data-text="GRIDWING">GRIDWING</h2>
-          <p>AD-BIRD-TISING &mdash; high-performance marketing, one flap at a time. The office arcade cabinet still works: play it right here, or grab the full demo on itch.io. SCRUMBAG is what's next.</p>
+          <span class="kicker">// THE BACK CATALOG</span>
+          <h2 class="chroma" data-text="ALREADY PLAYABLE.">ALREADY PLAYABLE.</h2>
+          <p>SCRUMBAG is in development &mdash; but the studio isn't waiting. Two more games you can play right now.</p>
         </div>
-        <div class="win reveal" id="gridwingWin">
-          <div class="win-bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span><span>AD_BIRD_TISING.EXE</span></div>
-          <div class="win-body">
-            <div class="win-placeholder" id="gwPlaceholder">SCROLL HERE TO BOOT THE CABINET&hellip;</div>
-            <div id="gameOverlay" class="game-overlay"></div>
-            <canvas id="adBirdCanvas" width="800" height="800" style="display:none"></canvas>
+
+        <div class="game-block reveal" id="adbirdBlock">
+          <div class="game-meta">
+            <h3 class="chroma" data-text="AD-BIRD-TISING">AD-BIRD-TISING</h3>
+            <p class="game-tag">High-performance marketing, one flap at a time. Flap through the pipes &mdash; every billboard is a real ad slot someone rented. Playable right here.</p>
+          </div>
+          <div class="win">
+            <div class="win-bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span><span>AD_BIRD_TISING.EXE</span></div>
+            <div class="win-body">
+              <div class="win-placeholder" id="gwPlaceholder">SCROLL HERE TO BOOT THE CABINET&hellip;</div>
+              <div id="gameOverlay" class="game-overlay"></div>
+              <canvas id="adBirdCanvas" width="800" height="800" style="display:none"></canvas>
+            </div>
           </div>
         </div>
-        <div class="gridwing-cta reveal">
-          <p>Liked closing tickets up top? That was a taste. The full shift is in development.</p>
-          <p style="margin-bottom:18px"><a class="cmd ghostbtn" href="https://stockout.itch.io/gridwingdemo" target="_blank" rel="noopener">PLAY THE FULL GRIDWING DEMO ON ITCH.IO &#9656;</a></p>
-          <button class="cmd" data-notify>GET NOTIFIED FOR SCRUMBAG &#9656;</button>
+
+        <div class="game-block reveal">
+          <div class="game-card2">
+            <div class="game-meta">
+              <h3 class="chroma" data-text="GRIDWING">GRIDWING</h3>
+              <p class="game-tag">A separate game from the studio &mdash; a fast neon arcade run. There's a free playable demo on itch.io right now.</p>
+            </div>
+            <a class="cmd ghostbtn" href="https://stockout.itch.io/gridwingdemo" target="_blank" rel="noopener">PLAY THE GRIDWING DEMO &#9656;</a>
+          </div>
+        </div>
+
+        <div class="games-cta reveal">
+          <p>And SCRUMBAG is what's next.</p>
+          <button class="cmd pulse" data-notify>GET NOTIFIED FOR SCRUMBAG &#9656;</button>
         </div>
       </div>
     </section>
@@ -150,7 +172,7 @@
         <div class="section-head reveal"><span class="kicker">// FACILITIES</span></div>
         <div class="facilities reveal">
           <h3>RENT-A-PIPE&trade;</h3>
-          <p>Rent the in-game billboard. Your message renders inside the world of GRIDWING &mdash; right in the path of destruction. 14-character limit.</p>
+          <p>Rent a billboard inside AD-BIRD-TISING. Your message renders in-game, right in the path of destruction. 14-character limit.</p>
           <div class="price">$5 / 24HRS</div>
           <div class="ticker" aria-hidden="true"><span>YOUR LOGO HERE &middot; BUY THIS PIPE &middot; RENT ME $5 &middot; SPONSORED &middot; PIPE DREAMS &middot; SEO LIVES HERE &middot; DM FOR RATES &middot; YOUR AD HERE &middot; IMPRESSIONS++ &middot; CALL YOUR MOM</span></div>
           <p class="legal">No profanity. All sales final. Profane ads will be removed without refund. Stockout Studio assumes no liability for messages rendered in-world.</p>
@@ -193,7 +215,8 @@
       <h2 class="chroma" data-text="ACCEPT YOUR OFFER.">ACCEPT YOUR OFFER.</h2>
       <button class="cmd pulse" data-notify>GET NOTIFIED &#9656;</button>
       <div class="links">
-        <a href="#gridwing">PLAY GRIDWING</a>
+        <a href="#games">OUR GAMES</a>
+        <a href="https://stockout.itch.io/gridwingdemo" target="_blank" rel="noopener">GRIDWING DEMO</a>
         <a href="https://x.com/stockoutio" target="_blank" rel="noopener">X / @STOCKOUTIO</a>
         <a href="mailto:stockoutgames@pm.me">STOCKOUTGAMES@PM.ME</a>
       </div>
