@@ -133,6 +133,10 @@ section { padding: 96px 0; position: relative; }
 .game-card2 { background: var(--bg-raised); border: 1px solid rgba(0,255,170,0.25); padding: 26px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; }
 .game-card2 .game-meta { margin-bottom: 0; flex: 1 1 320px; }
 .game-card2 .cmd { flex: 0 0 auto; }
+.game-card2 .game-actions { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.game-link { font-family: var(--font-body); font-size: 13px; color: var(--phosphor-dim); text-decoration: underline; }
+.game-link:hover { color: var(--phosphor); }
+.game-meta .game-link { display: inline-block; margin-top: 10px; }
 .games-cta { text-align: center; margin-top: 8px; color: var(--text-soft); }
 .games-cta p { margin-bottom: 16px; font-size: 16px; }
 
