@@ -37,6 +37,40 @@
     window.addEventListener('scroll', function () { if (window.scrollY > 60) cue.classList.remove('show'); }, { passive: true });
   }
 
+  // --- mobile nav dropdown ---
+  var navToggle = document.getElementById('navToggle');
+  var navLinks = document.getElementById('navLinks');
+  if (navToggle && navLinks) {
+    navToggle.addEventListener('click', function (e) { e.stopPropagation(); var open = navLinks.classList.toggle('open'); navToggle.setAttribute('aria-expanded', open ? 'true' : 'false'); });
+    navLinks.addEventListener('click', function () { navLinks.classList.remove('open'); navToggle.setAttribute('aria-expanded', 'false'); });
+    document.addEventListener('click', function (e) { if (!navLinks.contains(e.target) && e.target !== navToggle) { navLinks.classList.remove('open'); navToggle.setAttribute('aria-expanded', 'false'); } });
+  }
+
+  // --- CRT FX toggle (manual motion stop, persisted) ---
+  var fxToggle = document.getElementById('fxToggle');
+  if (fxToggle) {
+    var fxOff = false;
+    try { fxOff = localStorage.getItem('stockout_fx') === 'off'; } catch (e) {}
+    var applyFx = function () { document.documentElement.classList.toggle('no-fx', fxOff); fxToggle.textContent = 'CRT FX: ' + (fxOff ? 'OFF' : 'ON'); fxToggle.setAttribute('aria-pressed', fxOff ? 'true' : 'false'); };
+    applyFx();
+    fxToggle.addEventListener('click', function () { fxOff = !fxOff; try { localStorage.setItem('stockout_fx', fxOff ? 'off' : 'on'); } catch (e) {} applyFx(); });
+  }
+
+  // --- personalize the death email with the real hero run ---
+  var emailSec = document.getElementById('email');
+  if (emailSec && 'IntersectionObserver' in window) {
+    var eio = new IntersectionObserver(function (es) {
+      es.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var tk = document.getElementById('perfTickets'), tm = document.getElementById('perfTime');
+        if (tk && window.__heroKills != null) tk.textContent = String(window.__heroKills);
+        if (tm) { var max = document.documentElement.scrollHeight - window.innerHeight; var p = max > 0 ? Math.min(1, window.scrollY / max) : 1; tm.textContent = fmt(p * 1800); }
+        eio.disconnect();
+      });
+    }, { threshold: 0.4 });
+    eio.observe(emailSec);
+  }
+
   // --- scroll-driven session clock + footer termination flip ---
   var clocks = document.querySelectorAll('[data-clock]');
   var footClock = document.getElementById('footClock');
@@ -178,16 +212,18 @@
     });
   }
 
-  // --- lazy AD-BIRD-TISING loader (preserves the existing Supabase ad-fetch + AdBird init) ---
-  var gwLoaded = false;
+  // --- AD-BIRD-TISING: prep scripts on scroll, BOOT (heavy media + audio) on click ---
+  var GAME_BOOTED = false, prepPromise = null;
   function injectScript(src) {
     return new Promise(function (res, rej) { var s = document.createElement('script'); s.src = src; s.onload = function () { res(); }; s.onerror = function () { rej(new Error(src)); }; document.body.appendChild(s); });
   }
-  function bootGridwing() {
-    if (gwLoaded) return; gwLoaded = true;
+  function prepScripts() { if (prepPromise) return prepPromise; prepPromise = injectScript('ad-bird-content.js').then(function () { return injectScript('ad-bird.js'); }); return prepPromise; }
+  function bootGame() {
+    if (GAME_BOOTED) return; GAME_BOOTED = true;
     var canvas = document.getElementById('adBirdCanvas');
     var ph = document.getElementById('gwPlaceholder');
-    injectScript('ad-bird-content.js').then(function () { return injectScript('ad-bird.js'); }).then(function () {
+    if (ph) ph.textContent = 'BOOTING…';
+    prepScripts().then(function () {
       var paidAds = [];
       return fetch(SUPABASE_URL + '/rest/v1/ads?select=text&is_paid=eq.true&status=eq.approved&expires_at=gt.now()', {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
@@ -195,31 +231,33 @@
         var colors = ['#a855f7', '#06b6d4', '#f59e0b', '#22c55e', '#ec4899', '#f43f5e'];
         paidAds = (data || []).map(function (ad) { return Object.assign({}, ad, { isPaid: true, color: ad.color || colors[Math.floor(Math.random() * colors.length)] }); });
       }).catch(function () { /* backend optional */ }).then(function () {
-        if (typeof AdBird === 'undefined') { if (ph) ph.textContent = 'CABINET OFFLINE — reload to retry.'; gwLoaded = false; return; }
+        if (typeof AdBird === 'undefined') { if (ph) ph.textContent = 'CABINET OFFLINE — reload to retry.'; GAME_BOOTED = false; return; }
         if (ph) ph.style.display = 'none';
-        if (canvas) canvas.style.display = 'block';
+        if (canvas) { canvas.style.display = 'block'; if (canvas.focus) canvas.focus(); }
         window.adBirdGame = new AdBird('adBirdCanvas', { paidAds: paidAds });
-        try { if (window.adBirdGame && window.adBirdGame._handleKeydown) window.removeEventListener('keydown', window.adBirdGame._handleKeydown); } catch (e) {}
+        if (canvas && 'IntersectionObserver' in window) {
+          var pio = new IntersectionObserver(function (es) { es.forEach(function (en) { var g = window.adBirdGame; if (!g) return; if (en.isIntersecting && !document.hidden) { if (g.resume) g.resume(); } else if (g.pause) g.pause(); }); }, { threshold: 0 });
+          pio.observe(canvas);
+        }
+        document.addEventListener('visibilitychange', function () { var g = window.adBirdGame; if (!g) return; if (document.hidden) { if (g.pause) g.pause(); } else if (g.resume) g.resume(); });
       });
-    }).catch(function (err) {
-      gwLoaded = false;
-      if (ph) ph.textContent = 'CABINET OFFLINE — reload to retry.';
-      console.warn('AD-BIRD-TISING failed to load:', err);
-    });
+    }).catch(function (err) { GAME_BOOTED = false; var p2 = document.getElementById('gwPlaceholder'); if (p2) p2.textContent = 'CABINET OFFLINE — reload to retry.'; console.warn('AD-BIRD-TISING failed to load:', err); });
   }
   var gw = document.getElementById('adbirdBlock');
+  var gwPh = document.getElementById('gwPlaceholder');
+  if (gwPh) {
+    gwPh.addEventListener('click', bootGame);
+    gwPh.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bootGame(); } });
+  }
   if (gw && 'IntersectionObserver' in window) {
-    var gio = new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) { bootGridwing(); gio.disconnect(); } }); }, { rootMargin: '250px' });
+    var gio = new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) { prepScripts(); gio.disconnect(); } }); }, { rootMargin: '300px' });
     gio.observe(gw);
-  } else if (gw) {
-    bootGridwing();
   }
 
-  // Robustness net: ensure reveals + game boot fire even if IntersectionObserver misbehaves.
+  // Robustness net: reveal sections even if IntersectionObserver misbehaves.
   function fallbackScan() {
     var vh = window.innerHeight;
     document.querySelectorAll('.reveal:not(.in)').forEach(function (el) { if (el.getBoundingClientRect().top < vh * 0.92) el.classList.add('in'); });
-    if (gw && gw.getBoundingClientRect().top < vh + 250) bootGridwing();
   }
   window.addEventListener('scroll', fallbackScan, { passive: true });
   window.addEventListener('load', fallbackScan);

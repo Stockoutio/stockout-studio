@@ -10,6 +10,8 @@
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@stockoutio" />
+  <meta property="og:image" content="https://www.stockout.studio/og-image.jpg" />
+  <meta name="twitter:image" content="https://www.stockout.studio/og-image.jpg" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preload" as="font" type="font/ttf" href="fonts/PrStart.ttf" crossorigin />
   <link rel="stylesheet" href="style.css" />
@@ -25,10 +27,13 @@
   <header class="topbar">
     <div class="sys">&#9679; stockout.studio<span class="sysx">&nbsp;&mdash; SECURE SHELL &mdash; CH.SCRUMBAG &middot; <span data-clock>00:00</span></span></div>
     <nav>
-      <a class="navlink" href="#pitch">SCRUMBAG</a>
-      <a class="navlink" href="#roster">ROSTER</a>
-      <a class="navlink" href="#games">GAMES</a>
-      <a class="navlink" href="https://x.com/stockoutio" target="_blank" rel="noopener">X</a>
+      <button class="navtoggle" id="navToggle" aria-label="Open menu" aria-expanded="false">[ &#9776; ]</button>
+      <div class="navlinks" id="navLinks">
+        <a class="navlink" href="#pitch">SCRUMBAG</a>
+        <a class="navlink" href="#roster">ROSTER</a>
+        <a class="navlink" href="#games">GAMES</a>
+        <a class="navlink" href="https://x.com/stockoutio" target="_blank" rel="noopener">X</a>
+      </div>
       <span class="status-chip">IN DEVELOPMENT</span>
       <button class="cmd" data-notify>GET NOTIFIED</button>
     </nav>
@@ -39,15 +44,17 @@
       <canvas id="heroCanvas" aria-hidden="true"></canvas>
       <div class="hero-content">
         <span class="kicker">// EMPLOYEE ONBOARDING</span>
-        <h1 class="chroma" data-text="YOU ARE A CURSOR.">YOU ARE A CURSOR.<br /><span class="alert">THE FEED IS HUNGRY.</span></h1>
-        <p class="hero-sub">A horde-survival bullet-heaven about clicking your way out of corporate-tech hell.</p>
-        <div class="hero-cta-row">
-          <button class="cmd pulse" data-notify>GET NOTIFIED &#9656;</button>
-          <a class="cmd ghostbtn" href="#games">PLAY OUR GAMES</a>
+        <p class="hero-play-hint" id="heroPlayHint">Move your cursor. Clear a few tickets to clock in&hellip;</p>
+        <div class="hero-reveal" id="heroReveal">
+          <h1 class="chroma" data-text="YOU ARE A CURSOR.">YOU ARE A CURSOR.<br /><span class="alert">THE FEED IS HUNGRY.</span></h1>
+          <p class="hero-sub">A horde-survival bullet-heaven about clicking your way out of corporate-tech hell.</p>
+          <div class="hero-cta-row">
+            <button class="cmd pulse" data-notify>GET NOTIFIED &#9656;</button>
+            <a class="cmd ghostbtn" href="#games">PLAY OUR GAMES</a>
+          </div>
+          <p class="hero-note">In development. No launch date yet. Be the first to know when the shift starts.</p>
+          <p class="legal">Cursor employment is at-will and ends in HR Termination.</p>
         </div>
-        <p class="hero-note">In development. No launch date yet. Be the first to know when the shift starts.</p>
-        <p class="legal">Cursor employment is at-will and ends in HR Termination.</p>
-        <p class="hero-hint">Move your cursor &mdash; you're already on the clock.</p>
       </div>
       <a class="scroll-cue" id="scrollCue" href="#pitch" aria-label="Scroll for more">SCROLL &#9660;</a>
     </section>
@@ -143,9 +150,9 @@
           <div class="win">
             <div class="win-bar"><span class="dot" style="background:#00ffaa"></span><span class="dot" style="background:#ffb000"></span><span class="dot" style="background:#ff2233"></span><span>AD_BIRD_TISING.EXE</span></div>
             <div class="win-body">
-              <div class="win-placeholder" id="gwPlaceholder">SCROLL HERE TO BOOT THE CABINET&hellip;</div>
+              <button class="win-placeholder" id="gwPlaceholder" type="button">&#9656; CLICK TO BOOT THE CABINET</button>
               <div id="gameOverlay" class="game-overlay"></div>
-              <canvas id="adBirdCanvas" width="800" height="800" style="display:none"></canvas>
+              <canvas id="adBirdCanvas" width="800" height="800" tabindex="0" style="display:none"></canvas>
             </div>
           </div>
         </div>
@@ -163,6 +170,7 @@
         <div class="game-block reveal">
           <div class="game-card2">
             <div class="game-meta">
+              <span class="badge badge-free">FREE &middot; IN BROWSER</span>
               <h3 class="chroma" data-text="GRIDWING DEMO">GRIDWING DEMO</h3>
               <p class="game-tag">A fast action arcade game. Can you handle the 5th Sector? Free and playable right in your browser.</p>
             </div>
@@ -171,8 +179,9 @@
         </div>
 
         <div class="game-block reveal">
-          <div class="game-card2">
+          <div class="game-card2 featured">
             <div class="game-meta">
+              <span class="badge badge-full">FULL RELEASE</span>
               <h3 class="chroma" data-text="GRIDWING — FULL GAME">GRIDWING &mdash; FULL GAME</h3>
               <p class="game-tag">Enter the wing. The complete release, out now on itch.io.</p>
             </div>
@@ -199,8 +208,8 @@
             <p>Per the 30:00 review cycle, your access has been revoked. We thank you for your contributions to The Feed, which will not ship.</p>
             <p>Your cursor continued auto-firing for four seconds after termination. This is normal and within policy. A performance summary is attached for your records.</p>
             <table class="perf">
-              <tr><td>TIME SURVIVED</td><td>30:00</td></tr>
-              <tr><td>TICKETS CLOSED</td><td>1,204</td></tr>
+              <tr><td>TIME SURVIVED</td><td id="perfTime">30:00</td></tr>
+              <tr><td>TICKETS CLOSED</td><td id="perfTickets">1,204</td></tr>
               <tr><td>WEAPON OF RECORD</td><td>POP-UP BLOCKER</td></tr>
               <tr><td>SEVERANCE</td><td>+1,240 ATT</td></tr>
               <tr><td>NEW RECORD?</td><td>NOT FOR US.</td></tr>
@@ -228,6 +237,7 @@
       </div>
       <p class="signoff">STOCKOUT STUDIO. Estimating story points&hellip; forever.</p>
       <p class="eula">By scrolling this far you have agreed to terms you did not read. This has been logged.</p>
+      <p style="margin-top:18px"><button class="fxtoggle" id="fxToggle" aria-pressed="false">CRT FX: ON</button></p>
     </div>
   </footer>
 

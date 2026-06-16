@@ -268,6 +268,7 @@ class AdBird {
 
     _handleKeydown(e) {
         if (!this.state.assetsLoaded) return;
+        if (document.activeElement !== this.canvas) return;
         
         // Fullscreen toggle always works — even during death pause
         if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') {
@@ -666,6 +667,7 @@ class AdBird {
 
     // NEW:
     _loop(timestamp = 0) {
+        if (this._paused) return;
         const dt = Math.min((timestamp - (this.lastTime || timestamp)) / 16.67, 2.5);
         this.lastTime = timestamp;
         this._update(dt);
@@ -4048,6 +4050,20 @@ class AdBird {
     }
 
     // NEW:
+    pause() {
+        if (this._paused) return;
+        this._paused = true;
+        if (this.assets && this.assets.music) this.assets.music.pause();
+    }
+
+    resume() {
+        if (!this._paused) return;
+        this._paused = false;
+        this.lastTime = 0;
+        if (this.assets && this.assets.music && this.state && this.state.gameRunning && !this.state.isMuted) this.assets.music.play().catch(() => {});
+        if (this._boundLoop) requestAnimationFrame(this._boundLoop);
+    }
+
     destroy() {
         window.removeEventListener('keydown', this._handleKeydown);
         window.removeEventListener('resize', this._handleResize);
