@@ -101,7 +101,7 @@ section { padding: 96px 0; position: relative; }
 .hero-sub { font-family: var(--font-body); font-size: clamp(17px, 2.7vw, 22px); color: var(--ink); margin: 20px 0 26px; max-width: 680px; line-height: 1.55; }
 .hero-cta-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 .hero-note { font-size: 15px; color: var(--text-soft); margin-top: 16px; }
-.hero-play-hint { font-family: var(--font-display); font-size: 12px; color: var(--phosphor); letter-spacing: 1px; margin-bottom: 8px; text-shadow: 0 0 10px rgba(0,255,170,0.5); }
+.hero-hint { font-family: var(--font-body); font-size: 14px; color: var(--phosphor-dim); margin-top: 20px; opacity: 0.85; }
 .scroll-cue { position: absolute; left: 50%; bottom: 22px; z-index: 3; font-family: var(--font-display); font-size: 12px; letter-spacing: 2px; color: var(--phosphor); opacity: 0; transform: translate(-50%, 0); animation: cuebob 1.6s ease-in-out infinite; transition: opacity 0.5s ease; text-shadow: 0 0 12px rgba(0,255,170,0.6); }
 .scroll-cue.show { opacity: 0.9; }
 @keyframes cuebob { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 7px); } }
