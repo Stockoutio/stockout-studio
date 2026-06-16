@@ -53,7 +53,7 @@
     ctx.shadowColor = PHOS; ctx.shadowBlur = 10; ctx.fillStyle = PHOS; ctx.strokeStyle = '#003322'; ctx.lineWidth = 1; path(); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();
   }
   function drawBursts(d) { for (var b = bursts.length - 1; b >= 0; b--) { var br = bursts[b]; br.x += br.vx * d; br.y += br.vy * d; br.life -= d * 1.8; if (br.life <= 0) { bursts.splice(b, 1); continue; } ctx.globalAlpha = Math.max(0, br.life); ctx.fillStyle = br.c; ctx.fillRect(br.x - 2, br.y - 2, 4, 4); ctx.globalAlpha = 1; } }
-  function doReveal() { if (revealed) return; revealed = true; ambient = true; if (rev) rev.classList.add('show'); if (playHint) playHint.style.display = 'none'; flashAt = performance.now(); }
+  function doReveal() { if (revealed) return; revealed = true; ambient = true; cv.style.cursor = 'auto'; if (rev) rev.classList.add('show'); if (playHint) playHint.style.display = 'none'; flashAt = performance.now(); }
   function step(now) {
     if (!startT) startT = now;
     var d = Math.min(0.05, (now - (last || now)) / 1000); last = now;
