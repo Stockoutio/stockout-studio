@@ -65,12 +65,6 @@
     else if (e.type === 1) { ctx.strokeStyle = GB; ctx.lineWidth = 2; ctx.strokeRect(e.x - 7, e.y - 5, 14, 10); ctx.fillStyle = GB; ctx.font = ff(6); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('RE:', e.x, e.y + 1); }
     else { ctx.strokeStyle = DIM; ctx.lineWidth = 1.5; ctx.strokeRect(e.x - 6, e.y - 6, 12, 12); ctx.beginPath(); ctx.moveTo(e.x - 6, e.y - 6); ctx.lineTo(e.x, e.y); ctx.lineTo(e.x + 6, e.y - 6); ctx.stroke(); }
   }
-  function feedNode(now) {
-    var f = feed(), p = ended ? 0 : 4 * Math.sin(now / 420);
-    ctx.strokeStyle = 'rgba(255,34,51,' + (ended ? 0.35 : 0.6) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x, f.y, 22 + p, 0, 6.28); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,34,51,0.1)'; ctx.beginPath(); ctx.arc(f.x, f.y, 16 + p, 0, 6.28); ctx.fill();
-    ctx.fillStyle = ALERT; ctx.font = ff(8); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = ended ? 0.5 : 1; ctx.fillText('THE', f.x, f.y - 4); ctx.fillText('FEED', f.x, f.y + 6); ctx.globalAlpha = 1;
-  }
   function hud() {
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = ff(11);
     ctx.fillStyle = PHOS; ctx.fillText('TICKETS CLOSED: ' + kills, 22, 38);
@@ -86,7 +80,6 @@
   function draw(now) {
     var d = Math.min(0.05, (now - (last || now)) / 1000); last = now;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    feedNode(now);
     if (!ended) {
       if (phase === 'playing') {
         if (now - lastSpawn > 200) { lastSpawn = now; spawn(); }
@@ -119,7 +112,7 @@
   function staticFrame() {
     resize();
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    ended = true; feedNode(0); ctx.drawImage(overlay, 0, 0, W, H);
+    ended = true; ctx.drawImage(overlay, 0, 0, W, H);
     cv.style.cursor = 'auto'; if (rev) rev.classList.add('show'); if (instr) instr.style.opacity = '0.25';
   }
   function tick(id) { return function f(now) { if (id !== runId || !running) return; draw(now); requestAnimationFrame(f); }; }
