@@ -7,9 +7,8 @@
   var W = 0, H = 0, DPR = Math.min(2, window.devicePixelRatio || 1);
   var overlay = document.createElement('canvas');
   var enemies = [], pellets = [], bursts = [], trail = [];
-  var aim = { x: 0, y: 0 }, lastMove = -9999, lastFire = 0, lastSpawn = 0, last = 0, kills = 0;
+  var aim = { x: 0, y: 0 }, lastFire = 0, lastSpawn = 0, last = 0, kills = 0;
   var running = false, runId = 0, started = false, inView = true;
-  var IDLE_MS = 1500;
 
   function ff(px) { return px + 'px "PressStart", ui-monospace, monospace'; }
   function rnd(a, b) { return a + Math.random() * (b - a); }
@@ -52,7 +51,7 @@
   function step(now) {
     var d = Math.min(0.05, (now - (last || now)) / 1000); last = now;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    if (now - lastMove > IDLE_MS) { var t = now / 1000; aim.x = W * 0.5 + Math.cos(t * 0.7) * W * 0.30; aim.y = H * 0.5 + Math.sin(t * 1.05) * H * 0.32; }
+    var t = now / 1000; aim.x = W * 0.5 + Math.cos(t * 0.7) * W * 0.30; aim.y = H * 0.5 + Math.sin(t * 1.05) * H * 0.32;
     if (now - lastSpawn > 200) { lastSpawn = now; spawn(); }
     if (now - lastFire > 140) { lastFire = now; var tg = nearest(aim.x, aim.y); if (tg) { var a = Math.atan2(tg.y - aim.y, tg.x - aim.x); pellets.push({ x: aim.x, y: aim.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480, life: 1.4 }); } }
     for (var i = enemies.length - 1; i >= 0; i--) { var e = enemies[i], a2 = Math.atan2(aim.y - e.y, aim.x - e.x); e.x += Math.cos(a2) * e.s * d; e.y += Math.sin(a2) * e.s * d; drawEnemy(e); }
@@ -85,10 +84,6 @@
     resume();
   }
 
-  function setAim(e) { var r = cv.getBoundingClientRect(); var t = e.touches && e.touches[0]; var cx = t ? t.clientX : e.clientX, cy = t ? t.clientY : e.clientY; aim.x = cx - r.left; aim.y = cy - r.top; lastMove = performance.now(); }
-  cv.addEventListener('pointermove', setAim);
-  cv.addEventListener('touchstart', setAim, { passive: true });
-  cv.addEventListener('touchmove', setAim, { passive: true });
   window.addEventListener('resize', function () { resize(); });
   var io = new IntersectionObserver(function (es) { es.forEach(function (en) { inView = en.isIntersecting; if (inView) { if (!started) start(); else resume(); } else pause(); }); }, { threshold: 0.05 });
   io.observe(cv);
