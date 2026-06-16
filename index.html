@@ -38,17 +38,16 @@
     <section class="hero" id="top">
       <canvas id="heroCanvas" aria-hidden="true"></canvas>
       <div class="hero-content">
-        <p class="hero-instr" id="heroInstr">EMPLOYEE ONBOARDING &nbsp;//&nbsp; MOVE YOUR CURSOR TO BEGIN<span class="blink"> _</span></p>
-        <div class="hero-reveal" id="heroReveal">
-          <h1 class="chroma" data-text="YOU ARE A CURSOR.">YOU ARE A CURSOR.<br /><span class="alert">THE FEED IS HUNGRY.</span></h1>
-          <p class="hero-sub">A horde-survival bullet-heaven about clicking your way out of corporate-tech hell.</p>
-          <div class="hero-cta-row">
-            <button class="cmd pulse" data-notify>GET NOTIFIED &#9656;</button>
-            <a class="cmd ghostbtn" href="#games">PLAY OUR GAMES</a>
-          </div>
-          <p class="hero-note">In development. No launch date yet. Be the first to know when the shift starts.</p>
-          <p class="legal" style="margin-top:10px">Cursor employment is at-will and ends in HR Termination.</p>
+        <span class="kicker">// EMPLOYEE ONBOARDING</span>
+        <h1 class="chroma" data-text="YOU ARE A CURSOR.">YOU ARE A CURSOR.<br /><span class="alert">THE FEED IS HUNGRY.</span></h1>
+        <p class="hero-sub">A horde-survival bullet-heaven about clicking your way out of corporate-tech hell.</p>
+        <div class="hero-cta-row">
+          <button class="cmd pulse" data-notify>GET NOTIFIED &#9656;</button>
+          <a class="cmd ghostbtn" href="#games">PLAY OUR GAMES</a>
         </div>
+        <p class="hero-note">In development. No launch date yet. Be the first to know when the shift starts.</p>
+        <p class="legal">Cursor employment is at-will and ends in HR Termination.</p>
+        <p class="hero-hint">Move your cursor &mdash; you're already on the clock.</p>
       </div>
       <a class="scroll-cue" id="scrollCue" href="#pitch" aria-label="Scroll for more">SCROLL &#9660;</a>
     </section>
@@ -130,9 +129,9 @@
     <section id="games">
       <div class="wrap">
         <div class="section-head reveal">
-          <span class="kicker">// THE BACK CATALOG</span>
-          <h2 class="chroma" data-text="ALREADY PLAYABLE.">ALREADY PLAYABLE.</h2>
-          <p>SCRUMBAG is in development &mdash; but the studio isn't waiting. The back catalog is all playable right now.</p>
+          <span class="kicker">// PROOF WE SHIP</span>
+          <h2 class="chroma" data-text="WE SHIP. SCRUMBAG IS NEXT.">WE SHIP. SCRUMBAG IS NEXT.</h2>
+          <p>While SCRUMBAG is in development, the rest of the studio is already out and playable. We finish what we start.</p>
         </div>
 
         <div class="game-block reveal" id="adbirdBlock">
@@ -142,7 +141,7 @@
             <a class="game-link" href="https://stockout.itch.io/ad-bird-tising" target="_blank" rel="noopener">also on itch.io &#9656;</a>
           </div>
           <div class="win">
-            <div class="win-bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span><span>AD_BIRD_TISING.EXE</span></div>
+            <div class="win-bar"><span class="dot" style="background:#00ffaa"></span><span class="dot" style="background:#ffb000"></span><span class="dot" style="background:#ff2233"></span><span>AD_BIRD_TISING.EXE</span></div>
             <div class="win-body">
               <div class="win-placeholder" id="gwPlaceholder">SCROLL HERE TO BOOT THE CABINET&hellip;</div>
               <div id="gameOverlay" class="game-overlay"></div>
@@ -204,7 +203,7 @@
               <tr><td>TICKETS CLOSED</td><td>1,204</td></tr>
               <tr><td>WEAPON OF RECORD</td><td>POP-UP BLOCKER</td></tr>
               <tr><td>SEVERANCE</td><td>+1,240 ATT</td></tr>
-              <tr><td>NEW RECORD?</td><td>?</td></tr>
+              <tr><td>NEW RECORD?</td><td>NOT FOR US.</td></tr>
             </table>
           </div>
           <div class="closer">
@@ -237,13 +236,13 @@
   <div class="modal" id="notifyModal" role="dialog" aria-modal="true" aria-labelledby="notifyTitle">
     <div class="box">
       <button class="close" id="notifyClose" aria-label="Close">[ X ]</button>
-      <h3 id="notifyTitle">PRE-ONBOARDING</h3>
-      <p>SCRUMBAG is in development. Drop your email and we'll send you the death-email the day the shift opens. No spam. One message that matters.</p>
+      <h3 id="notifyTitle">BE FIRST IN LINE</h3>
+      <p id="notifyDesc">Be the first to play SCRUMBAG &mdash; one email, the day it opens. No spam, unsubscribe anytime. (Yes, it'll arrive styled as a corporate death-email.)</p>
       <form id="notifyForm">
-        <input type="email" id="notifyEmail" required placeholder="you@scrumbag.corp" autocomplete="email" />
+        <input type="email" id="notifyEmail" required placeholder="you@scrumbag.corp" autocomplete="email" aria-label="Email address" aria-describedby="notifyDesc" />
         <button class="cmd pulse" type="submit" style="width:100%;justify-content:center">ADD ME TO THE PIPELINE &#9656;</button>
       </form>
-      <div class="ok" id="notifyOk" style="display:none"></div>
+      <div class="ok" id="notifyOk" role="status" aria-live="polite" tabindex="-1" style="display:none"></div>
       <p class="amber">Cursor employment is at-will. So is this mailing list.</p>
     </div>
   </div>

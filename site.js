@@ -140,6 +140,14 @@
     document.getElementById('notifyClose').addEventListener('click', closeModal);
     modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modal.classList.contains('open')) closeModal(); });
+    modal.addEventListener('keydown', function (e) {
+      if (e.key !== 'Tab' || !modal.classList.contains('open')) return;
+      var f = [].slice.call(modal.querySelectorAll('button, input, a[href]')).filter(function (x) { return x.offsetParent !== null; });
+      if (!f.length) return;
+      var first = f[0], lastEl = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); lastEl.focus(); }
+      else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); first.focus(); }
+    }, true);
   }
 
   function subscribe(email) {
@@ -156,14 +164,16 @@
       var email = (emailInput.value || '').trim();
       if (!email) return;
       form.style.display = 'none';
+      okBox.style.display = 'block';
+      okBox.textContent = 'PROCESSING…';
       subscribe(email).then(function (ok) {
-        okBox.style.display = 'block';
         if (ok) {
           okBox.innerHTML = "YOU'RE ON THE PIPELINE.<br />We'll email you one death-email when the shift opens.";
           confetti(window.innerWidth / 2, window.innerHeight * 0.4);
         } else {
           okBox.innerHTML = "ALMOST &mdash; the list is warming up.<br />Mail us directly to lock your spot: <a href='mailto:stockoutgames@pm.me?subject=Notify%20me%20about%20SCRUMBAG'>stockoutgames@pm.me</a>";
         }
+        if (okBox.focus) okBox.focus();
       });
     });
   }
