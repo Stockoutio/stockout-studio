@@ -235,11 +235,21 @@
         if (ph) ph.style.display = 'none';
         if (canvas) { canvas.style.display = 'block'; if (canvas.focus) canvas.focus(); }
         window.adBirdGame = new AdBird('adBirdCanvas', { paidAds: paidAds });
+        // Offload the game when it scrolls fully out of view; require a click to resume.
+        // Saves (high score) live in localStorage and persist across offload + reload.
         if (canvas && 'IntersectionObserver' in window) {
-          var pio = new IntersectionObserver(function (es) { es.forEach(function (en) { var g = window.adBirdGame; if (!g) return; if (en.isIntersecting && !document.hidden) { if (g.resume) g.resume(); } else if (g.pause) g.pause(); }); }, { threshold: 0 });
-          pio.observe(canvas);
+          var offIO = new IntersectionObserver(function (es) {
+            es.forEach(function (en) {
+              if (en.isIntersecting || !window.adBirdGame) return;
+              try { if (window.adBirdGame.pause) window.adBirdGame.pause(); } catch (e) {}
+              try { if (window.adBirdGame.destroy) window.adBirdGame.destroy(); } catch (e) {}
+              window.adBirdGame = null; GAME_BOOTED = false; offIO.disconnect();
+              if (canvas) canvas.style.display = 'none';
+              if (ph) { ph.style.display = ''; ph.textContent = '▸ CLICK TO RESUME — PROGRESS SAVED'; }
+            });
+          }, { threshold: 0 });
+          offIO.observe(canvas);
         }
-        document.addEventListener('visibilitychange', function () { var g = window.adBirdGame; if (!g) return; if (document.hidden) { if (g.pause) g.pause(); } else if (g.resume) g.resume(); });
       });
     }).catch(function (err) { GAME_BOOTED = false; var p2 = document.getElementById('gwPlaceholder'); if (p2) p2.textContent = 'CABINET OFFLINE — reload to retry.'; console.warn('AD-BIRD-TISING failed to load:', err); });
   }
@@ -253,6 +263,7 @@
     var gio = new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) { prepScripts(); gio.disconnect(); } }); }, { rootMargin: '300px' });
     gio.observe(gw);
   }
+  document.addEventListener('visibilitychange', function () { var g = window.adBirdGame; if (!g) return; if (document.hidden) { if (g.pause) g.pause(); } else if (g.resume) g.resume(); });
 
   // Robustness net: reveal sections even if IntersectionObserver misbehaves.
   function fallbackScan() {
