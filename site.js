@@ -1,8 +1,10 @@
 (function () {
   'use strict';
 
-  var SUPABASE_URL = 'https://agbtvbymknayxrebochn.supabase.co';
-  var SUPABASE_KEY = 'sb_publishable_8yipwhYLiM19LVR8qLXT6A_MOD1YTl1';
+  // Email capture via Web3Forms — free, AJAX/CORS-friendly, no backend that pauses or nags.
+  // Get a free access key (no account/dashboard) at https://web3forms.com and paste it below.
+  // Until a real key is set, the form gracefully falls back to the mailto path.
+  var WEB3FORMS_KEY = 'YOUR-ACCESS-KEY-HERE';
 
   var STEAM_APPID = '0000000';
   function steamUrl(campaign) {
@@ -138,7 +140,7 @@
     if (b) burst(e.clientX, e.clientY, b.classList.contains('ghostbtn') ? '#00ffaa' : '#ff2233');
   });
 
-  // --- notify modal (email capture via Supabase, mailto fallback) ---
+  // --- notify modal (email capture via Web3Forms, mailto fallback) ---
   var modal = document.getElementById('notifyModal');
   var form = document.getElementById('notifyForm');
   var emailInput = document.getElementById('notifyEmail');
@@ -146,14 +148,6 @@
   var lastFocus = null;
   function openModal() { if (!modal) return; lastFocus = document.activeElement; modal.classList.add('open'); if (emailInput) setTimeout(function () { emailInput.focus(); }, 30); }
   function closeModal() { if (!modal) return; modal.classList.remove('open'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
-
-  // Shield the email field from the embedded game's global keydown handler
-  // (it preventDefaults Space/Enter/arrows/M/F/W/K, which otherwise eats keystrokes).
-  if (emailInput) {
-    emailInput.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeModal(); } e.stopPropagation(); });
-    emailInput.addEventListener('keyup', function (e) { e.stopPropagation(); });
-    emailInput.addEventListener('keypress', function (e) { e.stopPropagation(); });
-  }
 
   function wireCTAs() {
     var url = steamUrl('cta');
@@ -185,10 +179,11 @@
   }
 
   function subscribe(email) {
-    return fetch(SUPABASE_URL + '/rest/v1/subscribers', {
+    if (!WEB3FORMS_KEY || WEB3FORMS_KEY === 'YOUR-ACCESS-KEY-HERE') return Promise.resolve(false); // not configured -> mailto fallback
+    return fetch('https://api.web3forms.com/submit', {
       method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return-minimal' },
-      body: JSON.stringify({ email: email, source: 'site' })
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ access_key: WEB3FORMS_KEY, subject: 'New SCRUMBAG notify signup', from_name: 'stockout.studio', email: email, source: 'site' })
     }).then(function (r) { return r.ok; }).catch(function () { return false; });
   }
 
@@ -211,59 +206,6 @@
       });
     });
   }
-
-  // --- AD-BIRD-TISING: prep scripts on scroll, BOOT (heavy media + audio) on click ---
-  var GAME_BOOTED = false, prepPromise = null;
-  function injectScript(src) {
-    return new Promise(function (res, rej) { var s = document.createElement('script'); s.src = src; s.onload = function () { res(); }; s.onerror = function () { rej(new Error(src)); }; document.body.appendChild(s); });
-  }
-  function prepScripts() { if (prepPromise) return prepPromise; prepPromise = injectScript('ad-bird-content.js').then(function () { return injectScript('ad-bird.js'); }); return prepPromise; }
-  function bootGame() {
-    if (GAME_BOOTED) return; GAME_BOOTED = true;
-    var canvas = document.getElementById('adBirdCanvas');
-    var ph = document.getElementById('gwPlaceholder');
-    if (ph) ph.textContent = 'BOOTING…';
-    prepScripts().then(function () {
-      var paidAds = [];
-      return fetch(SUPABASE_URL + '/rest/v1/ads?select=text&is_paid=eq.true&status=eq.approved&expires_at=gt.now()', {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
-      }).then(function (r) { return r.ok ? r.json() : []; }).then(function (data) {
-        var colors = ['#a855f7', '#06b6d4', '#f59e0b', '#22c55e', '#ec4899', '#f43f5e'];
-        paidAds = (data || []).map(function (ad) { return Object.assign({}, ad, { isPaid: true, color: ad.color || colors[Math.floor(Math.random() * colors.length)] }); });
-      }).catch(function () { /* backend optional */ }).then(function () {
-        if (typeof AdBird === 'undefined') { if (ph) ph.textContent = 'CABINET OFFLINE — reload to retry.'; GAME_BOOTED = false; return; }
-        if (ph) ph.style.display = 'none';
-        if (canvas) { canvas.style.display = 'block'; if (canvas.focus) canvas.focus(); }
-        window.adBirdGame = new AdBird('adBirdCanvas', { paidAds: paidAds });
-        // Offload the game when it scrolls fully out of view; require a click to resume.
-        // Saves (high score) live in localStorage and persist across offload + reload.
-        if (canvas && 'IntersectionObserver' in window) {
-          var offIO = new IntersectionObserver(function (es) {
-            es.forEach(function (en) {
-              if (en.isIntersecting || !window.adBirdGame) return;
-              try { if (window.adBirdGame.pause) window.adBirdGame.pause(); } catch (e) {}
-              try { if (window.adBirdGame.destroy) window.adBirdGame.destroy(); } catch (e) {}
-              window.adBirdGame = null; GAME_BOOTED = false; offIO.disconnect();
-              if (canvas) canvas.style.display = 'none';
-              if (ph) { ph.style.display = ''; ph.textContent = '▸ CLICK TO RESUME — PROGRESS SAVED'; }
-            });
-          }, { threshold: 0 });
-          offIO.observe(canvas);
-        }
-      });
-    }).catch(function (err) { GAME_BOOTED = false; var p2 = document.getElementById('gwPlaceholder'); if (p2) p2.textContent = 'CABINET OFFLINE — reload to retry.'; console.warn('AD-BIRD-TISING failed to load:', err); });
-  }
-  var gw = document.getElementById('adbirdBlock');
-  var gwPh = document.getElementById('gwPlaceholder');
-  if (gwPh) {
-    gwPh.addEventListener('click', bootGame);
-    gwPh.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bootGame(); } });
-  }
-  if (gw && 'IntersectionObserver' in window) {
-    var gio = new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) { prepScripts(); gio.disconnect(); } }); }, { rootMargin: '300px' });
-    gio.observe(gw);
-  }
-  document.addEventListener('visibilitychange', function () { var g = window.adBirdGame; if (!g) return; if (document.hidden) { if (g.pause) g.pause(); } else if (g.resume) g.resume(); });
 
   // Robustness net: reveal sections even if IntersectionObserver misbehaves.
   function fallbackScan() {

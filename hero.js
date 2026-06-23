@@ -10,6 +10,43 @@
   var aim = { x: 0, y: 0 }, lastFire = 0, lastSpawn = 0, last = 0, kills = 0;
   var running = false, runId = 0, started = false, inView = true;
 
+  // --- procedural SFX for the autoplay sim (WebAudio synth, no asset files) ---
+  var SOUND_DEFAULT_ON = true; // set false to default the toggle to muted
+  var actx = null, masterGain = null, noiseBuf = null, soundOn = false, lastBoom = 0;
+  function ensureAudio() {
+    if (actx) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      actx = new AC();
+      masterGain = actx.createGain(); masterGain.gain.value = 0; masterGain.connect(actx.destination);
+      var len = Math.floor(actx.sampleRate * 0.3); noiseBuf = actx.createBuffer(1, len, actx.sampleRate);
+      var nd = noiseBuf.getChannelData(0); for (var i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
+    } catch (e) { actx = null; }
+  }
+  function applyVol() { if (actx && masterGain) masterGain.gain.setTargetAtTime(soundOn ? 1 : 0, actx.currentTime, 0.02); }
+  function wakeAudio() { if (!soundOn) return; ensureAudio(); if (actx && actx.state === 'suspended') actx.resume(); applyVol(); }
+  function paintSoundBtn() { var b = document.getElementById('soundToggle'); if (b) { b.textContent = 'SOUND: ' + (soundOn ? 'ON' : 'OFF'); b.setAttribute('aria-pressed', soundOn ? 'true' : 'false'); } }
+  function setSound(on) { soundOn = on; try { localStorage.setItem('stockout_sound', on ? 'on' : 'off'); } catch (e) {} if (on) wakeAudio(); else applyVol(); paintSoundBtn(); }
+  function sfxShoot() {
+    if (!soundOn || !actx || actx.state !== 'running') return;
+    var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(600 + Math.random() * 140, t); o.frequency.exponentialRampToValueAtTime(200, t + 0.06);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    o.connect(g); g.connect(masterGain); o.start(t); o.stop(t + 0.09);
+  }
+  function sfxBoom() {
+    if (!soundOn || !actx || actx.state !== 'running') return;
+    var t = actx.currentTime; if (t - lastBoom < 0.04) return; lastBoom = t;
+    var src = actx.createBufferSource(); src.buffer = noiseBuf;
+    var f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(1900, t); f.frequency.exponentialRampToValueAtTime(220, t + 0.18);
+    var ng = actx.createGain(); ng.gain.setValueAtTime(0.7, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    src.connect(f); f.connect(ng); ng.connect(masterGain); src.start(t); src.stop(t + 0.24);
+    var o = actx.createOscillator(), og = actx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.2);
+    og.gain.setValueAtTime(0.55, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    o.connect(og); og.connect(masterGain); o.start(t); o.stop(t + 0.22);
+  }
+
   function ff(px) { return px + 'px "PressStart", ui-monospace, monospace'; }
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function resize() {
@@ -53,12 +90,12 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     var t = now / 1000; aim.x = W * 0.5 + Math.cos(t * 0.7) * W * 0.30; aim.y = H * 0.5 + Math.sin(t * 1.05) * H * 0.32;
     if (now - lastSpawn > 200) { lastSpawn = now; spawn(); }
-    if (now - lastFire > 140) { lastFire = now; var tg = nearest(aim.x, aim.y); if (tg) { var a = Math.atan2(tg.y - aim.y, tg.x - aim.x); pellets.push({ x: aim.x, y: aim.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480, life: 1.4 }); } }
+    if (now - lastFire > 140) { lastFire = now; var tg = nearest(aim.x, aim.y); if (tg) { var a = Math.atan2(tg.y - aim.y, tg.x - aim.x); pellets.push({ x: aim.x, y: aim.y, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480, life: 1.4 }); sfxShoot(); } }
     for (var i = enemies.length - 1; i >= 0; i--) { var e = enemies[i], a2 = Math.atan2(aim.y - e.y, aim.x - e.x); e.x += Math.cos(a2) * e.s * d; e.y += Math.sin(a2) * e.s * d; drawEnemy(e); }
     for (var j = pellets.length - 1; j >= 0; j--) {
       var p = pellets[j]; p.x += p.vx * d; p.y += p.vy * d; p.life -= d; var hit = null;
       for (var m = 0; m < enemies.length; m++) { var e2 = enemies[m]; if ((e2.x - p.x) * (e2.x - p.x) + (e2.y - p.y) * (e2.y - p.y) < (e2.r + 4) * (e2.r + 4)) { hit = e2; break; } }
-      if (hit) { var ix = enemies.indexOf(hit); if (ix >= 0) { enemies.splice(ix, 1); explode(hit.x, hit.y); kills++; window.__heroKills = kills; } pellets.splice(j, 1); continue; }
+      if (hit) { var ix = enemies.indexOf(hit); if (ix >= 0) { enemies.splice(ix, 1); explode(hit.x, hit.y); kills++; window.__heroKills = kills; sfxBoom(); } pellets.splice(j, 1); continue; }
       if (p.life <= 0 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) { pellets.splice(j, 1); continue; }
       ctx.fillStyle = PHOS; ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
     }
@@ -87,6 +124,16 @@
   window.addEventListener('resize', function () { resize(); });
   var io = new IntersectionObserver(function (es) { es.forEach(function (en) { inView = en.isIntersecting; if (inView) { if (!started) start(); else resume(); } else pause(); }); }, { threshold: 0.05 });
   io.observe(cv);
+
+  // sound: restore pref, wire toggle + unlock audio on first user gesture (browser autoplay policy)
+  (function initSound() {
+    var pref = null; try { pref = localStorage.getItem('stockout_sound'); } catch (e) {}
+    soundOn = pref ? pref === 'on' : (SOUND_DEFAULT_ON && !reduce);
+    paintSoundBtn();
+    var b = document.getElementById('soundToggle'); if (b) b.addEventListener('click', function () { setSound(!soundOn); });
+    function gesture() { wakeAudio(); }
+    ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { window.addEventListener(ev, gesture, { passive: true }); });
+  })();
   document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); else if (started && inView) resume(); });
   start();
 })();

@@ -1,0 +1,11 @@
+# Local preview tooling (Claude Code launch config + static server)
+.claude/
+
+# Build/dev caches
+.vite/
+node_modules/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log
