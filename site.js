@@ -4,7 +4,7 @@
   // Email capture via Web3Forms — free, AJAX/CORS-friendly, no backend that pauses or nags.
   // Get a free access key (no account/dashboard) at https://web3forms.com and paste it below.
   // Until a real key is set, the form gracefully falls back to the mailto path.
-  var WEB3FORMS_KEY = 'YOUR-ACCESS-KEY-HERE';
+  var WEB3FORMS_KEY = 'bc98bbb9-bba2-4a7b-8c98-9951aa9a19f9';
 
   var STEAM_APPID = '0000000';
   function steamUrl(campaign) {
@@ -46,16 +46,6 @@
     navToggle.addEventListener('click', function (e) { e.stopPropagation(); var open = navLinks.classList.toggle('open'); navToggle.setAttribute('aria-expanded', open ? 'true' : 'false'); });
     navLinks.addEventListener('click', function () { navLinks.classList.remove('open'); navToggle.setAttribute('aria-expanded', 'false'); });
     document.addEventListener('click', function (e) { if (!navLinks.contains(e.target) && e.target !== navToggle) { navLinks.classList.remove('open'); navToggle.setAttribute('aria-expanded', 'false'); } });
-  }
-
-  // --- CRT FX toggle (manual motion stop, persisted) ---
-  var fxToggle = document.getElementById('fxToggle');
-  if (fxToggle) {
-    var fxOff = false;
-    try { fxOff = localStorage.getItem('stockout_fx') === 'off'; } catch (e) {}
-    var applyFx = function () { document.documentElement.classList.toggle('no-fx', fxOff); fxToggle.textContent = 'CRT FX: ' + (fxOff ? 'OFF' : 'ON'); fxToggle.setAttribute('aria-pressed', fxOff ? 'true' : 'false'); };
-    applyFx();
-    fxToggle.addEventListener('click', function () { fxOff = !fxOff; try { localStorage.setItem('stockout_fx', fxOff ? 'off' : 'on'); } catch (e) {} applyFx(); });
   }
 
   // --- personalize the death email with the real hero run ---

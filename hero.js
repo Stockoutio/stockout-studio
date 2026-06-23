@@ -3,35 +3,50 @@
   if (!cv) return;
   var ctx = cv.getContext('2d');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var heroSection = document.getElementById('top');
+  var gate = document.getElementById('beginGate');
+  var pauseHint = document.getElementById('pauseHint');
+  var flash = document.getElementById('beginFlash');
   var PHOS = '#00ffaa', DIM = '#00cc88', ALERT = '#ff2233', INK = '#e8fff5', GR = '#ff3366', GB = '#33ccff';
   var W = 0, H = 0, DPR = Math.min(2, window.devicePixelRatio || 1);
   var overlay = document.createElement('canvas');
   var enemies = [], pellets = [], bursts = [], trail = [];
   var aim = { x: 0, y: 0 }, lastFire = 0, lastSpawn = 0, last = 0, kills = 0;
-  var running = false, runId = 0, started = false, inView = true;
+  var running = false, runId = 0, started = false, inView = true, begun = false, userPaused = false;
 
-  // --- procedural SFX for the autoplay sim (WebAudio synth, no asset files) ---
-  var SOUND_DEFAULT_ON = true; // set false to default the toggle to muted
+  // --- procedural SFX for the sim (WebAudio synth + lookahead limiter, no asset files) ---
   var actx = null, masterGain = null, noiseBuf = null, soundOn = false, lastBoom = 0;
   function ensureAudio() {
     if (actx) return;
     try {
       var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
       actx = new AC();
-      masterGain = actx.createGain(); masterGain.gain.value = 0; masterGain.connect(actx.destination);
+      masterGain = actx.createGain(); masterGain.gain.value = 0; masterGain.connect(actx.destination); setupLimiter();
       var len = Math.floor(actx.sampleRate * 0.3); noiseBuf = actx.createBuffer(1, len, actx.sampleRate);
       var nd = noiseBuf.getChannelData(0); for (var i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
     } catch (e) { actx = null; }
   }
+  // sliding-window-max lookahead limiter on the master bus (-0.4 dBFS ceiling, never overshoots)
+  function setupLimiter() {
+    if (!actx.audioWorklet) return; // no AudioWorklet (very old browser): keep direct out
+    var src = "class L extends AudioWorkletProcessor{static get parameterDescriptors(){return [{name:'ceiling',defaultValue:0.955,automationRate:'k-rate'}]}constructor(){super();var sr=sampleRate;this.look=Math.max(1,Math.round(0.004*sr));this.W=this.look+1;this.rel=Math.exp(-1/(0.002*sr));this.db=null;this.di=0;this.mb=new Float32Array(this.W);this.mi=0;this.gr=1}process(inputs,outputs,params){var I=inputs[0],O=outputs[0];if(!I||!I.length)return true;var ch=I.length,look=this.look,W=this.W;if(!this.db||this.db.length!==ch){this.db=[];for(var c=0;c<ch;c++)this.db.push(new Float32Array(look));this.di=0}var cap=params.ceiling[0],n=I[0].length;for(var s=0;s<n;s++){var m=0;for(var c=0;c<ch;c++){var a=I[c][s];a=a<0?-a:a;if(a>m)m=a}this.mb[this.mi]=m;this.mi++;if(this.mi>=W)this.mi=0;var wm=0;for(var q=0;q<W;q++){var v=this.mb[q];if(v>wm)wm=v}var tg=wm>cap?cap/wm:1;if(tg<this.gr){this.gr=tg}else{this.gr=tg+(this.gr-tg)*this.rel}for(var c2=0;c2<ch;c2++){var b=this.db[c2],d=b[this.di];b[this.di]=I[c2][s];if(O[c2])O[c2][s]=d*this.gr}this.di++;if(this.di>=look)this.di=0}return true}}registerProcessor('lookahead-limiter',L);";
+    var url = URL.createObjectURL(new Blob([src], { type: 'application/javascript' }));
+    actx.audioWorklet.addModule(url).then(function () {
+      URL.revokeObjectURL(url);
+      var lim = new AudioWorkletNode(actx, 'lookahead-limiter', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+      lim.parameters.get('ceiling').value = Math.pow(10, -0.4 / 20); // -0.4 dBFS master output ceiling
+      masterGain.disconnect();
+      masterGain.connect(lim);
+      lim.connect(actx.destination);
+    }).catch(function () {});
+  }
   function applyVol() { if (actx && masterGain) masterGain.gain.setTargetAtTime(soundOn ? 1 : 0, actx.currentTime, 0.02); }
   function wakeAudio() { if (!soundOn) return; ensureAudio(); if (actx && actx.state === 'suspended') actx.resume(); applyVol(); }
-  function paintSoundBtn() { var b = document.getElementById('soundToggle'); if (b) { b.textContent = 'SOUND: ' + (soundOn ? 'ON' : 'OFF'); b.setAttribute('aria-pressed', soundOn ? 'true' : 'false'); } }
-  function setSound(on) { soundOn = on; try { localStorage.setItem('stockout_sound', on ? 'on' : 'off'); } catch (e) {} if (on) wakeAudio(); else applyVol(); paintSoundBtn(); }
   function sfxShoot() {
     if (!soundOn || !actx || actx.state !== 'running') return;
     var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
     o.type = 'square'; o.frequency.setValueAtTime(600 + Math.random() * 140, t); o.frequency.exponentialRampToValueAtTime(200, t + 0.06);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
     o.connect(g); g.connect(masterGain); o.start(t); o.stop(t + 0.09);
   }
   function sfxBoom() {
@@ -39,11 +54,11 @@
     var t = actx.currentTime; if (t - lastBoom < 0.04) return; lastBoom = t;
     var src = actx.createBufferSource(); src.buffer = noiseBuf;
     var f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(1900, t); f.frequency.exponentialRampToValueAtTime(220, t + 0.18);
-    var ng = actx.createGain(); ng.gain.setValueAtTime(0.7, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    var ng = actx.createGain(); ng.gain.setValueAtTime(0.9, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
     src.connect(f); f.connect(ng); ng.connect(masterGain); src.start(t); src.stop(t + 0.24);
     var o = actx.createOscillator(), og = actx.createGain();
     o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.2);
-    og.gain.setValueAtTime(0.55, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    og.gain.setValueAtTime(0.9, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
     o.connect(og); og.connect(masterGain); o.start(t); o.stop(t + 0.22);
   }
 
@@ -110,7 +125,7 @@
     for (var k = 0; k < enemies.length; k++) drawEnemy(enemies[k]); arrow(W / 2, H / 2); ctx.drawImage(overlay, 0, 0, W, H);
   }
   function frame(id) { return function f(now) { if (id !== runId || !running) return; step(now); requestAnimationFrame(f); }; }
-  function resume() { if (reduce || running || !W) return; running = true; runId++; requestAnimationFrame(frame(runId)); }
+  function resume() { if (reduce || running || !W || userPaused) return; running = true; runId++; requestAnimationFrame(frame(runId)); }
   function pause() { running = false; }
   function start() {
     if (started || start._pending) return;
@@ -121,19 +136,27 @@
     resume();
   }
 
-  window.addEventListener('resize', function () { resize(); });
-  var io = new IntersectionObserver(function (es) { es.forEach(function (en) { inView = en.isIntersecting; if (inView) { if (!started) start(); else resume(); } else pause(); }); }, { threshold: 0.05 });
-  io.observe(cv);
+  // --- click to begin: reveals the headline, starts the sim, starts the sound (one user gesture) ---
+  function begin() {
+    if (begun) return; begun = true;
+    if (flash && !reduce) flash.classList.add('go');      // white swell masks the cut-in
+    soundOn = !reduce; wakeAudio();                       // unlock + enable audio inside the click gesture
+    if (heroSection) heroSection.classList.add('begun');  // triggers the CSS text reveal
+    if (gate) { gate.classList.add('hide'); setTimeout(function () { if (gate) gate.style.display = 'none'; }, 600); }
+    start();
+  }
+  // --- click the game to pause / resume in the background ---
+  function togglePause() {
+    if (!begun || !started || reduce) return;
+    if (userPaused) { userPaused = false; if (pauseHint) pauseHint.classList.remove('show'); resume(); }
+    else { userPaused = true; pause(); if (pauseHint) pauseHint.classList.add('show'); }
+  }
+  if (gate) gate.addEventListener('click', begin);        // <button>, so Enter/Space fire click too
+  cv.addEventListener('click', togglePause);
 
-  // sound: restore pref, wire toggle + unlock audio on first user gesture (browser autoplay policy)
-  (function initSound() {
-    var pref = null; try { pref = localStorage.getItem('stockout_sound'); } catch (e) {}
-    soundOn = pref ? pref === 'on' : (SOUND_DEFAULT_ON && !reduce);
-    paintSoundBtn();
-    var b = document.getElementById('soundToggle'); if (b) b.addEventListener('click', function () { setSound(!soundOn); });
-    function gesture() { wakeAudio(); }
-    ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { window.addEventListener(ev, gesture, { passive: true }); });
-  })();
-  document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); else if (started && inView) resume(); });
-  start();
+  window.addEventListener('resize', function () { resize(); });
+  // pause when scrolled out of view; resume when back (unless the user paused it)
+  var io = new IntersectionObserver(function (es) { es.forEach(function (en) { inView = en.isIntersecting; if (inView) { if (started) resume(); } else pause(); }); }, { threshold: 0.05 });
+  io.observe(cv);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); else if (started && inView && !userPaused) resume(); });
 })();
