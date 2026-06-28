@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SCRUMBAG — a game by Stockout Studio</title>
-  <meta name="description" content="YOU ARE A CURSOR. A horde-survival bullet-heaven about clicking your way out of corporate-tech hell. In development by Stockout Studio. Get notified." />
+  <meta name="description" content="YOU ARE A CURSOR. A horde-survival bullet-heaven about clicking your way out of corporate-tech hell. Play the free browser alpha now and help shape the build." />
   <meta property="og:title" content="SCRUMBAG — Stockout Studio" />
-  <meta property="og:description" content="You are a cursor. The Feed is hungry. A horde-survival bullet-heaven, in development." />
+  <meta property="og:description" content="You are a cursor. The Feed is hungry. A horde-survival bullet-heaven — free alpha playable now." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@stockoutio" />
@@ -23,7 +23,6 @@
   <div class="vignette" aria-hidden="true"></div>
   <div class="frame" aria-hidden="true"></div>
   <canvas class="fx" id="fxCanvas" aria-hidden="true"></canvas>
-  <div class="begin-flash" id="beginFlash" aria-hidden="true"></div>
 
   <header class="topbar">
     <div class="sys">&#9679; stockout.studio<span class="sysx">&nbsp;&mdash; SECURE SHELL &mdash; CH.SCRUMBAG &middot; <span data-clock>00:00</span></span></div>
@@ -32,25 +31,29 @@
       <div class="navlinks" id="navLinks">
         <a class="navlink" href="https://x.com/stockoutio" target="_blank" rel="noopener">TWITTER</a>
       </div>
-      <span class="status-chip">IN DEVELOPMENT</span>
-      <button class="cmd" data-notify>GET NOTIFIED</button>
+      <span class="status-chip status-live">ALPHA &middot; PLAYABLE</span>
+      <a class="cmd" href="https://stockout.itch.io/scrumbag?utm_source=stockout.studio&amp;utm_campaign=alpha&amp;utm_content=topbar" target="_blank" rel="noopener">PLAY ALPHA &#9656;</a>
     </nav>
   </header>
 
   <main>
     <section class="hero" id="top">
-      <canvas id="heroCanvas" aria-hidden="true"></canvas>
-      <button class="begin-gate" id="beginGate" aria-label="Click to begin">&#9656; CLICK TO BEGIN</button>
-      <div class="pause-hint" id="pauseHint" aria-hidden="true">&#10074;&#10074; PAUSED &middot; CLICK TO RESUME</div>
       <div class="hero-content">
         <span class="kicker">// EMPLOYEE ONBOARDING</span>
         <div class="hero-reveal">
           <h1 class="chroma" data-text="YOU ARE A CURSOR.">YOU ARE A CURSOR.<br /><span class="alert">THE FEED IS HUNGRY.</span></h1>
           <p class="hero-sub">A horde-survival bullet-heaven about clicking your way out of corporate-tech hell.</p>
-          <div class="hero-cta-row">
-            <button class="cmd pulse" data-notify>GET NOTIFIED &#9656;</button>
+          <div class="hero-trailer">
+            <div class="trailer-bar"><span class="dot" style="background:#00ffaa"></span><span class="dot" style="background:#ffb000"></span><span class="dot" style="background:#ff2233"></span><span class="t">SCRUMBAG_TRAILER.MP4</span></div>
+            <div class="trailer-frame">
+              <button class="lite-yt" id="heroTrailer" type="button" data-id="RF9wPVZwaJk" aria-label="Play the SCRUMBAG trailer" style="background-image:url('https://i.ytimg.com/vi/RF9wPVZwaJk/maxresdefault.jpg')"><span class="lite-yt-play" aria-hidden="true"></span></button>
+            </div>
           </div>
-          <p class="hero-note">In development. No launch date yet. Be the first to know when the shift starts.</p>
+          <div class="hero-cta-row">
+            <a class="cmd pulse" href="https://stockout.itch.io/scrumbag?utm_source=stockout.studio&amp;utm_campaign=alpha&amp;utm_content=hero" target="_blank" rel="noopener">PLAY THE ALPHA &#9656;</a>
+            <button class="cmd ghostbtn" data-notify>GET NOTIFIED</button>
+          </div>
+          <p class="hero-note">Alpha build is live &mdash; free, in your browser, no download. Bugs included; that's the job.</p>
           <p class="legal">Cursor employment is at-will and ends in HR Termination.</p>
         </div>
       </div>
@@ -160,6 +163,32 @@
             <figcaption><b>THE DAILY STANDUP</b><span>Everyone showed up. All of them.</span></figcaption>
           </figure>
         </div>
+        <div class="mid-cta reveal">
+          <p>Seen enough? Clock in &mdash; it's free and runs in your browser.</p>
+          <a class="cmd pulse" href="https://stockout.itch.io/scrumbag?utm_source=stockout.studio&amp;utm_campaign=alpha&amp;utm_content=footage" target="_blank" rel="noopener">PLAY THE ALPHA &#9656;</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="playtest">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">// PLAYTEST &mdash; ALPHA SHIFT OPEN</span>
+          <h2 class="chroma" data-text="WE NEED WARM BODIES.">WE NEED WARM BODIES.</h2>
+          <p>The alpha is live and playable free in your browser &mdash; no download, no install, just click and bleed. It's rough on purpose. Clock in, survive a shift, and tell us where it breaks. Every report shapes the build.</p>
+          <p style="margin-top:12px"><a class="cmd pulse" href="https://stockout.itch.io/scrumbag?utm_source=stockout.studio&amp;utm_campaign=alpha&amp;utm_content=playtest" target="_blank" rel="noopener">PLAY THE ALPHA &#9656;</a></p>
+        </div>
+        <div class="feedback reveal">
+          <span class="kicker">// FILE AN INCIDENT REPORT</span>
+          <p>Found a bug? A balance issue? Something that should ship but won't? Report it straight to HR.</p>
+          <form id="feedbackForm">
+            <textarea id="feedbackMsg" rows="4" required placeholder="What broke. What slapped. What HR needs to hear."></textarea>
+            <input type="email" id="feedbackEmail" placeholder="you@scrumbag.corp (optional, only if you want a reply)" autocomplete="email" aria-label="Your email (optional)" />
+            <button class="cmd pulse" type="submit" style="width:100%;justify-content:center">SUBMIT TO HR &#9656;</button>
+          </form>
+          <div class="ok" id="feedbackOk" role="status" aria-live="polite" tabindex="-1" style="display:none"></div>
+          <p class="amber">Prefer email? File it directly: <a href="mailto:stockoutgames@pm.me?subject=SCRUMBAG%20alpha%20feedback">stockoutgames@pm.me</a></p>
+        </div>
       </div>
     </section>
 
@@ -197,6 +226,7 @@
       <h2 class="chroma" data-text="ACCEPT YOUR OFFER.">ACCEPT YOUR OFFER.</h2>
       <button class="cmd pulse" data-notify>GET NOTIFIED &#9656;</button>
       <div class="links">
+        <a href="https://stockout.itch.io/scrumbag?utm_source=stockout.studio&amp;utm_campaign=alpha&amp;utm_content=footer" target="_blank" rel="noopener">PLAY THE ALPHA</a>
         <a href="https://x.com/stockoutio" target="_blank" rel="noopener">X / @STOCKOUTIO</a>
         <a href="mailto:stockoutgames@pm.me">STOCKOUTGAMES@PM.ME</a>
       </div>
@@ -205,7 +235,7 @@
     </div>
   </footer>
 
-  <div class="dock"><button class="cmd pulse" data-notify>GET NOTIFIED &#9656;</button></div>
+  <div class="dock"><a class="cmd pulse" href="https://stockout.itch.io/scrumbag?utm_source=stockout.studio&amp;utm_campaign=alpha&amp;utm_content=dock" target="_blank" rel="noopener">PLAY THE ALPHA &#9656;</a></div>
 
   <div class="modal" id="notifyModal" role="dialog" aria-modal="true" aria-labelledby="notifyTitle">
     <div class="box">

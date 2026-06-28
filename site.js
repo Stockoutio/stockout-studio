@@ -197,6 +197,37 @@
     });
   }
 
+  // --- alpha feedback form (Web3Forms, same key; mailto fallback) ---
+  var fform = document.getElementById('feedbackForm');
+  if (fform) {
+    fform.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var msg = (document.getElementById('feedbackMsg').value || '').trim();
+      if (!msg) return;
+      var em = (document.getElementById('feedbackEmail').value || '').trim();
+      var fok = document.getElementById('feedbackOk');
+      fform.style.display = 'none'; fok.style.display = 'block'; fok.textContent = 'FILING…';
+      sendFeedback(msg, em).then(function (ok) {
+        if (ok) {
+          fok.innerHTML = "REPORT FILED.<br />HR has logged your incident. Thanks for the labor.";
+          confetti(window.innerWidth / 2, window.innerHeight * 0.5);
+        } else {
+          fok.innerHTML = "COULDN'T REACH HR &mdash; email it directly: <a href='mailto:stockoutgames@pm.me?subject=SCRUMBAG%20alpha%20feedback'>stockoutgames@pm.me</a>";
+        }
+        if (fok.focus) fok.focus();
+      });
+    });
+  }
+  function sendFeedback(message, email) {
+    if (!WEB3FORMS_KEY || WEB3FORMS_KEY === 'YOUR-ACCESS-KEY-HERE') return Promise.resolve(false);
+    var payload = { access_key: WEB3FORMS_KEY, subject: 'SCRUMBAG alpha feedback', from_name: 'stockout.studio', message: message, source: 'alpha-feedback' };
+    if (email) payload.email = email;
+    return fetch('https://api.web3forms.com/submit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.ok; }).catch(function () { return false; });
+  }
+
   // Robustness net: reveal sections even if IntersectionObserver misbehaves.
   function fallbackScan() {
     var vh = window.innerHeight;
