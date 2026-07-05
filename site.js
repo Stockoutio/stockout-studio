@@ -48,14 +48,13 @@
     document.addEventListener('click', function (e) { if (!navLinks.contains(e.target) && e.target !== navToggle) { navLinks.classList.remove('open'); navToggle.setAttribute('aria-expanded', 'false'); } });
   }
 
-  // --- personalize the death email with the real hero run ---
+  // --- death email: fill TIME SURVIVED from how far the visitor scrolled ---
   var emailSec = document.getElementById('email');
   if (emailSec && 'IntersectionObserver' in window) {
     var eio = new IntersectionObserver(function (es) {
       es.forEach(function (en) {
         if (!en.isIntersecting) return;
-        var tk = document.getElementById('perfTickets'), tm = document.getElementById('perfTime');
-        if (tk && window.__heroKills != null) tk.textContent = String(window.__heroKills);
+        var tm = document.getElementById('perfTime');
         if (tm) { var max = document.documentElement.scrollHeight - window.innerHeight; var p = max > 0 ? Math.min(1, window.scrollY / max) : 1; tm.textContent = fmt(p * 1800); }
         eio.disconnect();
       });
