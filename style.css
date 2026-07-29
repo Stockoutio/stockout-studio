@@ -116,6 +116,8 @@ section { padding: 96px 0; position: relative; }
 .short-frame .lite-yt-play { width: 58px; height: 40px; border-radius: 9px; }
 .short-frame .lite-yt-play::after { border-width: 10px 0 10px 16px; }
 .short figcaption { font-family: var(--font-body); font-size: 13px; color: var(--text-soft); margin-top: 10px; line-height: 1.45; }
+.short .ch { position: absolute; top: 8px; left: 8px; z-index: 2; pointer-events: none; font-family: var(--font-display); font-size: 8px; letter-spacing: 1px; padding: 4px 6px; background: rgba(0,0,0,0.68); border: 1px solid rgba(0,255,170,0.45); color: var(--phosphor); }
+.short .ch.potato { border-color: rgba(255,176,0,0.55); color: var(--amber); }
 .hero h1 { font-size: clamp(30px, 7.5vw, 64px); margin: 0; text-shadow: 0 0 30px rgba(0,255,170,0.25); }
 .hero h1 .alert { color: var(--alert); }
 .hero-sub { font-family: var(--font-body); font-size: clamp(17px, 2.7vw, 22px); color: var(--ink); margin: 20px 0 26px; max-width: 680px; line-height: 1.55; }
