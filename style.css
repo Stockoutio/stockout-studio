@@ -264,6 +264,9 @@ section { padding: 96px 0; position: relative; }
 .ext-inner { width: min(880px, 94vw); text-align: center; background: radial-gradient(ellipse at center, rgba(0,0,0,0.6), transparent 72%); padding: 48px 30px; }
 .ext-inner h2 { font-size: clamp(24px, 4.6vw, 42px); }
 .ext-sub { color: var(--text-soft); font-size: 17px; max-width: 660px; margin: 16px auto 0; }
+.live-strip { display: inline-flex; align-items: center; gap: 10px; margin-top: 22px; padding: 12px 18px; border: 1px solid rgba(255,176,0,0.6); background: rgba(0,0,0,0.55); font-family: var(--font-display); font-size: 12px; letter-spacing: 1px; color: var(--amber); transition: background 0.15s ease, color 0.15s ease; }
+.live-strip:hover { background: var(--amber); color: #000; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff2233; animation: blink 1.2s steps(2) infinite; }
 .foot-cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 6px; }
 
 /* --- THE DESCENT: fixed cinema stage (stills at stops, scrubbed video in transit) --- */
@@ -298,7 +301,7 @@ html.panel-mode { scroll-behavior: auto; }
   .panel-mode main .room-box::-webkit-scrollbar-track { background: rgba(0,255,170,0.07); }
   .panel-mode main .room-box::-webkit-scrollbar-thumb { background: rgba(0,255,170,0.35); }
   /* compact layout inside panels so every floor fits on one screen */
-  .panel-mode main .room-box { padding: 26px 30px; }
+  .panel-mode main .room-box { padding: 46px 30px 26px; } /* top headroom clears the inside floor tag */
   .panel-mode .hero h1 { font-size: clamp(24px, 3.6vw, 40px); }
   .panel-mode .hero-sub { margin: 12px 0 14px; font-size: 16px; }
   .panel-mode .hero-trailer { max-width: 600px; margin: 14px 0; }
