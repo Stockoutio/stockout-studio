@@ -79,10 +79,21 @@
   // --- THE DESCENT: Seedance legs scrubbed by scroll between destination stills ---
   var stageInner = document.getElementById('stageInner');
   var stageStill = document.getElementById('stageStill');
-  var stageVideo = document.getElementById('stageVideo');
   var transits = [].slice.call(document.querySelectorAll('.transit[data-leg]'));
   var mobileLite = matchMedia('(max-width: 860px)').matches;
-  var vidOK = !reduce && !mobileLite && !!(stageVideo && stageVideo.canPlayType && stageVideo.canPlayType('video/mp4'));
+  var vidOK = !reduce && !mobileLite && (function () { var t = document.createElement('video'); return !!(t.canPlayType && t.canPlayType('video/mp4')); })();
+  // one persistent, preloaded <video> per leg — no src swapping, so scrubbing is
+  // instant in BOTH directions no matter how you roam the tower
+  var vids = [];
+  if (vidOK && stageInner && transits.length) {
+    for (var vn = 1; vn <= 7; vn++) {
+      var ve = document.createElement('video');
+      ve.muted = true; ve.playsInline = true; ve.preload = 'auto';
+      ve.src = 'media/descent/leg' + vn + '.mp4';
+      stageInner.appendChild(ve);
+      vids[vn] = ve;
+    }
+  }
   // panel mode: rooms are pinned center-screen and glitch in/out instead of scrolling past
   var panelMode = !reduce && !mobileLite;
   var panels = [].slice.call(document.querySelectorAll('main .room-box'));
@@ -160,7 +171,7 @@
       }
     }
   }
-  var zones = [], curStop = 1, activeLeg = 0;
+  var zones = [], curStop = 1, curVid = 0;
 
   var outroTop = 0;
   function rebuildZones() {
@@ -176,7 +187,14 @@
   function showStill(n) {
     if (curStop !== n) { curStop = n; stageStill.src = parkedSrc(n); }
     stageStill.classList.add('on');
-    if (stageVideo) stageVideo.classList.remove('on');
+    if (curVid && vids[curVid]) vids[curVid].classList.remove('on');
+    curVid = 0;
+  }
+  function showVid(n) {
+    var v = vids[n]; if (!v) return null;
+    if (curVid && curVid !== n && vids[curVid]) vids[curVid].classList.remove('on');
+    curVid = n; v.classList.add('on'); stageStill.classList.remove('on');
+    return v;
   }
   var stageStillB = document.getElementById('stageStillB');
   function bridge(o, src) { // departure crossfade: arrival frame -> next leg's first frame
@@ -191,20 +209,14 @@
   }
   // The flight must LAND: glide the playhead to its exact boundary frame before any
   // still handoff — abandoning it mid-clip is a visible jump-cut.
-  function videoBusy(target) {
-    var cur = stageVideo.currentTime || 0;
-    if (tick._s === undefined) tick._s = cur;
-    if (Math.abs(cur - target) <= 0.045 && !stageVideo.seeking) return false;
-    tick._s += (target - tick._s) * 0.16;
-    if (Math.abs(target - tick._s) < 0.012) tick._s = target;
-    if (!stageVideo.seeking && Math.abs(cur - tick._s) > 0.012) stageVideo.currentTime = tick._s;
+  function videoBusy(v, target) {
+    var cur = v.currentTime || 0;
+    if (v._s === undefined) v._s = cur;
+    if (Math.abs(cur - target) <= 0.045 && !v.seeking) return false;
+    v._s += (target - v._s) * 0.16;
+    if (Math.abs(target - v._s) < 0.012) v._s = target;
+    if (!v.seeking && Math.abs(cur - v._s) > 0.012) v.currentTime = v._s;
     return true;
-  }
-  function ensureLeg(n) {
-    if (!vidOK || activeLeg === n) return;
-    activeLeg = n;
-    stageVideo.src = 'media/descent/leg' + n + '.mp4';
-    stageVideo.load();
   }
   // Rate-servo scrub: the video PLAYS to chase the scroll-mapped time (smooth decode
   // through sparse keyframes); it only hard-seeks on reversals. Self-ticks while chasing.
@@ -223,24 +235,22 @@
         if (n === 8 && outroTop) setPanels(8, Math.max(0, Math.min(1, (outroTop - mid) / (window.innerHeight * 0.55))));
         else setPanels(n, 1);
       }
-      if (vidOK && stageVideo.classList.contains('on') && stageVideo.readyState >= 2 && stageVideo.duration) {
-        var lt = (activeLeg === n - 1) ? Math.max(0.001, stageVideo.duration - 0.05) : 0.001;
-        if (videoBusy(lt)) { requestAnimationFrame(tick); return; } // finish landing before parking
+      if (curVid && vids[curVid] && vids[curVid].readyState >= 2 && vids[curVid].duration) {
+        var lt = (curVid === n - 1) ? Math.max(0.001, vids[curVid].duration - 0.05) : 0.001;
+        if (videoBusy(vids[curVid], lt)) { requestAnimationFrame(tick); return; } // finish landing before parking
       }
       showStill(n);
       bridge(0);
-      for (i = 0; i < zones.length; i++) if (zones[i].top > mid && zones[i].top - mid < window.innerHeight * 1.3) { ensureLeg(zones[i].leg); break; }
       ticking = false; return;
     }
     // transit = three scroll phases: panel scrubs OUT (frame holds) -> flight -> next panel scrubs IN
     var OUT_END = 0.16, IN_START = 0.84;
     if (p < OUT_END) {
       if (panelMode) setPanels(z.leg, 1 - p / OUT_END);
-      if (vidOK && activeLeg === z.leg && stageVideo.classList.contains('on') && stageVideo.readyState >= 2 && stageVideo.duration) {
-        if (videoBusy(0.001)) { requestAnimationFrame(tick); return; } // rewind the flight to its first frame first
+      if (curVid === z.leg && vids[curVid] && vids[curVid].readyState >= 2 && vids[curVid].duration) {
+        if (videoBusy(vids[curVid], 0.001)) { requestAnimationFrame(tick); return; } // rewind the flight to its first frame first
       }
       showStill(z.leg);
-      ensureLeg(z.leg); // out-phase doubles as buffer time for the upcoming leg
       if (z.leg === 1) {
         bridge(0); // 1->2 angles mismatch too hard to blend: flash-masked cut
         if (vidOK && tick._ph === 'f1') flash();
@@ -252,8 +262,8 @@
     }
     if (p > IN_START) {
       if (panelMode) setPanels(z.leg + 1, (p - IN_START) / (1 - IN_START));
-      if (vidOK && activeLeg === z.leg && stageVideo.classList.contains('on') && stageVideo.readyState >= 2 && stageVideo.duration) {
-        if (videoBusy(Math.max(0.001, stageVideo.duration - 0.05))) { requestAnimationFrame(tick); return; } // land on the exact final frame first
+      if (curVid === z.leg && vids[curVid] && vids[curVid].readyState >= 2 && vids[curVid].duration) {
+        if (videoBusy(vids[curVid], Math.max(0.001, vids[curVid].duration - 0.05))) { requestAnimationFrame(tick); return; } // land on the exact final frame first
       }
       showStill(z.leg + 1);
       bridge(0);
@@ -264,23 +274,21 @@
     if (vidOK && z.leg === 1 && tick._ph === 'o1') flash(); // 1->2 only: mask the angle-cut
     tick._ph = 'f' + z.leg;
     var pf = (p - OUT_END) / (IN_START - OUT_END);
-    if (!vidOK) { showStill(pf < 0.5 ? z.leg : z.leg + 1); ticking = false; return; } // stills-only mode
-    ensureLeg(z.leg);
-    if (stageVideo.readyState >= 2 && stageVideo.duration) {
-      stageVideo.classList.add('on'); stageStill.classList.remove('on');
-      var d = stageVideo.duration;
+    var fv = vidOK ? vids[z.leg] : null;
+    if (!fv) { showStill(pf < 0.5 ? z.leg : z.leg + 1); ticking = false; return; } // stills-only mode
+    if (fv.readyState >= 2 && fv.duration) {
+      showVid(z.leg);
+      var d = fv.duration;
       var t = Math.min(d - 0.04, Math.max(0, pf * d));
-      // momentum: ease a virtual playhead toward the scroll-mapped time (all-intra
-      // encode makes each eased seek instant, so the glide renders smoothly)
-      if (tick._leg !== z.leg || Math.abs(t - tick._s) > 1.5) { tick._leg = z.leg; tick._s = t; } // snap on leg change / anchor jumps
-      tick._s += (t - tick._s) * 0.09;
-      if (Math.abs(t - tick._s) < 0.006) tick._s = t;
-      if (!stageVideo.seeking && Math.abs((stageVideo.currentTime || 0) - tick._s) > 0.012) stageVideo.currentTime = tick._s;
-      if (tick._s !== t || stageVideo.seeking) { requestAnimationFrame(tick); return; } // keep gliding until converged
+      // momentum: ease this leg's virtual playhead toward the scroll-mapped time
+      if (fv._s === undefined || Math.abs(t - fv._s) > 1.5) fv._s = t; // snap on anchor jumps
+      fv._s += (t - fv._s) * 0.09;
+      if (Math.abs(t - fv._s) < 0.006) fv._s = t;
+      if (!fv.seeking && Math.abs((fv.currentTime || 0) - fv._s) > 0.012) fv.currentTime = fv._s;
+      if (fv._s !== t || fv.seeking) { requestAnimationFrame(tick); return; } // keep gliding until converged
     } else {
-      showStill(pf < 0.5 ? z.leg : z.leg + 1); // clip not buffered yet: hold the nearer still
+      showStill(pf < 0.5 ? z.leg : z.leg + 1); // still buffering: hold the nearer frame
     }
-    if (stageVideo.seeking) { requestAnimationFrame(tick); return; } // apply the latest target once this seek lands
     ticking = false;
   }
   function kick() { if (!ticking) { ticking = true; requestAnimationFrame(tick); } }
