@@ -21,7 +21,7 @@
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 70px; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font-body);
   font-size: clamp(16px, 2.4vw, 19px); line-height: 1.7; overflow-x: hidden;
@@ -121,9 +121,9 @@ section { padding: 96px 0; position: relative; }
 .hero-sub { font-family: var(--font-body); font-size: clamp(17px, 2.7vw, 22px); color: var(--ink); margin: 20px 0 26px; max-width: 680px; line-height: 1.55; }
 .hero-cta-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 .hero-note { font-size: 15px; color: var(--text-soft); margin-top: 16px; }
-.scroll-cue { position: absolute; left: 50%; bottom: 22px; z-index: 3; font-family: var(--font-display); font-size: 12px; letter-spacing: 2px; color: var(--phosphor); opacity: 0; transform: translate(-50%, 0); animation: cuebob 1.6s ease-in-out infinite; transition: opacity 0.5s ease; text-shadow: 0 0 12px rgba(0,255,170,0.6); }
+.scroll-cue { display: inline-block; margin-top: 30px; font-family: var(--font-display); font-size: 12px; letter-spacing: 2px; color: var(--phosphor); opacity: 0; animation: cuebob 1.6s ease-in-out infinite; transition: opacity 0.5s ease; text-shadow: 0 0 12px rgba(0,255,170,0.6); }
 .scroll-cue.show { opacity: 0.9; }
-@keyframes cuebob { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 7px); } }
+@keyframes cuebob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(7px); } }
 
 .statline { display: grid; gap: 14px; margin: 12px 0 30px; }
 .statline .row { display: flex; gap: 16px; flex-wrap: wrap; font-size: 17px; color: var(--text-soft); }
@@ -144,6 +144,7 @@ section { padding: 96px 0; position: relative; }
 .roster .card.reveal:nth-child(7) { transition-delay: 0.18s; }
 .roster .card.reveal:nth-child(8) { transition-delay: 0.24s; }
 .roster .card.reveal:nth-child(9) { transition-delay: 0.30s; }
+.roster .card.reveal.in { transition-delay: 0s; }
 .card { background: var(--bg-raised); border: 1px solid rgba(0,255,170,0.25); padding: 22px; min-height: 190px; transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.8s cubic-bezier(.16,1,.3,1); }
 .card[role="button"] { cursor: pointer; }
 .card:hover { transform: translateY(-5px); border-color: var(--tint, var(--phosphor)); box-shadow: 0 0 22px -4px var(--tint, rgba(0,255,170,0.5)); }
@@ -185,6 +186,10 @@ section { padding: 96px 0; position: relative; }
 .feedback .ok a, .feedback .amber a { color: var(--phosphor); text-decoration: underline; }
 .feedback .amber { color: var(--amber); font-size: 13px; margin-top: 14px; }
 .feedback .amber a { color: var(--amber); }
+
+.broadcast { max-width: 680px; margin: 26px auto 0; border: 1px dashed rgba(255,176,0,0.45); padding: 18px 20px; }
+.broadcast p { color: var(--text-soft); font-size: 15px; margin-top: 8px; }
+.broadcast .amber a { color: var(--amber); text-decoration: underline; }
 
 .email { background: var(--bg-raised); border: 1px solid var(--alert); max-width: 760px; margin: 0 auto; box-shadow: 0 0 40px -10px rgba(255,34,51,0.4); }
 .email .subj-marquee { overflow: hidden; white-space: nowrap; border-bottom: 1px solid rgba(255,34,51,0.4); padding: 8px 0; }
@@ -234,9 +239,78 @@ section { padding: 96px 0; position: relative; }
 .skip-link:focus { top: 12px; }
 
 .card[data-flip] { position: relative; }
-.card[data-flip]::after { content: '[ FLIP ]'; position: absolute; top: 14px; right: 14px; font-family: var(--font-display); font-size: 8px; letter-spacing: 1px; color: var(--phosphor-dim); opacity: 0.5; }
+.card[data-flip]::after { content: '[ FLIP ]'; position: absolute; top: 14px; right: 14px; font-family: var(--font-display); font-size: 8px; letter-spacing: 1px; color: var(--phosphor-dim); opacity: 0.85; }
 .card.flipped { animation: cardflip 0.22s ease; }
 @keyframes cardflip { 0% { transform: translateX(-3px) translateY(-5px); } 30% { transform: translateX(3px) translateY(-5px); } 60% { transform: translateX(-2px) translateY(-5px); } 100% { transform: translateY(-5px); } }
+
+/* --- cliffside descent: parallax strata, rooms, elevator HUD, exterior vista --- */
+
+.room-box { position: relative; border: 1px solid rgba(0,255,170,0.3); background: rgba(1,7,5,0.78); padding: 46px 34px; }
+.room-box::before { content: attr(data-floor); position: absolute; top: 0; left: 16px; transform: translateY(-50%); z-index: 2; background: #000; border: 1px solid rgba(0,255,170,0.35); padding: 5px 10px; font-family: var(--font-display); font-size: 9px; letter-spacing: 1px; color: var(--phosphor-dim); white-space: nowrap; }
+.room-box::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 60px; pointer-events: none; background: linear-gradient(180deg, rgba(0,255,170,0.06), transparent); }
+.room-box.reveal.in { animation: roomOn 0.6s linear 1; }
+@keyframes roomOn { 0% { border-color: rgba(0,255,170,0.05); box-shadow: none; } 30% { border-color: rgba(0,255,170,0.75); box-shadow: 0 0 34px -8px rgba(0,255,170,0.55); } 45% { border-color: rgba(0,255,170,0.12); box-shadow: none; } 62% { border-color: rgba(0,255,170,0.6); box-shadow: 0 0 26px -8px rgba(0,255,170,0.4); } 100% { border-color: rgba(0,255,170,0.3); } }
+
+
+.exterior { min-height: calc(100vh - 58px); min-height: calc(100svh - 58px); display: flex; align-items: center; justify-content: center; padding: 60px 0 90px; }
+.ext-inner { width: min(880px, 94vw); text-align: center; background: radial-gradient(ellipse at center, rgba(0,0,0,0.6), transparent 72%); padding: 48px 30px; }
+.ext-inner h2 { font-size: clamp(24px, 4.6vw, 42px); }
+.ext-sub { color: var(--text-soft); font-size: 17px; max-width: 660px; margin: 16px auto 0; }
+.foot-cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 6px; }
+
+/* --- THE DESCENT: fixed cinema stage (stills at stops, scrubbed video in transit) --- */
+.stage { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #000; overflow: hidden; }
+.stage-inner { position: absolute; inset: 0; transform: scale(1.06); will-change: transform; }
+.stage-inner img, .stage-inner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.3s ease; }
+.stage-inner .on { opacity: 1; }
+#stageStillB { transition: none; } /* departure crossfade layer is scroll-scrubbed */
+.cutflash { position: fixed; inset: 0; z-index: 45; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 46%, rgba(234,255,246,0.95), rgba(0,255,170,0.35) 70%); }
+.cutflash.go { animation: cutflash 0.24s ease-out 1; }
+@keyframes cutflash { 0% { opacity: 0; } 20% { opacity: 0.9; } 100% { opacity: 0; } }
+.stage::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(0,0,0,0.6)); }
+.transit { height: 420vh; pointer-events: none; }
+.ostbtn { background: rgba(0,0,0,0.4); border: 1px solid var(--phosphor-dim); color: var(--text-soft); font-family: var(--font-display); font-size: 10px; letter-spacing: 1px; padding: 8px 10px; cursor: pointer; }
+.ostbtn:hover, .ostbtn[aria-pressed="true"] { color: var(--phosphor); border-color: var(--phosphor); }
+
+@media (max-width: 860px) {
+  .room-box { padding: 34px 18px; }
+  .room-box::before { left: 10px; }
+  .transit { height: 60vh; }
+}
+
+/* --- PANEL MODE: rooms stay pinned in place and CRT-glitch in/out (desktop, motion OK) --- */
+html.panel-mode { scroll-behavior: auto; }
+@media (min-width: 861px) and (prefers-reduced-motion: no-preference) {
+  .panel-mode main section:not(.exterior) { min-height: 150vh; }
+  .panel-mode main .room-box { position: fixed; left: 50%; top: 53%; transform: translate(-50%, -50%); width: min(940px, 92vw); max-height: 86vh; overflow: visible; z-index: 5; opacity: 0; visibility: hidden; pointer-events: none; will-change: opacity, clip-path, transform, filter; }
+  .panel-mode main .room-box.scrolly { overflow-y: auto; }
+  .panel-mode main .room-box::-webkit-scrollbar { width: 8px; }
+  .panel-mode main .room-box::-webkit-scrollbar-track { background: rgba(0,255,170,0.07); }
+  .panel-mode main .room-box::-webkit-scrollbar-thumb { background: rgba(0,255,170,0.35); }
+  /* compact layout inside panels so every floor fits on one screen */
+  .panel-mode main .room-box { padding: 26px 30px; }
+  .panel-mode .hero h1 { font-size: clamp(24px, 3.6vw, 40px); }
+  .panel-mode .hero-sub { margin: 12px 0 14px; font-size: 16px; }
+  .panel-mode .hero-trailer { max-width: 600px; margin: 14px 0; }
+  .panel-mode .hero-note, .panel-mode .hero .legal { font-size: 12px; margin-top: 8px; }
+  .panel-mode .section-head { margin-bottom: 18px; }
+  .panel-mode .section-head p { font-size: 15px; margin-top: 8px; }
+  .panel-mode .kicker { margin-bottom: 10px; font-size: 11px; }
+  .panel-mode .roster { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .panel-mode .card { min-height: 0; padding: 13px; }
+  .panel-mode .card .av { width: 20px; height: 20px; margin-bottom: 8px; }
+  .panel-mode .card h3 { font-size: 10px; margin-bottom: 7px; }
+  .panel-mode .card .flavor { min-height: 0; font-size: 12px; }
+  .panel-mode .card .spec { font-size: 10px; margin-top: 8px; }
+  .panel-mode .shots { gap: 10px; }
+  .panel-mode .shot figcaption { padding: 8px 12px; }
+  .panel-mode .shot figcaption span { font-size: 12px; }
+  .panel-mode .mid-cta { margin-top: 16px; }
+  .panel-mode .feedback { margin: 18px auto 0; padding: 18px; }
+  .panel-mode .short { flex: 0 0 150px; }
+  .panel-mode .email .bd { font-size: 14px; padding: 14px 18px; }
+  .panel-mode .email .bd p { margin-bottom: 8px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

@@ -6,11 +6,6 @@
   // Until a real key is set, the form gracefully falls back to the mailto path.
   var WEB3FORMS_KEY = 'bc98bbb9-bba2-4a7b-8c98-9951aa9a19f9';
 
-  var STEAM_APPID = '0000000';
-  function steamUrl(campaign) {
-    if (STEAM_APPID === '0000000') return null;
-    return 'https://store.steampowered.com/app/' + STEAM_APPID + '/Scrumbag/?utm_source=stockout_studio&utm_campaign=' + campaign;
-  }
 
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -35,8 +30,8 @@
   // --- scroll cue (affordance that there's more below) ---
   var cue = document.getElementById('scrollCue');
   if (cue) {
-    setTimeout(function () { cue.classList.add('show'); }, 1400);
-    window.addEventListener('scroll', function () { if (window.scrollY > 60) cue.classList.remove('show'); }, { passive: true });
+    cue.classList.add('show'); // spawns together with the title text
+    window.addEventListener('scroll', function () { if (window.scrollY > window.innerHeight * 0.5) cue.classList.remove('show'); }, { passive: true });
   }
 
   // --- mobile nav dropdown ---
@@ -80,6 +75,283 @@
   }
   window.addEventListener('scroll', function () { if (!clockRAF) { clockRAF = true; requestAnimationFrame(updateClock); } }, { passive: true });
   updateClock();
+
+  // --- THE DESCENT: Seedance legs scrubbed by scroll between destination stills ---
+  var stageInner = document.getElementById('stageInner');
+  var stageStill = document.getElementById('stageStill');
+  var stageVideo = document.getElementById('stageVideo');
+  var transits = [].slice.call(document.querySelectorAll('.transit[data-leg]'));
+  var mobileLite = matchMedia('(max-width: 860px)').matches;
+  var vidOK = !reduce && !mobileLite && !!(stageVideo && stageVideo.canPlayType && stageVideo.canPlayType('video/mp4'));
+  // panel mode: rooms are pinned center-screen and glitch in/out instead of scrolling past
+  var panelMode = !reduce && !mobileLite;
+  var panels = [].slice.call(document.querySelectorAll('main .room-box'));
+  if (panelMode && panels.length) document.documentElement.classList.add('panel-mode');
+  // flight controls: wheel UP flies forward (you're flying INTO the building), smooth inertia.
+  // Scrollbar + keyboard keep native direction; wheel over an open panel scrolls the panel.
+  if (panelMode) {
+    var sT = null, sOn = false;
+    var sStep = function () {
+      var cur = window.scrollY, d = sT - cur;
+      if (Math.abs(d) < 0.6) { sOn = false; sT = null; return; }
+      window.scrollTo(0, cur + d * 0.16);
+      requestAnimationFrame(sStep);
+    };
+    window.addEventListener('wheel', function (e) {
+      if (e.ctrlKey) return; // pinch/zoom
+      if (e.target && e.target.closest && e.target.closest('.modal.open')) return;
+      // only hand the wheel to a live panel that is GENUINELY scrollable (.scrolly)
+      // and can still move that way — anything else is always flight input
+      var lp = e.target && e.target.closest && e.target.closest('.room-box.live.scrolly');
+      if (lp && lp.scrollHeight > lp.clientHeight + 4) {
+        var down = e.deltaY > 0;
+        var atTop = lp.scrollTop <= 0, atBot = lp.scrollTop + lp.clientHeight >= lp.scrollHeight - 2;
+        if ((down && !atBot) || (!down && !atTop)) return;
+      }
+      e.preventDefault();
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      if (sT === null || !sOn) sT = window.scrollY;
+      sT = Math.max(0, Math.min(max, sT + e.deltaY)); // normal direction: wheel down = fly forward
+      if (!sOn) { sOn = true; requestAnimationFrame(sStep); }
+    }, { passive: false });
+  }
+  // scroll-scrubbed CRT materialize: q 0 (dark) -> 1 (solid), fully reversible
+  function panelPhase(el, q) {
+    q = Math.max(0, Math.min(1, q));
+    if (el._q !== undefined && Math.abs(el._q - q) < 0.004) return;
+    el._q = q;
+    var e = q * q * (3 - 2 * q); // smoothstep
+    el.style.opacity = String(e);
+    el.style.visibility = q > 0.02 ? 'visible' : 'hidden';
+    el.style.pointerEvents = q > 0.94 ? 'auto' : 'none';
+    if (q >= 0.998) {
+      // fully materialized: clear every scrub effect so nothing clips at rest
+      // (clip-path crops protruding bits — floor tags, hover lifts, glows — even with overflow visible)
+      el.style.clipPath = 'none';
+      el.style.transform = 'translate(-50%, -50%)';
+      el.style.filter = '';
+    } else {
+      var half = (1 - e) * 50; // clip iris opens from the center line
+      var jit = (1 - e) * Math.sin(q * 43) * 9; // glitch jitter while unstable
+      el.style.clipPath = 'inset(' + half.toFixed(2) + '% 0 ' + half.toFixed(2) + '% 0)';
+      el.style.transform = 'translate(calc(-50% + ' + jit.toFixed(1) + 'px), -50%) scaleY(' + (0.55 + 0.45 * e).toFixed(3) + ')';
+      el.style.filter = 'brightness(' + (1 + (1 - e) * 1.7).toFixed(2) + ')';
+    }
+    el.classList.toggle('live', q > 0.94);
+  }
+  function setPanels(n, q) { // stop n's panel gets q; every other panel goes dark
+    var idx = n - 2;
+    for (var i2 = 0; i2 < panels.length; i2++) panelPhase(panels[i2], i2 === idx ? q : 0);
+  }
+  // auto-fit: shrink any panel taller than the viewport window so nothing needs scrolling
+  function fitPanels() {
+    if (!panelMode) return;
+    var avail = window.innerHeight * 0.84;
+    for (var q = 0; q < panels.length; q++) {
+      panels[q].style.zoom = '';
+      panels[q].classList.remove('scrolly');
+      var need = panels[q].scrollHeight;
+      if (need > avail) {
+        var k = avail / need;
+        if (k < 0.55) { k = 0.55; panels[q].classList.add('scrolly'); } // extreme fallback only
+        panels[q].style.zoom = String(k);
+      }
+    }
+  }
+  var zones = [], curStop = 1, activeLeg = 0;
+
+  var outroTop = 0;
+  function rebuildZones() {
+    zones = transits.map(function (t) {
+      var r = t.getBoundingClientRect();
+      return { top: r.top + window.scrollY, h: Math.max(1, r.height), leg: +t.getAttribute('data-leg') };
+    });
+    var foot = document.querySelector('.foot');
+    outroTop = foot ? foot.getBoundingClientRect().top + window.scrollY : 0;
+  }
+  // parked frames are the videos' OWN boundary frames, so still<->video joints are seamless
+  function parkedSrc(n) { return n <= 1 ? 'media/descent/leg1-first.jpg' : 'media/descent/leg' + (n - 1) + '-last.jpg'; }
+  function showStill(n) {
+    if (curStop !== n) { curStop = n; stageStill.src = parkedSrc(n); }
+    stageStill.classList.add('on');
+    if (stageVideo) stageVideo.classList.remove('on');
+  }
+  var stageStillB = document.getElementById('stageStillB');
+  function bridge(o, src) { // departure crossfade: arrival frame -> next leg's first frame
+    if (!stageStillB) return;
+    if (src && stageStillB._src !== src) { stageStillB._src = src; stageStillB.src = src; }
+    stageStillB.style.opacity = String(o);
+  }
+  var cutFlash = document.getElementById('cutFlash');
+  function flash() { // CRT re-sync burst that hides the camera-angle cut between legs
+    if (!cutFlash || reduce) return;
+    cutFlash.classList.remove('go'); void cutFlash.offsetWidth; cutFlash.classList.add('go');
+  }
+  // The flight must LAND: glide the playhead to its exact boundary frame before any
+  // still handoff — abandoning it mid-clip is a visible jump-cut.
+  function videoBusy(target) {
+    var cur = stageVideo.currentTime || 0;
+    if (tick._s === undefined) tick._s = cur;
+    if (Math.abs(cur - target) <= 0.045 && !stageVideo.seeking) return false;
+    tick._s += (target - tick._s) * 0.16;
+    if (Math.abs(target - tick._s) < 0.012) tick._s = target;
+    if (!stageVideo.seeking && Math.abs(cur - tick._s) > 0.012) stageVideo.currentTime = tick._s;
+    return true;
+  }
+  function ensureLeg(n) {
+    if (!vidOK || activeLeg === n) return;
+    activeLeg = n;
+    stageVideo.src = 'media/descent/leg' + n + '.mp4';
+    stageVideo.load();
+  }
+  // Rate-servo scrub: the video PLAYS to chase the scroll-mapped time (smooth decode
+  // through sparse keyframes); it only hard-seeks on reversals. Self-ticks while chasing.
+  var ticking = false;
+  function tick() {
+    if (!zones.length) { ticking = false; return; }
+    var mid = window.scrollY + window.innerHeight * 0.5, z = null, p = 0, i;
+    for (i = 0; i < zones.length; i++) { if (mid >= zones[i].top && mid < zones[i].top + zones[i].h) { z = zones[i]; p = (mid - zones[i].top) / zones[i].h; break; } }
+    if (!z) {
+      // parked at a destination: show its still, pre-warm the next leg when close
+      var n = 1;
+      for (i = 0; i < zones.length; i++) if (mid >= zones[i].top + zones[i].h) n = zones[i].leg + 1;
+      if (panelMode) {
+        // parked: floor panel solid — except at the bottom, where the HR panel
+        // dissolves out as the B1 footer (the in-flow finale) rises to replace it
+        if (n === 8 && outroTop) setPanels(8, Math.max(0, Math.min(1, (outroTop - mid) / (window.innerHeight * 0.55))));
+        else setPanels(n, 1);
+      }
+      if (vidOK && stageVideo.classList.contains('on') && stageVideo.readyState >= 2 && stageVideo.duration) {
+        var lt = (activeLeg === n - 1) ? Math.max(0.001, stageVideo.duration - 0.05) : 0.001;
+        if (videoBusy(lt)) { requestAnimationFrame(tick); return; } // finish landing before parking
+      }
+      showStill(n);
+      bridge(0);
+      for (i = 0; i < zones.length; i++) if (zones[i].top > mid && zones[i].top - mid < window.innerHeight * 1.3) { ensureLeg(zones[i].leg); break; }
+      ticking = false; return;
+    }
+    // transit = three scroll phases: panel scrubs OUT (frame holds) -> flight -> next panel scrubs IN
+    var OUT_END = 0.16, IN_START = 0.84;
+    if (p < OUT_END) {
+      if (panelMode) setPanels(z.leg, 1 - p / OUT_END);
+      if (vidOK && activeLeg === z.leg && stageVideo.classList.contains('on') && stageVideo.readyState >= 2 && stageVideo.duration) {
+        if (videoBusy(0.001)) { requestAnimationFrame(tick); return; } // rewind the flight to its first frame first
+      }
+      showStill(z.leg);
+      ensureLeg(z.leg); // out-phase doubles as buffer time for the upcoming leg
+      if (z.leg === 1) {
+        bridge(0); // 1->2 angles mismatch too hard to blend: flash-masked cut
+        if (vidOK && tick._ph === 'f1') flash();
+      } else {
+        bridge(Math.min(1, p / OUT_END), 'media/descent/leg' + z.leg + '-first.jpg'); // crossfade as before
+      }
+      tick._ph = 'o' + z.leg;
+      ticking = false; return;
+    }
+    if (p > IN_START) {
+      if (panelMode) setPanels(z.leg + 1, (p - IN_START) / (1 - IN_START));
+      if (vidOK && activeLeg === z.leg && stageVideo.classList.contains('on') && stageVideo.readyState >= 2 && stageVideo.duration) {
+        if (videoBusy(Math.max(0.001, stageVideo.duration - 0.05))) { requestAnimationFrame(tick); return; } // land on the exact final frame first
+      }
+      showStill(z.leg + 1);
+      bridge(0);
+      ticking = false; return;
+    }
+    if (panelMode) setPanels(0, 0); // mid-flight: all panels dark
+    bridge(0);
+    if (vidOK && z.leg === 1 && tick._ph === 'o1') flash(); // 1->2 only: mask the angle-cut
+    tick._ph = 'f' + z.leg;
+    var pf = (p - OUT_END) / (IN_START - OUT_END);
+    if (!vidOK) { showStill(pf < 0.5 ? z.leg : z.leg + 1); ticking = false; return; } // stills-only mode
+    ensureLeg(z.leg);
+    if (stageVideo.readyState >= 2 && stageVideo.duration) {
+      stageVideo.classList.add('on'); stageStill.classList.remove('on');
+      var d = stageVideo.duration;
+      var t = Math.min(d - 0.04, Math.max(0, pf * d));
+      // momentum: ease a virtual playhead toward the scroll-mapped time (all-intra
+      // encode makes each eased seek instant, so the glide renders smoothly)
+      if (tick._leg !== z.leg || Math.abs(t - tick._s) > 1.5) { tick._leg = z.leg; tick._s = t; } // snap on leg change / anchor jumps
+      tick._s += (t - tick._s) * 0.09;
+      if (Math.abs(t - tick._s) < 0.006) tick._s = t;
+      if (!stageVideo.seeking && Math.abs((stageVideo.currentTime || 0) - tick._s) > 0.012) stageVideo.currentTime = tick._s;
+      if (tick._s !== t || stageVideo.seeking) { requestAnimationFrame(tick); return; } // keep gliding until converged
+    } else {
+      showStill(pf < 0.5 ? z.leg : z.leg + 1); // clip not buffered yet: hold the nearer still
+    }
+    if (stageVideo.seeking) { requestAnimationFrame(tick); return; } // apply the latest target once this seek lands
+    ticking = false;
+  }
+  function kick() { if (!ticking) { ticking = true; requestAnimationFrame(tick); } }
+  if (stageStill && transits.length) {
+    // the descent always begins at the surface: no mid-journey scroll restoration
+    try { history.scrollRestoration = 'manual'; } catch (e) {}
+    if (!location.hash) window.scrollTo(0, 0);
+    for (var si = 1; si <= 7; si++) { var pa = new Image(); pa.src = 'media/descent/leg' + si + '-first.jpg'; var pb = new Image(); pb.src = 'media/descent/leg' + si + '-last.jpg'; }
+    // panel content images can land late — re-measure the fit when they do
+    panels.forEach(function (pl) {
+      [].slice.call(pl.querySelectorAll('img')).forEach(function (im) {
+        if (!im.complete) im.addEventListener('load', function () { fitPanels(); }, { once: true });
+      });
+    });
+    window.addEventListener('scroll', function () {
+      kick();
+      // keep offering the score on scroll: succeeds the moment the browser permits audio
+      if (ost && ost.paused && !ostUserOff) { var onw = Date.now(); if (!ostKicked || onw - ostKicked > 1200) { ostKicked = onw; ostStart(); } }
+    }, { passive: true });
+    window.addEventListener('resize', function () { rebuildZones(); fitPanels(); });
+    window.addEventListener('load', function () { rebuildZones(); fitPanels(); kick(); });
+    setTimeout(function () { rebuildZones(); fitPanels(); kick(); }, 250);
+  }
+  // cursor parallax on the cinema stage (desktop, motion allowed)
+  if (vidOK && stageInner) {
+    var mx = 0, my = 0, mtx = 0, mty = 0, mPend = false;
+    var mstep = function () {
+      mx += (mtx - mx) * 0.1; my += (mty - my) * 0.1;
+      stageInner.style.transform = 'scale(1.06) translate(' + mx.toFixed(1) + 'px,' + my.toFixed(1) + 'px)';
+      if (Math.abs(mtx - mx) > 0.15 || Math.abs(mty - my) > 0.15) requestAnimationFrame(mstep); else mPend = false;
+    };
+    window.addEventListener('pointermove', function (e) {
+      mtx = (e.clientX / window.innerWidth - 0.5) * -18;
+      mty = (e.clientY / window.innerHeight - 0.5) * -12;
+      if (!mPend) { mPend = true; requestAnimationFrame(mstep); }
+    }, { passive: true });
+  }
+  // OST: starts with the descent scroll (when the browser allows it); ♪ button is the
+  // always-visible kill switch. An explicit OFF is remembered and never auto-overridden.
+  // NOTE: must start AUDIBLE — the play-silent-then-ramp trick gets silently muted by
+  // autoplay policy. The button label follows the element's real play/pause events.
+  var ost = document.getElementById('ost'), ostBtn = document.getElementById('ostToggle');
+  var ostKicked = false, ostArmed = false, ostUserOff = false;
+  try { ostUserOff = localStorage.getItem('stockout_ost') === 'off'; } catch (e) {}
+  function ostPaint(on) { if (ostBtn) { ostBtn.textContent = '♪ OST: ' + (on ? 'ON' : 'OFF'); ostBtn.setAttribute('aria-pressed', on ? 'true' : 'false'); } }
+  function ostArm() { // browser wants a real gesture: start on the first click/keypress
+    if (ostArmed) return; ostArmed = true;
+    var h = function () {
+      window.removeEventListener('pointerdown', h); window.removeEventListener('keydown', h);
+      if (!ostUserOff && ost.paused) { ost.volume = 0.6; ost.play().catch(function () {}); }
+    };
+    window.addEventListener('pointerdown', h); window.addEventListener('keydown', h);
+  }
+  function ostStart() {
+    if (!ost || ostUserOff || !ost.paused) return;
+    ost.volume = 0.6;
+    var pr = ost.play();
+    if (pr && pr.catch) pr.catch(ostArm);
+  }
+  if (ost && ostBtn) {
+    ost.addEventListener('play', function () { ostPaint(true); });
+    ost.addEventListener('pause', function () { ostPaint(false); });
+    ostBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (ost.paused) {
+        ostUserOff = false; try { localStorage.setItem('stockout_ost', 'on'); } catch (err) {}
+        ost.volume = 0.6; ost.play().catch(function () {});
+      } else {
+        ostUserOff = true; try { localStorage.setItem('stockout_ost', 'off'); } catch (err) {}
+        ost.pause();
+      }
+    });
+  }
 
   // --- FX canvas: click bursts + confetti (echoes the game's juice) ---
   var fx = document.getElementById('fxCanvas');
@@ -138,20 +410,9 @@
   function openModal() { if (!modal) return; lastFocus = document.activeElement; modal.classList.add('open'); if (emailInput) setTimeout(function () { emailInput.focus(); }, 30); }
   function closeModal() { if (!modal) return; modal.classList.remove('open'); if (lastFocus && lastFocus.focus) lastFocus.focus(); }
 
-  function wireCTAs() {
-    var url = steamUrl('cta');
-    document.querySelectorAll('[data-notify]').forEach(function (btn) {
-      if (url) {
-        var a = document.createElement('a');
-        a.className = btn.className; a.href = url; a.target = '_blank'; a.rel = 'noopener';
-        a.innerHTML = btn.innerHTML.replace(/GET NOTIFIED( FOR SCRUMBAG)?|REPLY: NOTIFY ME|ADD ME TO THE PIPELINE/i, 'WISHLIST ON STEAM');
-        btn.parentNode.replaceChild(a, btn);
-      } else {
-        btn.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
-      }
-    });
-  }
-  wireCTAs();
+  document.querySelectorAll('[data-notify]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
+  });
 
   if (modal) {
     document.getElementById('notifyClose').addEventListener('click', closeModal);
