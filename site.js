@@ -328,8 +328,12 @@
   function ostPaint(on) { if (ostBtn) { ostBtn.textContent = '♪ OST: ' + (on ? 'ON' : 'OFF'); ostBtn.setAttribute('aria-pressed', on ? 'true' : 'false'); } }
   function ostArm() { // browser wants a real gesture: start on the first click/keypress
     if (ostArmed) return; ostArmed = true;
-    var h = function () {
+    var h = function (e) {
       window.removeEventListener('pointerdown', h); window.removeEventListener('keydown', h);
+      ostArmed = false;
+      // gestures on the ♪ button itself don't auto-start — its own click handler decides,
+      // otherwise pointerdown starts the track and the click immediately re-pauses it
+      if (e && e.target && e.target.closest && e.target.closest('#ostToggle')) return;
       if (!ostUserOff && ost.paused) { ost.volume = 0.6; ost.play().catch(function () {}); }
     };
     window.addEventListener('pointerdown', h); window.addEventListener('keydown', h);
