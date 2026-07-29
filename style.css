@@ -282,8 +282,10 @@ section { padding: 96px 0; position: relative; }
 html.panel-mode { scroll-behavior: auto; }
 @media (min-width: 861px) and (prefers-reduced-motion: no-preference) {
   .panel-mode main section:not(.exterior) { min-height: 150vh; }
-  .panel-mode main .room-box { position: fixed; left: 50%; top: 53%; transform: translate(-50%, -50%); width: min(940px, 92vw); max-height: 86vh; overflow: visible; z-index: 5; opacity: 0; visibility: hidden; pointer-events: none; will-change: opacity, clip-path, transform, filter; }
-  .panel-mode main .room-box.scrolly { overflow-y: auto; }
+  .panel-mode main .room-box { position: fixed; left: 50%; top: 53%; transform: translate(-50%, -50%); width: min(940px, 92vw); max-height: 86vh; overflow-y: auto; z-index: 5; opacity: 0; visibility: hidden; pointer-events: none; will-change: opacity, clip-path, transform, filter; }
+  .panel-mode main .room-box::before { top: 10px; left: 12px; transform: none; } /* tag lives inside the box: can never clip */
+  .panel-mode .broadcast { margin-top: 14px; padding: 10px 14px; }
+  .panel-mode .broadcast p { font-size: 12px; margin-top: 5px; }
   .panel-mode main .room-box::-webkit-scrollbar { width: 8px; }
   .panel-mode main .room-box::-webkit-scrollbar-track { background: rgba(0,255,170,0.07); }
   .panel-mode main .room-box::-webkit-scrollbar-thumb { background: rgba(0,255,170,0.35); }

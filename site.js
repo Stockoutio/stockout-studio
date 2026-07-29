@@ -90,6 +90,8 @@
   // flight controls: wheel UP flies forward (you're flying INTO the building), smooth inertia.
   // Scrollbar + keyboard keep native direction; wheel over an open panel scrolls the panel.
   if (panelMode) {
+    var cueEl = document.getElementById('scrollCue');
+    if (cueEl) cueEl.innerHTML = 'SCROLL UP TO ENTER &#9650;';
     var sT = null, sOn = false;
     var sStep = function () {
       var cur = window.scrollY, d = sT - cur;
@@ -102,7 +104,7 @@
       if (e.target && e.target.closest && e.target.closest('.modal.open')) return;
       // only hand the wheel to a live panel that is GENUINELY scrollable (.scrolly)
       // and can still move that way — anything else is always flight input
-      var lp = e.target && e.target.closest && e.target.closest('.room-box.live.scrolly');
+      var lp = e.target && e.target.closest && e.target.closest('.room-box.live');
       if (lp && lp.scrollHeight > lp.clientHeight + 4) {
         var down = e.deltaY > 0;
         var atTop = lp.scrollTop <= 0, atBot = lp.scrollTop + lp.clientHeight >= lp.scrollHeight - 2;
@@ -111,7 +113,7 @@
       e.preventDefault();
       var max = document.documentElement.scrollHeight - window.innerHeight;
       if (sT === null || !sOn) sT = window.scrollY;
-      sT = Math.max(0, Math.min(max, sT + e.deltaY)); // normal direction: wheel down = fly forward
+      sT = Math.max(0, Math.min(max, sT - e.deltaY)); // inverted: wheel up = fly forward
       if (!sOn) { sOn = true; requestAnimationFrame(sStep); }
     }, { passive: false });
   }
